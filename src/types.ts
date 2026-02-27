@@ -20,6 +20,7 @@ export interface Category {
   name: string;
   type: TransactionType;
   organization_id: string;
+  parent_id?: string | null;
 }
 
 export interface Department {

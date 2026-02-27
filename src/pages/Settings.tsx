@@ -1,17 +1,39 @@
-import React from 'react';
-import { Church, Users, Shield, Bell, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { Church, Users, Shield, Bell, Globe, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { CategoryManager } from '../components/CategoryManager';
 
 export const Settings: React.FC = () => {
   const { organization, profile } = useAuth();
+  const [activeView, setActiveView] = useState<'menu' | 'categories'>('menu');
 
   const sections = [
-    { name: 'Dados da Igreja', icon: Church, description: 'Nome, CNPJ, Endereço e Logo' },
-    { name: 'Departamentos', icon: Users, description: 'Gerenciar centros de custo' },
-    { name: 'Categorias', icon: Shield, description: 'Plano de contas (Receitas/Despesas)' },
-    { name: 'Notificações', icon: Bell, description: 'Alertas de aprovação e vencimentos' },
-    { name: 'Integrações', icon: Globe, description: 'Conectar com n8n e bancos' },
+    { id: 'church', name: 'Dados da Igreja', icon: Church, description: 'Nome, CNPJ, Endereço e Logo' },
+    { id: 'depts', name: 'Departamentos', icon: Users, description: 'Gerenciar centros de custo' },
+    { id: 'categories', name: 'Categorias', icon: Shield, description: 'Plano de contas (Receitas/Despesas)' },
+    { id: 'notifications', name: 'Notificações', icon: Bell, description: 'Alertas de aprovação e vencimentos' },
+    { id: 'integrations', name: 'Integrações', icon: Globe, description: 'Conectar com n8n e bancos' },
   ];
+
+  if (activeView === 'categories') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setActiveView('menu')}
+            className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Categorias</h2>
+            <p className="text-zinc-500">Gerencie a hierarquia do seu plano de contas.</p>
+          </div>
+        </div>
+        <CategoryManager />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -70,7 +92,13 @@ export const Settings: React.FC = () => {
 
         <div className="grid gap-4 content-start">
           {sections.map((section) => (
-            <button key={section.name} className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-500 hover:shadow-md group">
+            <button 
+              key={section.id} 
+              onClick={() => {
+                if (section.id === 'categories') setActiveView('categories');
+              }}
+              className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-500 hover:shadow-md group"
+            >
               <div className="flex items-center gap-4">
                 <div className="rounded-xl bg-zinc-50 p-3 group-hover:bg-emerald-50 transition-colors">
                   <section.icon className="h-6 w-6 text-zinc-600 group-hover:text-emerald-600" />

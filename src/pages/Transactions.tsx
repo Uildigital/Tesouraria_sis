@@ -27,7 +27,7 @@ const transactionSchema = z.object({
   amount: z.number().min(0.01, 'Valor deve ser maior que zero'),
   date: z.string(),
   type: z.enum(['income', 'expense']),
-  category_id: z.string().min(1, 'Selecione uma categoria'),
+  category_id: z.string().min(1, 'Selecione uma subcategoria'),
   department_id: z.string().optional(),
 });
 
@@ -43,11 +43,14 @@ export const Transactions: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   
+  // Hierarchical category state
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { register, handleSubmit, reset, formState: { errors }, watch } = useForm<TransactionFormValues>({
+  const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'income',
@@ -56,6 +59,19 @@ export const Transactions: React.FC = () => {
   });
 
   const selectedType = watch('type');
+
+  // Reset subcategory when type or parent changes
+  useEffect(() => {
+    setSelectedParentId('');
+    setValue('category_id', '');
+  }, [selectedType, setValue]);
+
+  useEffect(() => {
+    setValue('category_id', '');
+  }, [selectedParentId, setValue]);
+
+  const parentCategories = categories.filter(c => !c.parent_id && c.type === selectedType);
+  const subcategories = categories.filter(c => c.parent_id === selectedParentId);
 
   useEffect(() => {
     if (organization) {
@@ -367,15 +383,26 @@ export const Transactions: React.FC = () => {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Categoria</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Categoria Pai</label>
                 <select 
-                  {...register('category_id')}
+                  value={selectedParentId}
+                  onChange={(e) => setSelectedParentId(e.target.value)}
                   className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                 >
                   <option value="">Selecione...</option>
-                  {categories
-                    .filter(c => c.type === selectedType)
-                    .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {parentCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Subcategoria</label>
+                <select 
+                  {...register('category_id')}
+                  disabled={!selectedParentId}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-50"
+                >
+                  <option value="">Selecione...</option>
+                  {subcategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p>}
               </div>
