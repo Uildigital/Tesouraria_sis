@@ -16,19 +16,29 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
+      console.log('Tentando login para:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro retornado pelo Supabase Auth:', error);
+        throw error;
+      }
 
+      console.log('Login bem sucedido, buscando perfil...');
       // Fetch profile to get organization slug
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*, organizations(slug)')
         .eq('id', data.user.id)
         .single();
+
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError);
+        throw new Error('Usuário autenticado, mas perfil não encontrado no banco de dados.');
+      }
 
       if (profile?.organizations?.slug) {
         navigate(`/${profile.organizations.slug}/dashboard`);
