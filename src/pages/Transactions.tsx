@@ -85,8 +85,13 @@ export const Transactions: React.FC = () => {
       if (transRes.data) setTransactions(transRes.data);
       if (catRes.data) setCategories(catRes.data);
       if (depRes.data) setDepartments(depRes.data);
-    } catch (error) {
+
+      if (transRes.error) throw transRes.error;
+    } catch (error: any) {
       console.error('Error fetching data:', error);
+      if (error.message?.includes('relation "transactions" does not exist')) {
+        alert('As tabelas ainda não foram criadas no Supabase. Verifique o SQL Editor.');
+      }
     } finally {
       setLoading(false);
     }

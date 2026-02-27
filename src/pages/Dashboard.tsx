@@ -54,7 +54,7 @@ export const Dashboard: React.FC = () => {
       .order('date', { ascending: false });
 
     if (transactions) {
-      const currentMonthTransactions = transactions.filter(t => new Date(t.date) >= startOfMonth);
+      const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
       
       const income = currentMonthTransactions
         .filter(t => t.type === 'income')
