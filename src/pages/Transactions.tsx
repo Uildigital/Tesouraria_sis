@@ -167,22 +167,22 @@ export const Transactions: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Lançamentos</h2>
-          <p className="text-zinc-500">Gerencie as entradas e saídas da igreja.</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Lançamentos</h2>
+          <p className="text-sm text-zinc-500">Gerencie as entradas e saídas da igreja.</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
+          className="flex w-full sm:w-auto items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
         >
           <Plus className="mr-2 h-5 w-5" />
           Novo Lançamento
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex-1 w-full lg:max-w-md">
           <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
@@ -192,7 +192,7 @@ export const Transactions: React.FC = () => {
             className="w-full rounded-xl border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={async () => {
               const input = document.createElement('input');
@@ -207,30 +207,30 @@ export const Transactions: React.FC = () => {
               };
               input.click();
             }}
-            className="flex items-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50"
+            className="flex flex-1 sm:flex-none items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50"
           >
             <FileText className="mr-2 h-4 w-4" />
-            Processar Extrato (n8n)
+            <span className="whitespace-nowrap">Processar Extrato</span>
           </button>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+            className="flex-1 sm:flex-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
           >
-            <option value="all">Todos os Status</option>
+            <option value="all">Status</option>
             <option value="conciliated">Conciliado</option>
             <option value="pending">Pendente</option>
-            <option value="pending_approval">Aguardando Aprovação</option>
+            <option value="pending_approval">Aprovação</option>
           </select>
-          <button className="flex items-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50">
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
+          <button className="flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50">
+            <Filter className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="min-w-[800px]">
+          <table className="w-full text-left text-sm">
           <thead className="bg-zinc-50 text-xs font-semibold uppercase text-zinc-500">
             <tr>
               <th className="px-6 py-4">Data</th>
@@ -310,6 +310,7 @@ export const Transactions: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (

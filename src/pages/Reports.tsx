@@ -57,25 +57,26 @@ export const Reports: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
-          <p className="text-zinc-500">Gere balancetes e relatórios financeiros.</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
+          <p className="text-sm text-zinc-500">Gere balancetes e relatórios financeiros.</p>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">
+          <button className="flex-1 sm:flex-none flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">
             <Printer className="mr-2 h-5 w-5" />
-            Imprimir
+            <span className="hidden sm:inline">Imprimir</span>
           </button>
-          <button className="flex items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+          <button className="flex-1 sm:flex-none flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
             <Download className="mr-2 h-5 w-5" />
-            Exportar PDF
+            <span className="hidden sm:inline">Exportar PDF</span>
+            <span className="sm:hidden">Exportar</span>
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="mb-8 flex items-center justify-between border-b border-zinc-100 pb-6">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 sm:p-6 shadow-sm">
+        <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-100 pb-6">
           <div className="flex items-center gap-4">
             <div className="rounded-xl bg-zinc-100 p-3">
               <FileText className="h-6 w-6 text-zinc-600" />
@@ -85,13 +86,13 @@ export const Reports: React.FC = () => {
               <p className="text-sm text-zinc-500">Período: {month}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <label className="text-sm font-medium text-zinc-700">Mês de Referência:</label>
             <input 
               type="month" 
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+              className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
             />
           </div>
         </div>
