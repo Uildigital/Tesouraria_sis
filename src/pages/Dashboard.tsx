@@ -25,8 +25,12 @@ import { supabase } from '../lib/supabase';
 import { formatCurrency, cn } from '../lib/utils';
 import { Transaction } from '../types';
 
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
 export const Dashboard: React.FC = () => {
   const { organization } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     previousBalance: 0,
     income: 0,
@@ -42,6 +46,12 @@ export const Dashboard: React.FC = () => {
       fetchDashboardData();
     }
   }, [organization]);
+
+  const handleShowInsights = () => {
+    toast.info('A IA está analisando seus dados...', {
+      description: 'Em breve você receberá relatórios preditivos detalhados.',
+    });
+  };
 
   const fetchDashboardData = async () => {
     if (!organization) return;
@@ -257,7 +267,10 @@ export const Dashboard: React.FC = () => {
         >
           <div className="mb-8 flex items-center justify-between">
             <h3 className="font-display text-2xl font-bold text-zinc-900">Atividade</h3>
-            <button className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700">
+            <button 
+              onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+              className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+            >
               Ver Tudo
             </button>
           </div>
@@ -269,6 +282,7 @@ export const Dashboard: React.FC = () => {
                   initial={{ x: 20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: index * 0.1 }}
+                  onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
                   className="flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center">
@@ -322,7 +336,10 @@ export const Dashboard: React.FC = () => {
             <p className="mt-3 text-xs leading-relaxed text-zinc-400">
               Suas entradas cresceram <span className="text-emerald-400 font-bold">12%</span> em relação ao mês passado. Considere provisionar para o próximo evento.
             </p>
-            <button className="mt-4 flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors">
+            <button 
+              onClick={handleShowInsights}
+              className="mt-4 flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
               Ver Insights <ChevronRight className="ml-1 h-3 w-3" />
             </button>
           </div>

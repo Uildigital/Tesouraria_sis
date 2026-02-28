@@ -29,6 +29,7 @@ import { Transaction, Category, Department } from '../types';
 import { n8nService } from '../services/n8nService';
 import { aiService } from '../services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const transactionSchema = z.object({
   description: z.string().min(3, 'Descrição muito curta'),
@@ -59,6 +60,8 @@ export const Transactions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const [showFilters, setShowFilters] = useState(false);
+
   const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
@@ -66,6 +69,18 @@ export const Transactions: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
     }
   });
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este lançamento?')) return;
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Lançamento excluído com sucesso!');
+      fetchData();
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + error.message);
+    }
+  };
 
   const selectedType = watch('type');
   const description = watch('description');
@@ -137,7 +152,7 @@ export const Transactions: React.FC = () => {
     } catch (error: any) {
       console.error('Error fetching data:', error);
       if (error.message?.includes('relation "transactions" does not exist')) {
-        alert('As tabelas ainda não foram criadas no Supabase. Verifique o SQL Editor.');
+        toast.error('As tabelas ainda não foram criadas no Supabase. Verifique o SQL Editor.');
       }
     } finally {
       setLoading(false);
@@ -187,8 +202,9 @@ export const Transactions: React.FC = () => {
       setFile(null);
       setShowModal(false);
       fetchData();
+      toast.success('Lançamento salvo com sucesso!');
     } catch (error: any) {
-      alert('Erro ao salvar: ' + error.message);
+      toast.error('Erro ao salvar: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -234,8 +250,8 @@ export const Transactions: React.FC = () => {
                     const file = e.target.files[0];
                     if (file && organization && profile) {
                       const res = await n8nService.processFile(file, organization.id, profile.id);
-                      if (res.success) alert('Arquivo enviado para processamento!');
-                      else alert('Erro: ' + res.error);
+                      if (res.success) toast.success('Arquivo enviado para processamento!');
+                      else toast.error('Erro: ' + res.error);
                     }
                   };
                   input.click();
@@ -314,11 +330,33 @@ export const Transactions: React.FC = () => {
               <option value="pending">Pendente</option>
               <option value="pending_approval">Aprovação</option>
             </select>
-            <button className="flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-all">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "flex items-center justify-center rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium transition-all",
+                showFilters ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 hover:bg-zinc-50"
+              )}
+            >
               <Filter className="h-4 w-4" />
             </button>
           </div>
         </div>
+        
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-6 border-t border-zinc-100 grid gap-4 sm:grid-cols-3">
+                {/* Add more filters here if needed */}
+                <p className="text-xs text-zinc-400 italic">Filtros avançados em desenvolvimento...</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -391,8 +429,12 @@ export const Transactions: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   {canEdit && (
-                    <button className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
-                      <MoreHorizontal className="h-5 w-5" />
+                    <button 
+                      onClick={() => handleDelete(t.id)}
+                      className="rounded-lg p-1 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-5 w-5" />
                     </button>
                   )}
                 </td>

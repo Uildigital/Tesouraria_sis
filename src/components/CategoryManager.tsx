@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Category } from '../types';
 import { Plus, ChevronRight, Trash2, Loader2, FolderTree } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 export const CategoryManager: React.FC = () => {
   const { organization, canEdit } = useAuth();
@@ -60,8 +61,9 @@ export const CategoryManager: React.FC = () => {
       setName('');
       setParentId('');
       fetchCategories();
+      toast.success('Categoria salva com sucesso!');
     } catch (error: any) {
-      alert('Erro ao salvar categoria: ' + error.message);
+      toast.error('Erro ao salvar categoria: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -78,8 +80,9 @@ export const CategoryManager: React.FC = () => {
 
       if (error) throw error;
       fetchCategories();
+      toast.success('Categoria excluída com sucesso!');
     } catch (error: any) {
-      alert('Erro ao excluir: ' + error.message);
+      toast.error('Erro ao excluir: ' + error.message);
     }
   };
 
@@ -192,10 +195,10 @@ export const CategoryManager: React.FC = () => {
         }
       }
 
-      alert('Estrutura Premium importada com sucesso!');
       fetchCategories();
+      toast.success('Estrutura Premium importada com sucesso!');
     } catch (error: any) {
-      alert('Erro na importação: ' + error.message);
+      toast.error('Erro na importação: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }

@@ -21,6 +21,7 @@ import { DepartmentManager } from '../components/DepartmentManager';
 import { AuditLogs } from '../components/AuditLogs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 type SettingsView = 'menu' | 'org' | 'depts' | 'cats' | 'notifications' | 'audit' | 'integrations';
 
@@ -133,7 +134,10 @@ export const Settings: React.FC = () => {
                 <p className="mt-4 text-sm leading-relaxed text-zinc-400 max-w-md">
                   Sua organização está utilizando todos os recursos avançados, incluindo IA, relatórios em PDF e logs de auditoria.
                 </p>
-                <button className="mt-6 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/20 transition-all">
+                <button 
+                  onClick={() => toast.info('Funcionalidade em desenvolvimento', { description: 'O gerenciamento de assinaturas estará disponível em breve.' })}
+                  className="mt-6 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/20 transition-all"
+                >
                   Gerenciar Assinatura
                 </button>
               </div>
@@ -161,7 +165,47 @@ export const Settings: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-zinc-900">Logo da Organização</h4>
                   <p className="text-xs text-zinc-500 mb-3">Recomendado: 512x512px (PNG ou JPG)</p>
-                  <button className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700">Alterar Imagem</button>
+                  <input 
+                    type="file" 
+                    id="logo-upload" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file && organization) {
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `${organization.id}/logo.${fileExt}`;
+                          const { error: uploadError } = await supabase.storage
+                            .from('documents')
+                            .upload(fileName, file, { upsert: true });
+                          
+                          if (uploadError) throw uploadError;
+                          
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('documents')
+                            .getPublicUrl(fileName);
+                          
+                          const { error: updateError } = await supabase
+                            .from('organizations')
+                            .update({ logo_url: publicUrl })
+                            .eq('id', organization.id);
+                          
+                          if (updateError) throw updateError;
+                          toast.success('Logo atualizado com sucesso!');
+                          window.location.reload();
+                        } catch (err: any) {
+                          toast.error('Erro ao subir logo: ' + err.message);
+                        }
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => document.getElementById('logo-upload')?.click()}
+                    className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+                  >
+                    Alterar Imagem
+                  </button>
                 </div>
               </div>
 

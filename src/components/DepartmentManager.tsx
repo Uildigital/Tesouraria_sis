@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Department } from '../types';
 import { Plus, Trash2, Loader2, Users, Building2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const DepartmentManager: React.FC = () => {
   const { organization, canEdit } = useAuth();
@@ -52,8 +53,9 @@ export const DepartmentManager: React.FC = () => {
 
       setName('');
       fetchDepartments();
+      toast.success('Departamento salvo com sucesso!');
     } catch (error: any) {
-      alert('Erro ao salvar departamento: ' + error.message);
+      toast.error('Erro ao salvar departamento: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,8 +72,9 @@ export const DepartmentManager: React.FC = () => {
 
       if (error) throw error;
       fetchDepartments();
+      toast.success('Departamento excluído com sucesso!');
     } catch (error: any) {
-      alert('Erro ao excluir: ' + error.message);
+      toast.error('Erro ao excluir: ' + error.message);
     }
   };
 
