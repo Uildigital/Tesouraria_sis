@@ -1,11 +1,45 @@
-import React, { useState } from 'react';
-import { Church, Users, Shield, Bell, Globe, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Church, Users, Shield, Bell, Globe, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { CategoryManager } from '../components/CategoryManager';
+import { DepartmentManager } from '../components/DepartmentManager';
+import { supabase } from '../lib/supabase';
+
+type SettingsView = 'menu' | 'church' | 'depts' | 'categories' | 'notifications' | 'integrations';
 
 export const Settings: React.FC = () => {
   const { organization, profile } = useAuth();
-  const [activeView, setActiveView] = useState<'menu' | 'categories'>('menu');
+  const [activeView, setActiveView] = useState<SettingsView>('menu');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Form States
+  const [orgName, setOrgName] = useState('');
+  const [approvalLimit, setApprovalLimit] = useState(500);
+
+  useEffect(() => {
+    if (organization) {
+      setOrgName(organization.name);
+    }
+  }, [organization]);
+
+  const handleSaveOrg = async () => {
+    if (!organization) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ name: orgName })
+        .eq('id', organization.id);
+
+      if (error) throw error;
+      alert('Configurações salvas com sucesso!');
+      window.location.reload(); // Refresh to update context
+    } catch (error: any) {
+      alert('Erro ao salvar: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const sections = [
     { id: 'church', name: 'Dados da Igreja', icon: Church, description: 'Nome, CNPJ, Endereço e Logo' },
@@ -15,22 +49,46 @@ export const Settings: React.FC = () => {
     { id: 'integrations', name: 'Integrações', icon: Globe, description: 'Conectar com n8n e bancos' },
   ];
 
+  const renderHeader = (title: string, subtitle: string) => (
+    <div className="flex items-center gap-4 mb-6">
+      <button 
+        onClick={() => setActiveView('menu')}
+        className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50"
+      >
+        <ArrowLeft size={20} />
+      </button>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{title}</h2>
+        <p className="text-zinc-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+
   if (activeView === 'categories') {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setActiveView('menu')}
-            className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Categorias</h2>
-            <p className="text-zinc-500">Gerencie a hierarquia do seu plano de contas.</p>
-          </div>
-        </div>
+        {renderHeader('Categorias', 'Gerencie a hierarquia do seu plano de contas.')}
         <CategoryManager />
+      </div>
+    );
+  }
+
+  if (activeView === 'depts') {
+    return (
+      <div className="space-y-6">
+        {renderHeader('Departamentos', 'Gerencie os departamentos e centros de custo.')}
+        <DepartmentManager />
+      </div>
+    );
+  }
+
+  if (activeView === 'notifications' || activeView === 'integrations') {
+    return (
+      <div className="space-y-6">
+        {renderHeader(activeView === 'notifications' ? 'Notificações' : 'Integrações', 'Esta funcionalidade estará disponível em breve.')}
+        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-12 text-center">
+          <p className="text-zinc-500">Estamos trabalhando para trazer esta funcionalidade para você.</p>
+        </div>
       </div>
     );
   }
@@ -61,14 +119,26 @@ export const Settings: React.FC = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome da Igreja</label>
-                  <input type="text" defaultValue={organization?.name} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" />
+                  <input 
+                    type="text" 
+                    value={orgName} 
+                    onChange={(e) => setOrgName(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" 
+                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Slug (URL)</label>
                   <input type="text" defaultValue={organization?.slug} disabled className="w-full rounded-xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500" />
                 </div>
               </div>
-              <button className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Salvar Alterações</button>
+              <button 
+                onClick={handleSaveOrg}
+                disabled={isSaving}
+                className="flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar Alterações
+              </button>
             </div>
           </div>
 
@@ -78,7 +148,12 @@ export const Settings: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Valor Limite (R$)</label>
-                <input type="number" defaultValue={500} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" />
+                <input 
+                  type="number" 
+                  value={approvalLimit} 
+                  onChange={(e) => setApprovalLimit(Number(e.target.value))}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" 
+                />
               </div>
               <div className="flex-1">
                 <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Status</label>
@@ -94,9 +169,7 @@ export const Settings: React.FC = () => {
           {sections.map((section) => (
             <button 
               key={section.id} 
-              onClick={() => {
-                if (section.id === 'categories') setActiveView('categories');
-              }}
+              onClick={() => setActiveView(section.id as SettingsView)}
               className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-500 hover:shadow-md group"
             >
               <div className="flex items-center gap-4">
