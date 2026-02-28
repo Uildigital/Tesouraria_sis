@@ -58,14 +58,13 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm" translate="no">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
           {editingCategory ? (
             <span key="header-edit" className="flex items-center">
               <Edit2 className="mr-2 h-5 w-5 text-amber-600" />
-              <span>Editando:</span>
-              <span className="ml-2 text-amber-700">{name || 'Categoria'}</span>
+              <span>Editando: {name || 'Categoria'}</span>
             </span>
           ) : (
             <span key="header-new" className="flex items-center">

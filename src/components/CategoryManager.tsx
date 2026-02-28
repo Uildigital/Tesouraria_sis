@@ -59,7 +59,7 @@ export const CategoryManager: React.FC = () => {
   }, [importPremium]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" translate="no">
       <CategoryForm 
         editingCategory={editingCategory}
         parentCategories={parentCategories}

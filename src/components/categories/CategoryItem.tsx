@@ -31,20 +31,20 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
         <div className="flex items-center gap-2 transition-all">
           <button 
             onClick={() => onEdit(category)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent lg:opacity-60 lg:hover:opacity-100"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
             title="Editar"
           >
             <Edit2 size={14} />
-            <span className="hidden sm:inline"><span>Editar</span></span>
+            <span className="hidden sm:inline">Editar</span>
           </button>
           {canEdit && (
             <button 
               onClick={() => onDelete(category.id)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors lg:opacity-60 lg:hover:opacity-100"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
               title="Excluir"
             >
               <Trash2 size={14} />
-              <span className="hidden sm:inline"><span>Excluir</span></span>
+              <span className="hidden sm:inline">Excluir</span>
             </button>
           )}
         </div>
@@ -60,20 +60,20 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
             <div className="flex items-center gap-2 transition-all">
               <button 
                 onClick={() => onEdit(sub)}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent lg:opacity-60 lg:hover:opacity-100"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
                 title="Editar"
               >
                 <Edit2 size={12} />
-                <span><span>Editar</span></span>
+                <span>Editar</span>
               </button>
               {canEdit && (
                 <button 
                   onClick={() => onDelete(sub.id)}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors lg:opacity-60 lg:hover:opacity-100"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   title="Excluir"
                 >
                   <Trash2 size={12} />
-                  <span><span>Excluir</span></span>
+                  <span>Excluir</span>
                 </button>
               )}
             </div>
