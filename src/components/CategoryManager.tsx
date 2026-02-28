@@ -86,85 +86,76 @@ export const CategoryManager: React.FC = () => {
     }
   };
 
+  const clearAllCategories = async () => {
+    if (!organization) return;
+    if (!confirm('PERIGO: Isso excluirá TODAS as suas categorias atuais. Esta ação não pode ser desfeita. Deseja continuar?')) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('organization_id', organization.id);
+
+      if (error) throw error;
+
+      toast.success('Todas as categorias foram removidas.');
+      fetchCategories();
+    } catch (error: any) {
+      toast.error('Erro ao limpar categorias: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const importPremiumStructure = async () => {
     if (!organization) return;
-    if (!confirm('Isso criará a estrutura completa de categorias "Premium" baseada em práticas de transparência e classificação contábil. Deseja continuar?')) return;
+    if (!confirm('ATENÇÃO: Isso criará um Plano de Contas Profissional (Padrão Contábil para Igrejas). Deseja continuar?')) return;
 
     setIsSubmitting(true);
     try {
       const structure = [
         // 1. RECEITAS
         { 
-          name: '1.1. Receitas Ordinárias', 
+          name: '1. RECEITAS COM ATIVIDADES', 
           type: 'income', 
-          sub: ['Dízimos', 'Ofertas Gerais', 'Mensalidades'] 
+          sub: ['1.1. Dízimos', '1.2. Ofertas de Cultos', '1.3. Ofertas Especiais / Campanhas', '1.4. Contribuições de Membros'] 
         },
         { 
-          name: '1.2. Receitas Extraordinárias', 
+          name: '2. RECEITAS FINANCEIRAS E OUTRAS', 
           type: 'income', 
-          sub: ['Campanhas Específicas', 'Doações para Obras', 'Aluguel de Espaço'] 
-        },
-        { 
-          name: '1.3. Receitas Financeiras', 
-          type: 'income', 
-          sub: ['Rendimentos de Aplicação', 'Juros Recebidos'] 
-        },
-        { 
-          name: '1.4. Receitas de Eventos e Cantina', 
-          type: 'income', 
-          sub: ['Venda de Convites/Ingressos', 'Cantina e Bazar', 'Venda de Materiais/Livros'] 
+          sub: ['2.1. Rendimentos de Aplicações', '2.2. Aluguéis Recebidos', '2.3. Cantina / Bazar / Eventos', '2.4. Venda de Materiais'] 
         },
 
-        // 2. DESPESAS
+        // 3. DESPESAS COM PESSOAL
         { 
-          name: '2.1. Despesas com Pessoal', 
+          name: '3. DESPESAS COM PESSOAL E MINISTROS', 
           type: 'expense', 
-          sub: ['Salários e Côngruas', 'Encargos (INSS/FGTS/PIS)', 'Honorários (Contador/Jurídico)', 'Benefícios (VT/VA/Saúde)'] 
+          sub: ['3.1. Côngruas / Sustento Pastoral', '3.2. Salários de Funcionários', '3.3. Encargos Sociais (INSS/FGTS)', '3.4. Benefícios e Pró-Labore'] 
         },
+        // 4. DESPESAS OPERACIONAIS (UTILIDADES)
         { 
-          name: '2.2. Despesas Administrativas', 
+          name: '4. DESPESAS OPERACIONAIS (CONTAS FIXAS)', 
           type: 'expense', 
-          sub: ['Material de Escritório', 'Software e Licenças', 'Correios e Logística', 'Impressões e Cópias'] 
+          sub: ['4.1. Energia Elétrica', '4.2. Água e Esgoto', '4.3. Telefone e Internet', '4.4. Aluguel do Templo', '4.5. Gás e Combustível'] 
         },
+        // 5. MANUTENÇÃO E PATRIMÔNIO
         { 
-          name: '2.3. Despesas Operacionais', 
+          name: '5. MANUTENÇÃO, REFORMAS E PATRIMÔNIO', 
           type: 'expense', 
-          sub: ['Energia Elétrica', 'Água e Esgoto', 'Telefone e Internet', 'Gás e Combustível'] 
+          sub: ['5.1. Manutenção Predial', '5.2. Limpeza e Conservação', '5.3. Equipamentos de Som e Vídeo', '5.4. Móveis e Utensílios'] 
         },
+        // 6. MINISTÉRIOS E MISSÕES
         { 
-          name: '2.4. Despesas de Manutenção', 
+          name: '6. MINISTÉRIOS, MISSÕES E AÇÃO SOCIAL', 
           type: 'expense', 
-          sub: ['Manutenção Predial', 'Manutenção de Equipamentos', 'Materiais de Limpeza e Copa'] 
+          sub: ['6.1. Missões Nacionais/Estrangeiras', '6.2. Ação Social / Cestas Básicas', '6.3. Ministério Infantil (EBD)', '6.4. Ministério de Louvor', '6.5. Eventos e Congressos'] 
         },
+        // 7. DESPESAS ADMINISTRATIVAS E TAXAS
         { 
-          name: '2.5. Despesas com Segurança', 
+          name: '7. DESPESAS ADM, BANCÁRIAS E TAXAS', 
           type: 'expense', 
-          sub: ['Monitoramento Eletrônico', 'Segurança Patrimonial/Vigilância'] 
-        },
-        { 
-          name: '2.6. Despesas Financeiras', 
-          type: 'expense', 
-          sub: ['Tarifas Bancárias', 'Juros e Multas de Atraso', 'IOF e Taxas de Cartão'] 
-        },
-        { 
-          name: '2.7. Missões e Ação Social', 
-          type: 'expense', 
-          sub: ['Repasses Missionários', 'Cestas Básicas/Auxílio Social', 'Doações para Terceiros'] 
-        },
-        { 
-          name: '2.8. Ministérios e Educação', 
-          type: 'expense', 
-          sub: ['Escola Bíblica (EBD)', 'Ministério Infantil', 'Louvor e Som', 'Eventos e Congressos'] 
-        },
-        { 
-          name: '2.9. Patrimônio e Investimentos', 
-          type: 'expense', 
-          sub: ['Compra de Equipamentos', 'Obras e Reformas', 'Móveis e Utensílios'] 
-        },
-        { 
-          name: '2.10. Impostos e Taxas', 
-          type: 'expense', 
-          sub: ['Taxas Municipais/Alvarás', 'Taxa de Incêndio', 'IPTU (Imóveis Diversos)'] 
+          sub: ['7.1. Tarifas Bancárias', '7.2. Material de Escritório', '7.3. Assessoria Contábil / Jurídica', '7.4. Impostos e Taxas Municipais'] 
         }
       ];
 
@@ -216,13 +207,22 @@ export const CategoryManager: React.FC = () => {
               <Plus className="mr-2 h-5 w-5 text-emerald-600" />
               Nova Categoria / Subcategoria
             </h3>
-            <button 
-              onClick={importPremiumStructure}
-              disabled={isSubmitting}
-              className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
-            >
-              Configuração Premium (Pente Fino)
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={clearAllCategories}
+                disabled={isSubmitting}
+                className="text-xs font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 border border-rose-200 rounded-lg px-3 py-1.5 bg-rose-50 transition-colors"
+              >
+                Limpar Tudo
+              </button>
+              <button 
+                onClick={importPremiumStructure}
+                disabled={isSubmitting}
+                className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
+              >
+                Plano de Contas Profissional
+              </button>
+            </div>
           </div>
           
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-3">
