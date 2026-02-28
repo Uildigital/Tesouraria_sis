@@ -8,10 +8,11 @@ export const useCategories = (organizationId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (isSilent = false) => {
     if (!organizationId) return;
-    setIsLoading(true);
+    if (!isSilent) setIsLoading(true);
     try {
+      // Add a timestamp to bypass any potential browser caching
       const { data, error } = await supabase
         .from('categories')
         .select('*')
@@ -19,12 +20,14 @@ export const useCategories = (organizationId?: string) => {
         .order('name');
 
       if (error) throw error;
+      
+      console.log(`Fetched ${data?.length || 0} categories for org ${organizationId}`);
       setCategories(data || []);
     } catch (error: any) {
       console.error('Error fetching categories:', error);
       toast.error('Erro ao carregar categorias: ' + error.message);
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, [organizationId]);
 
@@ -61,7 +64,7 @@ export const useCategories = (organizationId?: string) => {
           .eq('organization_id', organizationId);
         
         if (error) throw error;
-        toast.success('Alterações salvas com sucesso!');
+        toast.success('Alterações salvas!');
       } else {
         // INSERT: Must send organization_id
         const { error } = await supabase
@@ -74,15 +77,16 @@ export const useCategories = (organizationId?: string) => {
           }]);
         
         if (error) throw error;
-        toast.success('Categoria criada com sucesso!');
+        toast.success('Categoria criada!');
       }
       
-      await fetchCategories();
+      // Small delay to ensure DB consistency before re-fetching
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fetchCategories(true);
       return true;
     } catch (error: any) {
       console.error('Save error:', error);
-      const msg = error.code === '42501' ? 'Você não tem permissão para esta alteração.' : error.message;
-      toast.error('Erro ao salvar: ' + msg);
+      toast.error('Erro ao salvar: ' + error.message);
       return false;
     } finally {
       setIsSubmitting(false);
@@ -99,12 +103,15 @@ export const useCategories = (organizationId?: string) => {
         .eq('organization_id', organizationId);
 
       if (error) throw error;
-      toast.success('Categoria excluída!');
-      await fetchCategories();
+      toast.success('Excluído com sucesso!');
+      
+      // Small delay to ensure DB consistency before re-fetching
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fetchCategories(true);
       return true;
     } catch (error: any) {
-      const msg = error.code === '42501' ? 'Sem permissão para excluir.' : error.message;
-      toast.error('Erro ao excluir: ' + msg);
+      console.error('Delete error:', error);
+      toast.error('Erro ao excluir: ' + error.message);
       return false;
     }
   }, [organizationId, fetchCategories]);
