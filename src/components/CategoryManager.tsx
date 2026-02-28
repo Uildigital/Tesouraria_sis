@@ -48,8 +48,6 @@ export const CategoryManager: React.FC = () => {
     setName(category.name);
     setType(category.type);
     setParentId(category.parent_id || '');
-    // Scroll to form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
