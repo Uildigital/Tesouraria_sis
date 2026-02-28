@@ -64,15 +64,19 @@ export const CategoryManager: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Ensure parent_id is a valid UUID or null (never an empty string)
+      const cleanParentId = parentId && parentId !== "" ? parentId : null;
+
       if (editingId) {
         const { error } = await supabase
           .from('categories')
           .update({
-            name,
+            name: name.trim(),
             type,
-            parent_id: parentId || null,
+            parent_id: cleanParentId,
           })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('organization_id', organization.id); // Security: ensure it belongs to the org
         
         if (error) throw error;
         toast.success('Categoria atualizada com sucesso!');
@@ -80,9 +84,9 @@ export const CategoryManager: React.FC = () => {
         const { error } = await supabase
           .from('categories')
           .insert([{
-            name,
+            name: name.trim(),
             type,
-            parent_id: parentId || null,
+            parent_id: cleanParentId,
             organization_id: organization.id
           }]);
 
