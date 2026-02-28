@@ -17,9 +17,9 @@ export default function App() {
         <Toaster position="top-right" richColors closeButton />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/setup" element={<Setup />} />
           
           <Route element={<ProtectedRoute />}>
+            <Route path="/setup" element={<Setup />} />
             <Route path="/:slug" element={<Layout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />

@@ -20,12 +20,12 @@ export const ProtectedRoute: React.FC = () => {
 
   // If user is logged in but has no organization, send them to setup
   // unless they are already on the setup page
-  if (!organization && window.location.pathname !== '/setup') {
+  if (!organization && !window.location.pathname.includes('/setup')) {
     return <Navigate to="/setup" replace />;
   }
 
   // If user has organization but is on setup, send them to dashboard
-  if (organization && window.location.pathname === '/setup') {
+  if (organization && window.location.pathname.includes('/setup')) {
     return <Navigate to={`/${organization.slug}/dashboard`} replace />;
   }
 
