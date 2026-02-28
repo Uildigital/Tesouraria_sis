@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: Profile | null;
   organization: Organization | null;
   loading: boolean;
+  canEdit: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -20,6 +21,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const canEdit = profile?.role === 'admin' || profile?.role === 'treasurer';
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, organization, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, organization, loading, canEdit, signOut }}>
       {children}
     </AuthContext.Provider>
   );

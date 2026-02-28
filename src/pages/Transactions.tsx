@@ -42,7 +42,7 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 export const Transactions: React.FC = () => {
-  const { organization, profile } = useAuth();
+  const { organization, profile, canEdit } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -224,32 +224,36 @@ export const Transactions: React.FC = () => {
           <p className="mt-1 text-zinc-500">Gerencie entradas e saídas com precisão.</p>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.onchange = async (e: any) => {
-                const file = e.target.files[0];
-                if (file && organization && profile) {
-                  const res = await n8nService.processFile(file, organization.id, profile.id);
-                  if (res.success) alert('Arquivo enviado para processamento!');
-                  else alert('Erro: ' + res.error);
-                }
-              };
-              input.click();
-            }}
-            className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
-          >
-            <Upload className="mr-2 h-5 w-5" />
-            Processar Comprovantes
-          </button>
-          <button 
-            onClick={() => setShowModal(true)}
-            className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Novo Lançamento
-          </button>
+          {canEdit && (
+            <>
+              <button 
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.onchange = async (e: any) => {
+                    const file = e.target.files[0];
+                    if (file && organization && profile) {
+                      const res = await n8nService.processFile(file, organization.id, profile.id);
+                      if (res.success) alert('Arquivo enviado para processamento!');
+                      else alert('Erro: ' + res.error);
+                    }
+                  };
+                  input.click();
+                }}
+                className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+              >
+                <Upload className="mr-2 h-5 w-5" />
+                Processar Comprovantes
+              </button>
+              <button 
+                onClick={() => setShowModal(true)}
+                className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Novo Lançamento
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -366,12 +370,14 @@ export const Transactions: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                   <button 
-                    onClick={() => toggleConciliation(t.id, t.status)}
+                    onClick={() => canEdit && toggleConciliation(t.id, t.status)}
+                    disabled={!canEdit}
                     className={cn(
                       "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
                       t.status === 'conciliated' ? "bg-emerald-50 text-emerald-700" : 
                       t.status === 'pending' ? "bg-amber-50 text-amber-700" :
-                      "bg-blue-50 text-blue-700"
+                      "bg-blue-50 text-blue-700",
+                      !canEdit && "cursor-default"
                     )}
                   >
                     {t.status === 'conciliated' ? (
@@ -384,9 +390,11 @@ export const Transactions: React.FC = () => {
                   </button>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </button>
+                  {canEdit && (
+                    <button className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

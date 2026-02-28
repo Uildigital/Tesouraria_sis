@@ -6,7 +6,7 @@ import { Plus, ChevronRight, Trash2, Loader2, FolderTree } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const CategoryManager: React.FC = () => {
-  const { organization } = useAuth();
+  const { organization, canEdit } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,75 +191,77 @@ export const CategoryManager: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
-            <Plus className="mr-2 h-5 w-5 text-emerald-600" />
-            Nova Categoria / Subcategoria
-          </h3>
-          <button 
-            onClick={importPremiumStructure}
-            disabled={isSubmitting}
-            className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
-          >
-            Configuração Premium (Pente Fino)
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-1">
-            <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
-              placeholder="Ex: Aluguel, Dízimos..."
-            />
-          </div>
-          
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Tipo</label>
-            <select 
-              value={type}
-              onChange={(e) => setType(e.target.value as any)}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
-            >
-              <option value="income">Receita</option>
-              <option value="expense">Despesa</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Categoria Pai (Opcional)</label>
-            <select 
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
-            >
-              <option value="">Nenhuma (Será uma Categoria Pai)</option>
-              {parentCategories
-                .filter(c => c.type === type)
-                .map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))
-              }
-            </select>
-          </div>
-
-          <div className="sm:col-span-3">
+      {canEdit && (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
+              <Plus className="mr-2 h-5 w-5 text-emerald-600" />
+              Nova Categoria / Subcategoria
+            </h3>
             <button 
-              type="submit" 
+              onClick={importPremiumStructure}
               disabled={isSubmitting}
-              className="flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
             >
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Adicionar Categoria
+              Configuração Premium (Pente Fino)
             </button>
           </div>
-        </form>
-      </div>
+          
+          <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-1">
+              <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome</label>
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
+                placeholder="Ex: Aluguel, Dízimos..."
+              />
+            </div>
+            
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Tipo</label>
+              <select 
+                value={type}
+                onChange={(e) => setType(e.target.value as any)}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
+              >
+                <option value="income">Receita</option>
+                <option value="expense">Despesa</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Categoria Pai (Opcional)</label>
+              <select 
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
+              >
+                <option value="">Nenhuma (Será uma Categoria Pai)</option>
+                {parentCategories
+                  .filter(c => c.type === type)
+                  .map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))
+                }
+              </select>
+            </div>
+
+            <div className="sm:col-span-3">
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Adicionar Categoria
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
         <div className="bg-zinc-50 px-6 py-4 border-bottom border-zinc-200">
@@ -290,12 +292,14 @@ export const CategoryManager: React.FC = () => {
                       {parent.type === 'income' ? 'Receita' : 'Despesa'}
                     </span>
                   </div>
-                  <button 
-                    onClick={() => deleteCategory(parent.id)}
-                    className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {canEdit && (
+                    <button 
+                      onClick={() => deleteCategory(parent.id)}
+                      className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
                 
                 <div className="mt-3 ml-6 space-y-2">
@@ -305,12 +309,14 @@ export const CategoryManager: React.FC = () => {
                         <ChevronRight size={14} className="mr-1 text-zinc-300" />
                         {sub.name}
                       </div>
-                      <button 
-                        onClick={() => deleteCategory(sub.id)}
-                        className="opacity-0 group-hover/sub:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canEdit && (
+                        <button 
+                          onClick={() => deleteCategory(sub.id)}
+                          className="opacity-0 group-hover/sub:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                   {getSubcategories(parent.id).length === 0 && (

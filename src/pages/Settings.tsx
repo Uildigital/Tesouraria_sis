@@ -25,7 +25,7 @@ import { cn } from '../lib/utils';
 type SettingsView = 'menu' | 'org' | 'depts' | 'cats' | 'notifications' | 'audit' | 'integrations';
 
 export const Settings: React.FC = () => {
-  const { organization } = useAuth();
+  const { organization, canEdit } = useAuth();
   const [activeView, setActiveView] = useState<SettingsView>('menu');
   const [isSaving, setIsSaving] = useState(false);
   
@@ -172,7 +172,8 @@ export const Settings: React.FC = () => {
                     type="text" 
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                    disabled={!canEdit}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all disabled:opacity-50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -200,7 +201,8 @@ export const Settings: React.FC = () => {
                         type="number" 
                         value={approvalLimit}
                         onChange={(e) => setApprovalLimit(Number(e.target.value))}
-                        className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                        disabled={!canEdit}
+                        className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all disabled:opacity-50"
                       />
                     </div>
                     <p className="text-[10px] text-zinc-400 italic">Lançamentos acima deste valor exigirão aprovação do Pastor.</p>
@@ -209,14 +211,16 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="flex justify-end pt-4">
-                <button 
-                  onClick={handleSaveOrg}
-                  disabled={isSaving}
-                  className="flex items-center rounded-2xl bg-zinc-900 px-8 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                  Salvar Alterações
-                </button>
+                {canEdit && (
+                  <button 
+                    onClick={handleSaveOrg}
+                    disabled={isSaving}
+                    className="flex items-center rounded-2xl bg-zinc-900 px-8 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                    Salvar Alterações
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

@@ -5,7 +5,7 @@ import { Department } from '../types';
 import { Plus, Trash2, Loader2, Users, Building2 } from 'lucide-react';
 
 export const DepartmentManager: React.FC = () => {
-  const { organization } = useAuth();
+  const { organization, canEdit } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,36 +77,38 @@ export const DepartmentManager: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-6 text-lg font-semibold text-zinc-900 flex items-center">
-          <Plus className="mr-2 h-5 w-5 text-emerald-600" />
-          Novo Departamento
-        </h3>
-        
-        <form onSubmit={handleSubmit} className="flex gap-4">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome do Departamento</label>
-            <input 
-              type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
-              placeholder="Ex: Ministério de Louvor, Infantil..."
-            />
-          </div>
-          <div className="flex items-end">
-            <button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 h-[38px]"
-            >
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              Adicionar
-            </button>
-          </div>
-        </form>
-      </div>
+      {canEdit && (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h3 className="mb-6 text-lg font-semibold text-zinc-900 flex items-center">
+            <Plus className="mr-2 h-5 w-5 text-emerald-600" />
+            Novo Departamento
+          </h3>
+          
+          <form onSubmit={handleSubmit} className="flex gap-4">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome do Departamento</label>
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
+                placeholder="Ex: Ministério de Louvor, Infantil..."
+              />
+            </div>
+            <div className="flex items-end">
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="flex items-center justify-center rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 h-[38px]"
+              >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Adicionar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
         <div className="bg-zinc-50 px-6 py-4 border-b border-zinc-200">
@@ -132,12 +134,14 @@ export const DepartmentManager: React.FC = () => {
                   </div>
                   <span className="font-bold text-zinc-900">{dept.name}</span>
                 </div>
-                <button 
-                  onClick={() => deleteDepartment(dept.id)}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all p-2"
-                >
-                  <Trash2 size={18} />
-                </button>
+                {canEdit && (
+                  <button 
+                    onClick={() => deleteDepartment(dept.id)}
+                    className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all p-2"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
             ))
           )}
