@@ -58,21 +58,22 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm" translate="no">
+    <div 
+      key={editingCategory?.id || 'new-category-form'} 
+      className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm" 
+      translate="no"
+    >
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
+        <div className="flex items-center gap-2">
           {editingCategory ? (
-            <span key="header-edit" className="flex items-center">
-              <Edit2 className="mr-2 h-5 w-5 text-amber-600" />
-              <span>Editando: {name || 'Categoria'}</span>
-            </span>
+            <Edit2 className="h-5 w-5 text-amber-600" />
           ) : (
-            <span key="header-new" className="flex items-center">
-              <Plus className="mr-2 h-5 w-5 text-emerald-600" />
-              <span>Nova Categoria / Subcategoria</span>
-            </span>
+            <Plus className="h-5 w-5 text-emerald-600" />
           )}
-        </h3>
+          <h3 className="text-lg font-semibold text-zinc-900">
+            {editingCategory ? `Editando: ${name || 'Categoria'}` : 'Nova Categoria / Subcategoria'}
+          </h3>
+        </div>
         <div className="flex gap-2">
           {canEdit && (
             <button 
