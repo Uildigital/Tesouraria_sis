@@ -18,6 +18,17 @@ export const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
+  // If user is logged in but has no organization, send them to setup
+  // unless they are already on the setup page
+  if (!organization && window.location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />;
+  }
+
+  // If user has organization but is on setup, send them to dashboard
+  if (organization && window.location.pathname === '/setup') {
+    return <Navigate to={`/${organization.slug}/dashboard`} replace />;
+  }
+
   // If there's a slug in the URL, verify it matches the user's organization
   if (slug && organization && organization.slug !== slug) {
     return <Navigate to={`/${organization.slug}/dashboard`} replace />;

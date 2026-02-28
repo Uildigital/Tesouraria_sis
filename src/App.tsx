@@ -7,13 +7,17 @@ import { Dashboard } from './pages/Dashboard';
 import { Transactions } from './pages/Transactions';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Setup } from './pages/Setup';
+import { Toaster } from 'sonner';
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <Toaster position="top-right" richColors closeButton />
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<Setup />} />
           
           <Route element={<ProtectedRoute />}>
             <Route path="/:slug" element={<Layout />}>

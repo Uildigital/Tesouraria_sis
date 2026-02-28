@@ -1,52 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Church, Mail, Lock, Loader2 } from 'lucide-react';
+import { Church, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
-      console.log('Tentando login para:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Erro retornado pelo Supabase Auth:', error);
-        throw error;
-      }
-
-      console.log('Login bem sucedido, buscando perfil...');
-      // Fetch profile to get organization slug
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, organizations(slug)')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Erro ao buscar perfil:', profileError);
-        throw new Error('Usuário autenticado, mas perfil não encontrado no banco de dados.');
-      }
-
-      if (profile?.organizations?.slug) {
-        navigate(`/${profile.organizations.slug}/dashboard`);
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        toast.success('Conta criada! Verifique seu email ou faça login.');
+        setIsSignUp(false);
       } else {
-        setError('Organização não encontrada para este usuário.');
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // AuthContext will handle redirection via ProtectedRoute
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      toast.error(err.message || 'Erro na autenticação');
     } finally {
       setLoading(false);
     }
@@ -56,23 +37,21 @@ export const Login: React.FC = () => {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-xl">
             <Church size={32} />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">ChurchFinance</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 font-display">ChurchFinance</h1>
           <p className="mt-2 text-zinc-600">Gestão financeira eclesiástica moderna</p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
+        <div className="premium-card p-8">
+          <h2 className="text-xl font-bold text-zinc-900 mb-6">
+            {isSignUp ? 'Criar nova conta' : 'Entrar na sua conta'}
+          </h2>
 
+          <form onSubmit={handleAuth} className="space-y-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">Email</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
                 <input
@@ -80,14 +59,14 @@ export const Login: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                   placeholder="seu@email.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">Senha</label>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Senha</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
                 <input
@@ -95,7 +74,7 @@ export const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                   placeholder="••••••••"
                 />
               </div>
@@ -104,16 +83,26 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition-all hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 disabled:opacity-50"
+              className="flex w-full items-center justify-center rounded-xl bg-zinc-900 py-4 text-sm font-bold text-white transition-all hover:bg-zinc-800 shadow-lg shadow-zinc-200 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Entrar'}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                <>
+                  {isSignUp ? 'Criar Conta' : 'Entrar'}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </>
+              )}
             </button>
           </form>
-        </div>
 
-        <p className="mt-8 text-center text-sm text-zinc-500">
-          Precisa de ajuda? Entre em contato com o administrador.
-        </p>
+          <div className="mt-6 pt-6 border-t border-zinc-100 text-center">
+            <button 
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-sm font-bold text-emerald-600 hover:text-emerald-700"
+            >
+              {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Não tem uma conta? Cadastre sua igreja'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
