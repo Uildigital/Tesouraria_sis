@@ -99,49 +99,69 @@ export const CategoryManager: React.FC = () => {
         { 
           name: '1.2. Receitas Extraordinárias', 
           type: 'income', 
-          sub: ['Campanhas', 'Doações Específicas', 'Aluguel de Espaço'] 
+          sub: ['Campanhas Específicas', 'Doações para Obras', 'Aluguel de Espaço'] 
         },
         { 
           name: '1.3. Receitas Financeiras', 
           type: 'income', 
           sub: ['Rendimentos de Aplicação', 'Juros Recebidos'] 
         },
+        { 
+          name: '1.4. Receitas de Eventos e Cantina', 
+          type: 'income', 
+          sub: ['Venda de Convites/Ingressos', 'Cantina e Bazar', 'Venda de Materiais/Livros'] 
+        },
 
         // 2. DESPESAS
         { 
           name: '2.1. Despesas com Pessoal', 
           type: 'expense', 
-          sub: ['Salários', 'Encargos (INSS/FGTS)', 'Honorários (Contador)', 'Vale Transporte/Alimentação'] 
+          sub: ['Salários e Côngruas', 'Encargos (INSS/FGTS/PIS)', 'Honorários (Contador/Jurídico)', 'Benefícios (VT/VA/Saúde)'] 
         },
         { 
           name: '2.2. Despesas Administrativas', 
           type: 'expense', 
-          sub: ['Material de Escritório', 'Software/Licenças', 'Correios/Correio'] 
+          sub: ['Material de Escritório', 'Software e Licenças', 'Correios e Logística', 'Impressões e Cópias'] 
         },
         { 
           name: '2.3. Despesas Operacionais', 
           type: 'expense', 
-          sub: ['Energia Elétrica', 'Água e Esgoto', 'Telefone/Internet'] 
+          sub: ['Energia Elétrica', 'Água e Esgoto', 'Telefone e Internet', 'Gás e Combustível'] 
         },
         { 
           name: '2.4. Despesas de Manutenção', 
           type: 'expense', 
-          sub: ['Manutenção Predial', 'Manutenção de Equipamentos', 'Materiais de Limpeza'] 
+          sub: ['Manutenção Predial', 'Manutenção de Equipamentos', 'Materiais de Limpeza e Copa'] 
         },
         { 
           name: '2.5. Despesas com Segurança', 
           type: 'expense', 
-          sub: ['Monitoramento', 'Segurança Patrimonial'] 
+          sub: ['Monitoramento Eletrônico', 'Segurança Patrimonial/Vigilância'] 
         },
         { 
           name: '2.6. Despesas Financeiras', 
           type: 'expense', 
-          sub: ['Tarifas Bancárias', 'Juros de Atraso', 'IOF'] 
+          sub: ['Tarifas Bancárias', 'Juros e Multas de Atraso', 'IOF e Taxas de Cartão'] 
         },
         { 
-          name: '2.7. Missões e Doações', 
+          name: '2.7. Missões e Ação Social', 
           type: 'expense', 
-          sub: ['Doações para Terceiros', 'Auxílio Social'] 
+          sub: ['Repasses Missionários', 'Cestas Básicas/Auxílio Social', 'Doações para Terceiros'] 
+        },
+        { 
+          name: '2.8. Ministérios e Educação', 
+          type: 'expense', 
+          sub: ['Escola Bíblica (EBD)', 'Ministério Infantil', 'Louvor e Som', 'Eventos e Congressos'] 
+        },
+        { 
+          name: '2.9. Patrimônio e Investimentos', 
+          type: 'expense', 
+          sub: ['Compra de Equipamentos', 'Obras e Reformas', 'Móveis e Utensílios'] 
+        },
+        { 
+          name: '2.10. Impostos e Taxas', 
+          type: 'expense', 
+          sub: ['Taxas Municipais/Alvarás', 'Taxa de Incêndio', 'IPTU (Imóveis Diversos)'] 
         }
       ];
 
