@@ -30,12 +30,13 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
 
   useEffect(() => {
     if (editingCategory) {
-      setName(editingCategory.name);
-      setType(editingCategory.type);
+      setName(editingCategory.name || '');
+      setType(editingCategory.type || 'income');
       setParentId(editingCategory.parent_id || '');
     } else {
       setName('');
       setParentId('');
+      setType('income');
     }
   }, [editingCategory]);
 
