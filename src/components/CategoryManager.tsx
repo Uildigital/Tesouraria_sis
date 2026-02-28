@@ -242,7 +242,10 @@ export const CategoryManager: React.FC = () => {
               <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Tipo</label>
               <select 
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => {
+                  setType(e.target.value as any);
+                  setParentId(''); // Reset parent when type changes
+                }}
                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
               >
                 <option value="income">Receita</option>
@@ -282,7 +285,7 @@ export const CategoryManager: React.FC = () => {
       )}
 
       <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-        <div className="bg-zinc-50 px-6 py-4 border-bottom border-zinc-200">
+        <div className="bg-zinc-50 px-6 py-4 border-b border-zinc-200">
           <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-600 flex items-center">
             <FolderTree className="mr-2 h-4 w-4" />
             Hierarquia de Categorias
@@ -294,57 +297,101 @@ export const CategoryManager: React.FC = () => {
             <div className="p-12 text-center">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
             </div>
-          ) : parentCategories.length === 0 ? (
+          ) : categories.length === 0 ? (
             <div className="p-12 text-center text-zinc-500">Nenhuma categoria cadastrada.</div>
           ) : (
-            parentCategories.map(parent => (
-              <div key={parent.id} className="p-4 sm:p-6">
-                <div className="flex items-center justify-between group">
-                  <div className="flex items-center">
-                    <div className={cn(
-                      "mr-3 h-2 w-2 rounded-full",
-                      parent.type === 'income' ? "bg-emerald-500" : "bg-red-500"
-                    )} />
-                    <span className="font-bold text-zinc-900">{parent.name}</span>
-                    <span className="ml-2 text-[10px] uppercase font-bold text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">
-                      {parent.type === 'income' ? 'Receita' : 'Despesa'}
-                    </span>
-                  </div>
-                  {canEdit && (
-                    <button 
-                      onClick={() => deleteCategory(parent.id)}
-                      className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-                
-                <div className="mt-3 ml-6 space-y-2">
-                  {getSubcategories(parent.id).map(sub => (
-                    <div key={sub.id} className="flex items-center justify-between group/sub py-1 border-l-2 border-zinc-100 pl-4">
-                      <div className="flex items-center text-sm text-zinc-600">
-                        <ChevronRight size={14} className="mr-1 text-zinc-300" />
-                        {sub.name}
-                      </div>
-                      {canEdit && (
-                        <button 
-                          onClick={() => deleteCategory(sub.id)}
-                          className="opacity-0 group-hover/sub:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {getSubcategories(parent.id).length === 0 && (
-                    <p className="text-xs text-zinc-400 italic ml-4">Sem subcategorias</p>
-                  )}
-                </div>
+            <>
+              {/* Income Section */}
+              <div className="bg-emerald-50/30 px-6 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Receitas</span>
               </div>
-            ))
+              {parentCategories.filter(c => c.type === 'income').length === 0 ? (
+                <p className="px-6 py-4 text-xs text-zinc-400 italic">Nenhuma receita cadastrada</p>
+              ) : (
+                parentCategories.filter(c => c.type === 'income').map(parent => (
+                  <CategoryRow 
+                    key={parent.id} 
+                    category={parent} 
+                    subcategories={getSubcategories(parent.id)} 
+                    onDelete={deleteCategory}
+                    canEdit={canEdit}
+                  />
+                ))
+              )}
+
+              {/* Expense Section */}
+              <div className="bg-rose-50/30 px-6 py-2 border-t border-zinc-100">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Despesas</span>
+              </div>
+              {parentCategories.filter(c => c.type === 'expense').length === 0 ? (
+                <p className="px-6 py-4 text-xs text-zinc-400 italic">Nenhuma despesa cadastrada</p>
+              ) : (
+                parentCategories.filter(c => c.type === 'expense').map(parent => (
+                  <CategoryRow 
+                    key={parent.id} 
+                    category={parent} 
+                    subcategories={getSubcategories(parent.id)} 
+                    onDelete={deleteCategory}
+                    canEdit={canEdit}
+                  />
+                ))
+              )}
+            </>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+interface CategoryRowProps {
+  category: Category;
+  subcategories: Category[];
+  onDelete: (id: string) => void;
+  canEdit: boolean;
+}
+
+const CategoryRow: React.FC<CategoryRowProps> = ({ category, subcategories, onDelete, canEdit }) => {
+  return (
+    <div className="p-4 sm:p-6">
+      <div className="flex items-center justify-between group">
+        <div className="flex items-center">
+          <div className={cn(
+            "mr-3 h-2 w-2 rounded-full",
+            category.type === 'income' ? "bg-emerald-500" : "bg-red-500"
+          )} />
+          <span className="font-bold text-zinc-900">{category.name}</span>
+        </div>
+        {canEdit && (
+          <button 
+            onClick={() => onDelete(category.id)}
+            className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+      </div>
+      
+      <div className="mt-3 ml-6 space-y-2">
+        {subcategories.map(sub => (
+          <div key={sub.id} className="flex items-center justify-between group/sub py-1 border-l-2 border-zinc-100 pl-4">
+            <div className="flex items-center text-sm text-zinc-600">
+              <ChevronRight size={14} className="mr-1 text-zinc-300" />
+              {sub.name}
+            </div>
+            {canEdit && (
+              <button 
+                onClick={() => onDelete(sub.id)}
+                className="opacity-0 group-hover/sub:opacity-100 text-zinc-400 hover:text-red-600 transition-all"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+        {subcategories.length === 0 && (
+          <p className="text-xs text-zinc-400 italic ml-4">Sem subcategorias</p>
+        )}
       </div>
     </div>
   );
