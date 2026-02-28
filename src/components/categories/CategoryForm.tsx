@@ -62,13 +62,13 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
           {editingCategory ? (
-            <span className="flex items-center">
+            <span key="header-edit" className="flex items-center">
               <Edit2 className="mr-2 h-5 w-5 text-amber-600" />
               <span>Editando:</span>
               <span className="ml-2 text-amber-700">{name || 'Categoria'}</span>
             </span>
           ) : (
-            <span className="flex items-center">
+            <span key="header-new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5 text-emerald-600" />
               <span>Nova Categoria / Subcategoria</span>
             </span>
@@ -159,6 +159,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
 
         <div className="sm:col-span-3 flex gap-2">
           <button 
+            key={editingCategory ? "btn-save" : "btn-add"}
             type="submit" 
             disabled={isSubmitting || !canEdit}
             className={cn(
