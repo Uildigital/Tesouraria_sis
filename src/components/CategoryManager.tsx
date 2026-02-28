@@ -90,63 +90,58 @@ export const CategoryManager: React.FC = () => {
     setIsSubmitting(true);
     try {
       const structure = [
-        // RECEITAS (ENTRADAS)
+        // 1. RECEITAS
         { 
-          name: '1. Contribuições Regulares', 
+          name: '1.1. Receitas Ordinárias', 
           type: 'income', 
-          sub: ['Dízimos', 'Ofertas Regulares', 'Ofertas de Escola Dominical'] 
+          sub: ['Dízimos', 'Ofertas Gerais', 'Mensalidades'] 
         },
         { 
-          name: '2. Contribuições Especiais', 
+          name: '1.2. Receitas Extraordinárias', 
           type: 'income', 
-          sub: ['Ofertas Missionárias', 'Ofertas para Construção/Reforma', 'Campanhas e Eventos'] 
+          sub: ['Campanhas', 'Doações Específicas', 'Aluguel de Espaço'] 
         },
         { 
-          name: '3. Receitas Financeiras', 
+          name: '1.3. Receitas Financeiras', 
           type: 'income', 
-          sub: ['Rendimentos de Aplicações', 'Juros e Correções'] 
-        },
-        { 
-          name: '4. Outras Receitas', 
-          type: 'income', 
-          sub: ['Aluguéis e Arrendamentos', 'Venda de Ativos/Bens', 'Doações de Terceiros'] 
+          sub: ['Rendimentos de Aplicação', 'Juros Recebidos'] 
         },
 
-        // DESPESAS (SAÍDAS)
+        // 2. DESPESAS
         { 
-          name: '10. Pessoal e Ministério Pastoral', 
+          name: '2.1. Despesas com Pessoal', 
           type: 'expense', 
-          sub: ['Côngruas Pastorais', 'Encargos (INSS/FGTS/PIS)', 'Benefícios (Saúde/Previdência)', 'Ajuda de Custo (Moradia/Transp)', '13º e Férias'] 
+          sub: ['Salários', 'Encargos (INSS/FGTS)', 'Honorários (Contador)', 'Vale Transporte/Alimentação'] 
         },
         { 
-          name: '11. Recursos Humanos (Staff)', 
+          name: '2.2. Despesas Administrativas', 
           type: 'expense', 
-          sub: ['Salários e Ordenados', 'Encargos Sociais Staff', 'Benefícios (VA/VR/VT)', 'Serviços Extraordinários'] 
+          sub: ['Material de Escritório', 'Software/Licenças', 'Correios/Correio'] 
         },
         { 
-          name: '12. Manutenção e Operação', 
+          name: '2.3. Despesas Operacionais', 
           type: 'expense', 
-          sub: ['Energia Elétrica', 'Água e Saneamento', 'Internet e Telefonia', 'Segurança e Monitoramento'] 
+          sub: ['Energia Elétrica', 'Água e Esgoto', 'Telefone/Internet'] 
         },
         { 
-          name: '13. Infraestrutura e Patrimônio', 
+          name: '2.4. Despesas de Manutenção', 
           type: 'expense', 
-          sub: ['Conservação e Reparos', 'Material de Limpeza e Copa', 'Equipamentos e Móveis', 'Obras e Reformas'] 
+          sub: ['Manutenção Predial', 'Manutenção de Equipamentos', 'Materiais de Limpeza'] 
         },
         { 
-          name: '14. Educação e Ministérios', 
+          name: '2.5. Despesas com Segurança', 
           type: 'expense', 
-          sub: ['Ministério Infantil (EBD)', 'Louvor (Som/Instrumentos)', 'Ação Social e Diaconia', 'Eventos e Congressos'] 
+          sub: ['Monitoramento', 'Segurança Patrimonial'] 
         },
         { 
-          name: '15. Missões e Cooperação', 
+          name: '2.6. Despesas Financeiras', 
           type: 'expense', 
-          sub: ['Repasse Missões Nacionais', 'Repasse Missões Estrangeiras', 'Contribuições Estatutárias', 'Apoio a Seminaristas'] 
+          sub: ['Tarifas Bancárias', 'Juros de Atraso', 'IOF'] 
         },
         { 
-          name: '16. Administrativo e Tributário', 
+          name: '2.7. Missões e Doações', 
           type: 'expense', 
-          sub: ['Serviços Contábeis/Jurídicos', 'Material de Escritório', 'Tarifas Bancárias', 'Impostos e Taxas'] 
+          sub: ['Doações para Terceiros', 'Auxílio Social'] 
         }
       ];
 
