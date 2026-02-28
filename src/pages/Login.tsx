@@ -5,11 +5,23 @@ import { Church, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Login: React.FC = () => {
+  const { session, organization } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
+
+  // Se já estiver logado, redireciona para fora da tela de login
+  React.useEffect(() => {
+    if (session) {
+      if (organization) {
+        navigate(`/${organization.slug}/dashboard`);
+      } else {
+        navigate('/setup');
+      }
+    }
+  }, [session, organization, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +36,8 @@ export const Login: React.FC = () => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // AuthContext will handle redirection via ProtectedRoute
+        toast.success('Login realizado com sucesso!');
+        navigate('/'); // Redireciona para a raiz, onde o ProtectedRoute decidirá o destino
       }
     } catch (err: any) {
       toast.error(err.message || 'Erro na autenticação');

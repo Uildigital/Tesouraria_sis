@@ -18,14 +18,20 @@ export const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
+  const isSetupPath = window.location.pathname.startsWith('/setup');
+
   // If user is logged in but has no organization, send them to setup
-  // unless they are already on the setup page
-  if (!organization && !window.location.pathname.includes('/setup')) {
+  if (!organization && !isSetupPath) {
     return <Navigate to="/setup" replace />;
   }
 
   // If user has organization but is on setup, send them to dashboard
-  if (organization && window.location.pathname.includes('/setup')) {
+  if (organization && isSetupPath) {
+    return <Navigate to={`/${organization.slug}/dashboard`} replace />;
+  }
+
+  // Handle root path redirect
+  if (window.location.pathname === '/' && organization) {
     return <Navigate to={`/${organization.slug}/dashboard`} replace />;
   }
 
