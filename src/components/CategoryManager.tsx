@@ -83,54 +83,70 @@ export const CategoryManager: React.FC = () => {
     }
   };
 
-  const importIPCFStructure = async () => {
+  const importPremiumStructure = async () => {
     if (!organization) return;
-    if (!confirm('Isso criará a estrutura completa de categorias baseada na planilha da IPCF. Deseja continuar?')) return;
+    if (!confirm('Isso criará a estrutura completa de categorias "Premium" baseada em práticas de transparência e classificação contábil. Deseja continuar?')) return;
 
     setIsSubmitting(true);
     try {
       const structure = [
-        // ENTRADAS
-        { name: 'Receitas de Gazofilácio', type: 'income', sub: [] },
-        { name: 'Transferências e PIX', type: 'income', sub: [] },
-        { name: 'Rendimentos e Aplicações', type: 'income', sub: ['Invest Fácil', 'Poupança'] },
-        { name: 'Outras Entradas', type: 'income', sub: ['Ofertas Especiais', 'Estornos'] },
+        // RECEITAS (ENTRADAS)
+        { 
+          name: '1. Contribuições Regulares', 
+          type: 'income', 
+          sub: ['Dízimos', 'Ofertas Regulares', 'Ofertas de Escola Dominical'] 
+        },
+        { 
+          name: '2. Contribuições Especiais', 
+          type: 'income', 
+          sub: ['Ofertas Missionárias', 'Ofertas para Construção/Reforma', 'Campanhas e Eventos'] 
+        },
+        { 
+          name: '3. Receitas Financeiras', 
+          type: 'income', 
+          sub: ['Rendimentos de Aplicações', 'Juros e Correções'] 
+        },
+        { 
+          name: '4. Outras Receitas', 
+          type: 'income', 
+          sub: ['Aluguéis e Arrendamentos', 'Venda de Ativos/Bens', 'Doações de Terceiros'] 
+        },
 
-        // DESPESAS
+        // DESPESAS (SAÍDAS)
         { 
-          name: 'Côngruas Pastorais', 
+          name: '10. Pessoal e Ministério Pastoral', 
           type: 'expense', 
-          sub: ['Salário Pr Titular', 'Salário Pr Auxiliar', 'FAP (8%)', 'Plano de Saúde', 'Ajuda Custo (Celular/Internet)', '13º e Férias'] 
+          sub: ['Côngruas Pastorais', 'Encargos (INSS/FGTS/PIS)', 'Benefícios (Saúde/Previdência)', 'Ajuda de Custo (Moradia/Transp)', '13º e Férias'] 
         },
         { 
-          name: 'Zeladoria', 
+          name: '11. Recursos Humanos (Staff)', 
           type: 'expense', 
-          sub: ['Salário Zelador', 'Encargos (FGTS/INSS/PIS)', 'Vale Alimentação', 'Sindicato', '13º e Férias Zelador'] 
+          sub: ['Salários e Ordenados', 'Encargos Sociais Staff', 'Benefícios (VA/VR/VT)', 'Serviços Extraordinários'] 
         },
         { 
-          name: 'Concessionárias', 
+          name: '12. Manutenção e Operação', 
           type: 'expense', 
-          sub: ['Água (Compesa)', 'Luz (Celpe)', 'Internet'] 
+          sub: ['Energia Elétrica', 'Água e Saneamento', 'Internet e Telefonia', 'Segurança e Monitoramento'] 
         },
         { 
-          name: 'Administrativo e Pessoal', 
+          name: '13. Infraestrutura e Patrimônio', 
           type: 'expense', 
-          sub: ['Contador', 'Seminarista', 'Tarifas Bancárias', 'Cartório', 'Vigilância/Monitoramento'] 
+          sub: ['Conservação e Reparos', 'Material de Limpeza e Copa', 'Equipamentos e Móveis', 'Obras e Reformas'] 
         },
         { 
-          name: 'Manutenção e Investimento', 
+          name: '14. Educação e Ministérios', 
           type: 'expense', 
-          sub: ['Conservação e Limpeza', 'Departamento Infantil', 'Som e Louvor'] 
+          sub: ['Ministério Infantil (EBD)', 'Louvor (Som/Instrumentos)', 'Ação Social e Diaconia', 'Eventos e Congressos'] 
         },
         { 
-          name: 'Contribuições e Missões', 
+          name: '15. Missões e Cooperação', 
           type: 'expense', 
-          sub: ['Diaconia', 'Repasses Missionários', 'Presbitério'] 
+          sub: ['Repasse Missões Nacionais', 'Repasse Missões Estrangeiras', 'Contribuições Estatutárias', 'Apoio a Seminaristas'] 
         },
         { 
-          name: 'Patrimônio', 
+          name: '16. Administrativo e Tributário', 
           type: 'expense', 
-          sub: ['Parcelas Compra Imóvel', 'Intercaladas'] 
+          sub: ['Serviços Contábeis/Jurídicos', 'Material de Escritório', 'Tarifas Bancárias', 'Impostos e Taxas'] 
         }
       ];
 
@@ -161,7 +177,7 @@ export const CategoryManager: React.FC = () => {
         }
       }
 
-      alert('Estrutura IPCF importada com sucesso!');
+      alert('Estrutura Premium importada com sucesso!');
       fetchCategories();
     } catch (error: any) {
       alert('Erro na importação: ' + error.message);
@@ -182,11 +198,11 @@ export const CategoryManager: React.FC = () => {
             Nova Categoria / Subcategoria
           </h3>
           <button 
-            onClick={importIPCFStructure}
+            onClick={importPremiumStructure}
             disabled={isSubmitting}
             className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
           >
-            Configuração Rápida IPCF
+            Configuração Premium (Pente Fino)
           </button>
         </div>
         
