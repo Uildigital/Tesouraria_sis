@@ -25,10 +25,10 @@ import { Transaction } from '../types';
 export const Dashboard: React.FC = () => {
   const { organization } = useAuth();
   const [stats, setStats] = useState({
-    balance: 0,
+    previousBalance: 0,
     income: 0,
     expenses: 0,
-    pending: 0
+    currentBalance: 0
   });
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -42,9 +42,9 @@ export const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     if (!organization) return;
 
-    // Fetch transactions for the current month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
+    // Dates for calculations
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     startOfMonth.setHours(0, 0, 0, 0);
 
     const { data: transactions } = await supabase
@@ -54,6 +54,12 @@ export const Dashboard: React.FC = () => {
       .order('date', { ascending: false });
 
     if (transactions) {
+      // 1. Saldo Mês Anterior (All transactions before start of current month)
+      const previousBalance = transactions
+        .filter(t => t.date && new Date(t.date) < startOfMonth)
+        .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+
+      // 2. Entradas e Saídas do Mês Atual
       const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
       
       const income = currentMonthTransactions
@@ -64,14 +70,11 @@ export const Dashboard: React.FC = () => {
         .filter(t => t.type === 'expense')
         .reduce((acc, t) => acc + t.amount, 0);
       
-      const balance = transactions
+      // 3. Saldo Atual (Total accumulated)
+      const currentBalance = transactions
         .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
-      
-      const pending = transactions
-        .filter(t => t.status === 'pending')
-        .reduce((acc, t) => acc + t.amount, 0);
 
-      setStats({ balance, income, expenses, pending });
+      setStats({ previousBalance, income, expenses, currentBalance });
       setRecentTransactions(transactions.slice(0, 5));
 
       // Mock chart data based on last 6 months
@@ -85,10 +88,10 @@ export const Dashboard: React.FC = () => {
   };
 
   const kpis = [
-    { name: 'Saldo Atual', value: stats.balance, icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { name: 'Entradas (Mês)', value: stats.income, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Saldo Mês Anterior', value: stats.previousBalance, icon: Clock, color: 'text-zinc-600', bg: 'bg-zinc-100' },
+    { name: 'Entradas (Mês)', value: stats.income, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { name: 'Saídas (Mês)', value: stats.expenses, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-    { name: 'Pendente Conciliação', value: stats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { name: 'Saldo Atual', value: stats.currentBalance, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
   ];
 
   return (
