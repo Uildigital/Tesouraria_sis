@@ -83,16 +83,112 @@ export const CategoryManager: React.FC = () => {
     }
   };
 
+  const importIPCFStructure = async () => {
+    if (!organization) return;
+    if (!confirm('Isso criará a estrutura completa de categorias baseada na planilha da IPCF. Deseja continuar?')) return;
+
+    setIsSubmitting(true);
+    try {
+      const structure = [
+        // ENTRADAS
+        { name: 'Receitas de Gazofilácio', type: 'income', sub: [] },
+        { name: 'Transferências e PIX', type: 'income', sub: [] },
+        { name: 'Rendimentos e Aplicações', type: 'income', sub: ['Invest Fácil', 'Poupança'] },
+        { name: 'Outras Entradas', type: 'income', sub: ['Ofertas Especiais', 'Estornos'] },
+
+        // DESPESAS
+        { 
+          name: 'Côngruas Pastorais', 
+          type: 'expense', 
+          sub: ['Salário Pr Titular', 'Salário Pr Auxiliar', 'FAP (8%)', 'Plano de Saúde', 'Ajuda Custo (Celular/Internet)', '13º e Férias'] 
+        },
+        { 
+          name: 'Zeladoria', 
+          type: 'expense', 
+          sub: ['Salário Zelador', 'Encargos (FGTS/INSS/PIS)', 'Vale Alimentação', 'Sindicato', '13º e Férias Zelador'] 
+        },
+        { 
+          name: 'Concessionárias', 
+          type: 'expense', 
+          sub: ['Água (Compesa)', 'Luz (Celpe)', 'Internet'] 
+        },
+        { 
+          name: 'Administrativo e Pessoal', 
+          type: 'expense', 
+          sub: ['Contador', 'Seminarista', 'Tarifas Bancárias', 'Cartório', 'Vigilância/Monitoramento'] 
+        },
+        { 
+          name: 'Manutenção e Investimento', 
+          type: 'expense', 
+          sub: ['Conservação e Limpeza', 'Departamento Infantil', 'Som e Louvor'] 
+        },
+        { 
+          name: 'Contribuições e Missões', 
+          type: 'expense', 
+          sub: ['Diaconia', 'Repasses Missionários', 'Presbitério'] 
+        },
+        { 
+          name: 'Patrimônio', 
+          type: 'expense', 
+          sub: ['Parcelas Compra Imóvel', 'Intercaladas'] 
+        }
+      ];
+
+      for (const item of structure) {
+        // Create Parent
+        const { data: parent, error: pError } = await supabase
+          .from('categories')
+          .insert([{
+            name: item.name,
+            type: item.type,
+            organization_id: organization.id
+          }])
+          .select()
+          .single();
+
+        if (pError) throw pError;
+
+        // Create Subs
+        if (item.sub.length > 0) {
+          const subs = item.sub.map(subName => ({
+            name: subName,
+            type: item.type,
+            parent_id: parent.id,
+            organization_id: organization.id
+          }));
+          const { error: sError } = await supabase.from('categories').insert(subs);
+          if (sError) throw sError;
+        }
+      }
+
+      alert('Estrutura IPCF importada com sucesso!');
+      fetchCategories();
+    } catch (error: any) {
+      alert('Erro na importação: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const parentCategories = categories.filter(c => !c.parent_id);
   const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
 
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-6 text-lg font-semibold text-zinc-900 flex items-center">
-          <Plus className="mr-2 h-5 w-5 text-emerald-600" />
-          Nova Categoria / Subcategoria
-        </h3>
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
+            <Plus className="mr-2 h-5 w-5 text-emerald-600" />
+            Nova Categoria / Subcategoria
+          </h3>
+          <button 
+            onClick={importIPCFStructure}
+            disabled={isSubmitting}
+            className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors"
+          >
+            Configuração Rápida IPCF
+          </button>
+        </div>
         
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-3">
           <div className="sm:col-span-1">
