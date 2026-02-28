@@ -11,7 +11,13 @@ import {
   Trash2,
   AlertCircle,
   Loader2,
-  X
+  X,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calendar,
+  Edit2,
+  Upload
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +27,8 @@ import { supabase } from '../lib/supabase';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { Transaction, Category, Department } from '../types';
 import { n8nService } from '../services/n8nService';
+import { aiService } from '../services/aiService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const transactionSchema = z.object({
   description: z.string().min(3, 'Descrição muito curta'),
@@ -40,6 +48,7 @@ export const Transactions: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   
@@ -59,6 +68,28 @@ export const Transactions: React.FC = () => {
   });
 
   const selectedType = watch('type');
+  const description = watch('description');
+
+  const handleSuggestCategory = async () => {
+    if (!description || description.length < 3) return;
+    setIsSuggesting(true);
+    try {
+      const suggestedId = await aiService.suggestCategory(description, categories);
+      if (suggestedId) {
+        // Find if it's a subcategory and set parent
+        const cat = categories.find(c => c.id === suggestedId);
+        if (cat?.parent_id) {
+          setSelectedParentId(cat.parent_id);
+          // Small delay to allow subcategories to filter
+          setTimeout(() => setValue('category_id', suggestedId), 100);
+        } else {
+          setSelectedParentId(suggestedId);
+        }
+      }
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
 
   // Reset subcategory when type or parent changes
   useEffect(() => {
@@ -182,35 +213,19 @@ export const Transactions: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-10 pb-12"
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Lançamentos</h2>
-          <p className="text-sm text-zinc-500">Gerencie as entradas e saídas da igreja.</p>
+          <h2 className="font-display text-4xl font-bold tracking-tight text-zinc-900">Lançamentos</h2>
+          <p className="mt-1 text-zinc-500">Gerencie entradas e saídas com precisão.</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex w-full sm:w-auto items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Novo Lançamento
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative flex-1 w-full lg:max-w-md">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Buscar por descrição..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={async () => {
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
               const input = document.createElement('input');
               input.type = 'file';
               input.onchange = async (e: any) => {
@@ -223,24 +238,82 @@ export const Transactions: React.FC = () => {
               };
               input.click();
             }}
-            className="flex flex-1 sm:flex-none items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50"
+            className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
           >
-            <FileText className="mr-2 h-4 w-4" />
-            <span className="whitespace-nowrap">Processar Extrato</span>
+            <Upload className="mr-2 h-5 w-5" />
+            Processar Comprovantes
           </button>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex-1 sm:flex-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+          <button 
+            onClick={() => setShowModal(true)}
+            className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
           >
-            <option value="all">Status</option>
-            <option value="conciliated">Conciliado</option>
-            <option value="pending">Pendente</option>
-            <option value="pending_approval">Aprovação</option>
-          </select>
-          <button className="flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50">
-            <Filter className="h-4 w-4" />
+            <Plus className="mr-2 h-5 w-5" />
+            Novo Lançamento
           </button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="premium-card p-6 flex items-center gap-4">
+          <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+            <ArrowUpRight className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Entradas</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
+            </p>
+          </div>
+        </div>
+        <div className="premium-card p-6 flex items-center gap-4">
+          <div className="rounded-2xl bg-rose-50 p-3 text-rose-600">
+            <ArrowDownRight className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Saídas</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {formatCurrency(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
+            </p>
+          </div>
+        </div>
+        <div className="premium-card p-6 flex items-center gap-4">
+          <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
+            <Calendar className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Lançamentos</p>
+            <p className="text-xl font-bold text-zinc-900">{transactions.length}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="premium-card p-8">
+        <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar por descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+            >
+              <option value="all">Todos os Status</option>
+              <option value="conciliated">Conciliado</option>
+              <option value="pending">Pendente</option>
+              <option value="pending_approval">Aprovação</option>
+            </select>
+            <button className="flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-all">
+              <Filter className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -341,13 +414,24 @@ export const Transactions: React.FC = () => {
             
             <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Descrição</label>
-                <input 
-                  {...register('description')}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10" 
-                  placeholder="Ex: Oferta Culto de Domingo" 
-                />
-                {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Descrição</label>
+                <div className="relative">
+                  <input 
+                    {...register('description')}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all" 
+                    placeholder="Ex: Oferta Culto de Domingo" 
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSuggestCategory}
+                    disabled={isSuggesting || !description}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                  >
+                    {isSuggesting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    Sugerir Categoria
+                  </button>
+                </div>
+                {errors.description && <p className="mt-1 text-xs font-bold text-rose-600">{errors.description.message}</p>}
               </div>
               
               <div>
@@ -454,6 +538,6 @@ export const Transactions: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };

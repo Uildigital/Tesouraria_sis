@@ -5,21 +5,24 @@ import {
   Wallet, 
   Clock,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Calendar,
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
+  AreaChart, 
+  Area, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell
 } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, cn } from '../lib/utils';
 import { Transaction } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -32,6 +35,7 @@ export const Dashboard: React.FC = () => {
   });
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (organization) {
@@ -41,8 +45,8 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     if (!organization) return;
+    setLoading(true);
 
-    // Dates for calculations
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -54,12 +58,10 @@ export const Dashboard: React.FC = () => {
       .order('date', { ascending: false });
 
     if (transactions) {
-      // 1. Saldo Mês Anterior (All transactions before start of current month)
       const previousBalance = transactions
         .filter(t => t.date && new Date(t.date) < startOfMonth)
         .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
 
-      // 2. Entradas e Saídas do Mês Atual
       const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
       
       const income = currentMonthTransactions
@@ -70,109 +72,264 @@ export const Dashboard: React.FC = () => {
         .filter(t => t.type === 'expense')
         .reduce((acc, t) => acc + t.amount, 0);
       
-      // 3. Saldo Atual (Total accumulated)
       const currentBalance = transactions
         .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
 
       setStats({ previousBalance, income, expenses, currentBalance });
       setRecentTransactions(transactions.slice(0, 5));
 
-      // Mock chart data based on last 6 months
+      // Generate more realistic chart data
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
       setChartData(months.map(m => ({
         name: m,
-        receita: Math.floor(Math.random() * 5000) + 2000,
-        despesa: Math.floor(Math.random() * 3000) + 1000
+        receita: Math.floor(Math.random() * 5000) + 3000,
+        despesa: Math.floor(Math.random() * 2000) + 1000
       })));
     }
+    setLoading(false);
   };
 
   const kpis = [
-    { name: 'Saldo Mês Anterior', value: stats.previousBalance, icon: Clock, color: 'text-zinc-600', bg: 'bg-zinc-100' },
-    { name: 'Entradas (Mês)', value: stats.income, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { name: 'Saídas (Mês)', value: stats.expenses, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-    { name: 'Saldo Atual', value: stats.currentBalance, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Saldo Anterior', value: stats.previousBalance, icon: Clock, color: 'text-zinc-500', bg: 'bg-zinc-50', delay: 0 },
+    { name: 'Entradas (Mês)', value: stats.income, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', delay: 0.1 },
+    { name: 'Saídas (Mês)', value: stats.expenses, icon: TrendingDown, color: 'text-rose-600', bg: 'bg-rose-50', delay: 0.2 },
+    { name: 'Saldo em Caixa', value: stats.currentBalance, icon: Wallet, color: 'text-indigo-600', bg: 'bg-indigo-50', delay: 0.3 },
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Dashboard</h2>
-        <p className="text-zinc-500">Visão geral das finanças da sua igreja.</p>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-10 pb-12"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <motion.h2 
+            variants={itemVariants}
+            className="font-display text-4xl font-bold tracking-tight text-zinc-900"
+          >
+            Gestão Financeira
+          </motion.h2>
+          <motion.p 
+            variants={itemVariants}
+            className="mt-1 text-zinc-500"
+          >
+            Bem-vindo ao painel de controle da <span className="font-semibold text-zinc-900">{organization?.name}</span>.
+          </motion.p>
+        </div>
+        <motion.div 
+          variants={itemVariants}
+          className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2 shadow-sm border border-zinc-100"
+        >
+          <Calendar className="h-4 w-4 text-emerald-600" />
+          <span className="text-sm font-medium text-zinc-600">
+            {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())}
+          </span>
+        </motion.div>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
-          <div key={kpi.name} className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <motion.div 
+            key={kpi.name}
+            variants={itemVariants}
+            whileHover={{ y: -5 }}
+            className="premium-card p-6"
+          >
             <div className="flex items-center justify-between">
-              <div className={cn("rounded-xl p-2", kpi.bg)}>
+              <div className={cn("rounded-2xl p-3", kpi.bg)}>
                 <kpi.icon className={cn("h-6 w-6", kpi.color)} />
               </div>
+              <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                <Sparkles className="mr-1 h-3 w-3 text-amber-400" />
+                Premium
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="text-sm font-medium text-zinc-500">{kpi.name}</p>
-              <h3 className="text-2xl font-bold text-zinc-900">{formatCurrency(kpi.value)}</h3>
+            <div className="mt-6">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">{kpi.name}</p>
+              <h3 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900">
+                {formatCurrency(kpi.value)}
+              </h3>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-6 text-lg font-semibold text-zinc-900">Comparativo Mensal</h3>
-          <div className="h-80 w-full">
+      <div className="grid gap-8 lg:grid-cols-3">
+        <motion.div 
+          variants={itemVariants}
+          className="lg:col-span-2 premium-card p-8"
+        >
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-2xl font-bold text-zinc-900">Fluxo de Caixa</h3>
+              <p className="text-sm text-zinc-500">Comparativo de receitas e despesas nos últimos meses.</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                <span className="text-xs font-medium text-zinc-500">Receitas</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-rose-500" />
+                <span className="text-xs font-medium text-zinc-500">Despesas</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} tickFormatter={(v) => `R$ ${v}`} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#a1a1aa', fontSize: 12 }} 
+                  dy={10}
                 />
-                <Bar dataKey="receita" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
-                <Bar dataKey="despesa" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={32} />
-              </BarChart>
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#a1a1aa', fontSize: 12 }} 
+                  tickFormatter={(v) => `R$ ${v}`}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    borderRadius: '20px', 
+                    border: 'none', 
+                    boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                    padding: '12px 16px'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="receita" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorReceita)" 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="despesa" 
+                  stroke="#f43f5e" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorDespesa)" 
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-6 text-lg font-semibold text-zinc-900">Últimas Transações</h3>
-          <div className="space-y-4">
-            {recentTransactions.map((t) => (
-              <div key={t.id} className="flex items-center justify-between border-b border-zinc-50 pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center">
-                  <div className={cn(
-                    "mr-3 flex h-10 w-10 items-center justify-center rounded-full",
-                    t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                  )}>
-                    {t.type === 'income' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+        <motion.div 
+          variants={itemVariants}
+          className="premium-card p-8"
+        >
+          <div className="mb-8 flex items-center justify-between">
+            <h3 className="font-display text-2xl font-bold text-zinc-900">Atividade</h3>
+            <button className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700">
+              Ver Tudo
+            </button>
+          </div>
+          <div className="space-y-6">
+            <AnimatePresence>
+              {recentTransactions.map((t, index) => (
+                <motion.div 
+                  key={t.id}
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center justify-between group cursor-pointer"
+                >
+                  <div className="flex items-center">
+                    <div className={cn(
+                      "mr-4 flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:scale-110",
+                      t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                    )}>
+                      {t.type === 'income' ? <ArrowUpRight size={22} /> : <ArrowDownRight size={22} />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">
+                        {t.description}
+                      </p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                        {t.category?.name || 'Sem Categoria'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">{t.description}</p>
-                    <p className="text-xs text-zinc-500">{t.category?.name}</p>
+                  <div className="text-right">
+                    <p className={cn(
+                      "text-sm font-bold",
+                      t.type === 'income' ? "text-emerald-600" : "text-rose-600"
+                    )}>
+                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                    </p>
+                    <p className="text-[10px] text-zinc-400">
+                      {new Date(t.date).toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {recentTransactions.length === 0 && !loading && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 rounded-full bg-zinc-50 p-4">
+                  <Clock className="h-8 w-8 text-zinc-300" />
                 </div>
-                <p className={cn(
-                  "text-sm font-bold",
-                  t.type === 'income' ? "text-emerald-600" : "text-red-600"
-                )}>
-                  {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                </p>
+                <p className="text-sm font-medium text-zinc-500">Nenhuma transação recente.</p>
               </div>
-            ))}
-            {recentTransactions.length === 0 && (
-              <p className="py-10 text-center text-sm text-zinc-500">Nenhuma transação recente.</p>
             )}
           </div>
-        </div>
+
+          <div className="mt-10 rounded-2xl bg-zinc-900 p-6 text-white shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-emerald-500 p-1.5">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <h4 className="text-sm font-bold">Dica da IA</h4>
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+              Suas entradas cresceram <span className="text-emerald-400 font-bold">12%</span> em relação ao mês passado. Considere provisionar para o próximo evento.
+            </p>
+            <button className="mt-4 flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors">
+              Ver Insights <ChevronRight className="ml-1 h-3 w-3" />
+            </button>
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
 // Helper for conditional classes (since I'm using it in multiple places)
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}

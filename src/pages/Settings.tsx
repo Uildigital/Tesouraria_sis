@@ -1,19 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Church, Users, Shield, Bell, Globe, ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { 
+  Building2, 
+  Users, 
+  Tags, 
+  Bell, 
+  Shield, 
+  ChevronRight, 
+  ArrowLeft,
+  Save,
+  Loader2,
+  History,
+  Sparkles,
+  Globe,
+  Church
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { CategoryManager } from '../components/CategoryManager';
 import { DepartmentManager } from '../components/DepartmentManager';
-import { supabase } from '../lib/supabase';
+import { AuditLogs } from '../components/AuditLogs';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 
-type SettingsView = 'menu' | 'church' | 'depts' | 'categories' | 'notifications' | 'integrations';
+type SettingsView = 'menu' | 'org' | 'depts' | 'cats' | 'notifications' | 'audit' | 'integrations';
 
 export const Settings: React.FC = () => {
-  const { organization, profile } = useAuth();
+  const { organization } = useAuth();
   const [activeView, setActiveView] = useState<SettingsView>('menu');
   const [isSaving, setIsSaving] = useState(false);
   
-  // Form States
-  const [orgName, setOrgName] = useState('');
+  const [orgName, setOrgName] = useState(organization?.name || '');
   const [approvalLimit, setApprovalLimit] = useState(500);
 
   useEffect(() => {
@@ -21,6 +37,15 @@ export const Settings: React.FC = () => {
       setOrgName(organization.name);
     }
   }, [organization]);
+
+  const sections = [
+    { id: 'org', title: 'Perfil da Igreja', description: 'Nome, logo e dados da organização', icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { id: 'depts', title: 'Departamentos', description: 'Gerenciar centros de custo e ministérios', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'cats', title: 'Categorias', description: 'Plano de contas e hierarquia de gastos', icon: Tags, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { id: 'audit', title: 'Logs de Auditoria', description: 'Histórico de ações e segurança', icon: History, color: 'text-rose-600', bg: 'bg-rose-50' },
+    { id: 'notifications', title: 'Notificações', description: 'Alertas de aprovação e relatórios', icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'integrations', title: 'Integrações', description: 'Conectar com n8n e bancos', icon: Globe, color: 'text-violet-600', bg: 'bg-violet-50' },
+  ];
 
   const handleSaveOrg = async () => {
     if (!organization) return;
@@ -30,10 +55,10 @@ export const Settings: React.FC = () => {
         .from('organizations')
         .update({ name: orgName })
         .eq('id', organization.id);
-
+      
       if (error) throw error;
       alert('Configurações salvas com sucesso!');
-      window.location.reload(); // Refresh to update context
+      window.location.reload();
     } catch (error: any) {
       alert('Erro ao salvar: ' + error.message);
     } finally {
@@ -41,153 +66,209 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const sections = [
-    { id: 'church', name: 'Dados da Igreja', icon: Church, description: 'Nome, CNPJ, Endereço e Logo' },
-    { id: 'depts', name: 'Departamentos', icon: Users, description: 'Gerenciar centros de custo' },
-    { id: 'categories', name: 'Categorias', icon: Shield, description: 'Plano de contas (Receitas/Despesas)' },
-    { id: 'notifications', name: 'Notificações', icon: Bell, description: 'Alertas de aprovação e vencimentos' },
-    { id: 'integrations', name: 'Integrações', icon: Globe, description: 'Conectar com n8n e bancos' },
-  ];
-
-  const renderHeader = (title: string, subtitle: string) => (
-    <div className="flex items-center gap-4 mb-6">
+  const renderHeader = (title: string) => (
+    <div className="mb-10 flex items-center gap-4">
       <button 
         onClick={() => setActiveView('menu')}
-        className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50"
+        className="rounded-2xl bg-white p-3 text-zinc-400 shadow-sm border border-zinc-100 hover:text-zinc-900 transition-all"
       >
         <ArrowLeft size={20} />
       </button>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{title}</h2>
-        <p className="text-zinc-500">{subtitle}</p>
+        <h2 className="font-display text-3xl font-bold text-zinc-900">{title}</h2>
+        <p className="text-sm text-zinc-500">Configurações avançadas do sistema.</p>
       </div>
     </div>
   );
 
-  if (activeView === 'categories') {
-    return (
-      <div className="space-y-6">
-        {renderHeader('Categorias', 'Gerencie a hierarquia do seu plano de contas.')}
-        <CategoryManager />
-      </div>
-    );
-  }
-
-  if (activeView === 'depts') {
-    return (
-      <div className="space-y-6">
-        {renderHeader('Departamentos', 'Gerencie os departamentos e centros de custo.')}
-        <DepartmentManager />
-      </div>
-    );
-  }
-
-  if (activeView === 'notifications' || activeView === 'integrations') {
-    return (
-      <div className="space-y-6">
-        {renderHeader(activeView === 'notifications' ? 'Notificações' : 'Integrações', 'Esta funcionalidade estará disponível em breve.')}
-        <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-12 text-center">
-          <p className="text-zinc-500">Estamos trabalhando para trazer esta funcionalidade para você.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Configurações</h2>
-        <p className="text-zinc-500">Gerencie as preferências da sua organização.</p>
-      </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-4xl mx-auto pb-12"
+    >
+      <AnimatePresence mode="wait">
+        {activeView === 'menu' ? (
+          <motion.div 
+            key="menu"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-8"
+          >
+            <div>
+              <h2 className="font-display text-4xl font-bold tracking-tight text-zinc-900">Configurações</h2>
+              <p className="mt-1 text-zinc-500">Personalize sua experiência e gerencie sua organização.</p>
+            </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-6 text-lg font-semibold text-zinc-900">Perfil da Organização</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="h-20 w-20 rounded-2xl bg-zinc-100 flex items-center justify-center border border-zinc-200">
+            <div className="grid gap-4">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveView(section.id as SettingsView)}
+                  className="premium-card group flex items-center justify-between p-6 text-left"
+                >
+                  <div className="flex items-center gap-5">
+                    <div className={cn("rounded-2xl p-4 transition-transform group-hover:scale-110", section.bg)}>
+                      <section.icon className={cn("h-7 w-7", section.color)} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-zinc-900">{section.title}</h3>
+                      <p className="text-sm text-zinc-500">{section.description}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-zinc-300 group-hover:text-zinc-900 transition-colors" />
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-3xl bg-zinc-900 p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-500 p-1.5">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="text-sm font-bold">Plano Premium Ativo</h4>
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-zinc-400 max-w-md">
+                  Sua organização está utilizando todos os recursos avançados, incluindo IA, relatórios em PDF e logs de auditoria.
+                </p>
+                <button className="mt-6 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/20 transition-all">
+                  Gerenciar Assinatura
+                </button>
+              </div>
+              <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+            </div>
+          </motion.div>
+        ) : activeView === 'org' ? (
+          <motion.div 
+            key="org"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-8"
+          >
+            {renderHeader('Perfil da Igreja')}
+            <div className="premium-card p-8 space-y-8">
+              <div className="flex items-center gap-6">
+                <div className="h-24 w-24 rounded-3xl bg-zinc-50 flex items-center justify-center border border-zinc-100 shadow-inner">
                   {organization?.logo_url ? (
-                    <img src={organization.logo_url} alt="Logo" className="h-full w-full object-cover rounded-2xl" />
+                    <img src={organization.logo_url} alt="Logo" className="h-full w-full object-cover rounded-3xl" />
                   ) : (
-                    <Church className="h-10 w-10 text-zinc-400" />
+                    <Church className="h-10 w-10 text-zinc-300" />
                   )}
                 </div>
-                <button className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Alterar Logo</button>
+                <div>
+                  <h4 className="font-bold text-zinc-900">Logo da Organização</h4>
+                  <p className="text-xs text-zinc-500 mb-3">Recomendado: 512x512px (PNG ou JPG)</p>
+                  <button className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700">Alterar Imagem</button>
+                </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Nome da Igreja</label>
+              <div className="grid gap-8 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nome da Igreja</label>
                   <input 
                     type="text" 
-                    value={orgName} 
+                    value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" 
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Slug (URL)</label>
-                  <input type="text" defaultValue={organization?.slug} disabled className="w-full rounded-xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500" />
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Slug (URL)</label>
+                  <input 
+                    type="text" 
+                    disabled
+                    value={organization?.slug}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-100 px-4 py-3 text-sm text-zinc-500 cursor-not-allowed"
+                  />
                 </div>
               </div>
-              <button 
-                onClick={handleSaveOrg}
-                disabled={isSaving}
-                className="flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Salvar Alterações
-              </button>
-            </div>
-          </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-zinc-900">Configurações de Aprovação</h3>
-            <p className="mb-6 text-sm text-zinc-500">Defina o limite para aprovação obrigatória de lançamentos.</p>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Valor Limite (R$)</label>
-                <input 
-                  type="number" 
-                  value={approvalLimit} 
-                  onChange={(e) => setApprovalLimit(Number(e.target.value))}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none" 
-                />
-              </div>
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Status</label>
-                <div className="flex items-center h-9">
-                  <span className="text-sm text-zinc-600">Ativado</span>
+              <div className="space-y-4 border-t border-zinc-100 pt-8">
+                <h4 className="text-sm font-bold text-zinc-900 flex items-center">
+                  <Shield className="mr-2 h-4 w-4 text-emerald-600" />
+                  Configurações de Aprovação
+                </h4>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Valor Limite para Aprovação</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">R$</span>
+                      <input 
+                        type="number" 
+                        value={approvalLimit}
+                        onChange={(e) => setApprovalLimit(Number(e.target.value))}
+                        className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-400 italic">Lançamentos acima deste valor exigirão aprovação do Pastor.</p>
+                  </div>
                 </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button 
+                  onClick={handleSaveOrg}
+                  disabled={isSaving}
+                  className="flex items-center rounded-2xl bg-zinc-900 px-8 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                  Salvar Alterações
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 content-start">
-          {sections.map((section) => (
-            <button 
-              key={section.id} 
-              onClick={() => setActiveView(section.id as SettingsView)}
-              className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-500 hover:shadow-md group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="rounded-xl bg-zinc-50 p-3 group-hover:bg-emerald-50 transition-colors">
-                  <section.icon className="h-6 w-6 text-zinc-600 group-hover:text-emerald-600" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-900">{section.name}</h4>
-                  <p className="text-xs text-zinc-500">{section.description}</p>
-                </div>
+          </motion.div>
+        ) : activeView === 'depts' ? (
+          <motion.div 
+            key="depts"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            {renderHeader('Departamentos')}
+            <DepartmentManager />
+          </motion.div>
+        ) : activeView === 'cats' ? (
+          <motion.div 
+            key="cats"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            {renderHeader('Categorias')}
+            <CategoryManager />
+          </motion.div>
+        ) : activeView === 'audit' ? (
+          <motion.div 
+            key="audit"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            {renderHeader('Logs de Auditoria')}
+            <AuditLogs />
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="other"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="premium-card p-12 text-center"
+          >
+            {renderHeader(activeView === 'notifications' ? 'Notificações' : 'Integrações')}
+            <div className="py-12">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-zinc-50">
+                {activeView === 'notifications' ? <Bell className="h-10 w-10 text-zinc-300" /> : <Globe className="h-10 w-10 text-zinc-300" />}
               </div>
-              <div className="h-8 w-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-emerald-50 group-hover:text-emerald-600">
-                →
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+              <h3 className="text-xl font-bold text-zinc-900">Em Breve</h3>
+              <p className="mt-2 text-zinc-500">Esta funcionalidade está sendo preparada para você.</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
