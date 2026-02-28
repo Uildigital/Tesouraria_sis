@@ -32,50 +32,64 @@ export const useCategories = (organizationId?: string) => {
     fetchCategories();
   }, [fetchCategories]);
 
-  const saveCategory = async (data: {
+  const saveCategory = useCallback(async (data: {
     id?: string;
     name: string;
     type: TransactionType;
     parent_id: string | null;
   }) => {
-    if (!organizationId) return;
+    if (!organizationId) {
+      toast.error('Sessão inválida. Recarregue a página.');
+      return false;
+    }
+    
     setIsSubmitting(true);
     try {
-      const payload = {
-        name: data.name.trim(),
-        type: data.type,
-        parent_id: data.parent_id || null,
-        organization_id: organizationId,
-      };
-
+      const cleanParentId = data.parent_id && data.parent_id !== "" ? data.parent_id : null;
+      
       if (data.id) {
+        // UPDATE: Never send organization_id in update payload to avoid RLS violations
         const { error } = await supabase
           .from('categories')
-          .update(payload)
+          .update({
+            name: data.name.trim(),
+            type: data.type,
+            parent_id: cleanParentId,
+          })
           .eq('id', data.id)
           .eq('organization_id', organizationId);
+        
         if (error) throw error;
         toast.success('Categoria atualizada com sucesso!');
       } else {
+        // INSERT: Must send organization_id
         const { error } = await supabase
           .from('categories')
-          .insert([payload]);
+          .insert([{
+            name: data.name.trim(),
+            type: data.type,
+            parent_id: cleanParentId,
+            organization_id: organizationId
+          }]);
+        
         if (error) throw error;
         toast.success('Categoria criada com sucesso!');
       }
+      
       await fetchCategories();
       return true;
     } catch (error: any) {
-      const msg = error.code === '42501' ? 'Sem permissão para salvar.' : error.message;
+      console.error('Save error:', error);
+      const msg = error.code === '42501' ? 'Você não tem permissão para esta alteração.' : error.message;
       toast.error('Erro ao salvar: ' + msg);
       return false;
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [organizationId, fetchCategories]);
 
-  const deleteCategory = async (id: string) => {
-    if (!organizationId) return;
+  const deleteCategory = useCallback(async (id: string) => {
+    if (!organizationId) return false;
     try {
       const { error } = await supabase
         .from('categories')
@@ -92,9 +106,9 @@ export const useCategories = (organizationId?: string) => {
       toast.error('Erro ao excluir: ' + msg);
       return false;
     }
-  };
+  }, [organizationId, fetchCategories]);
 
-  const clearAll = async () => {
+  const clearAll = useCallback(async () => {
     if (!organizationId) return;
     setIsSubmitting(true);
     try {
@@ -111,9 +125,9 @@ export const useCategories = (organizationId?: string) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [organizationId, fetchCategories]);
 
-  const importPremium = async (structure: any[]) => {
+  const importPremium = useCallback(async (structure: any[]) => {
     if (!organizationId) return;
     setIsSubmitting(true);
     try {
@@ -159,7 +173,7 @@ export const useCategories = (organizationId?: string) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [organizationId, fetchCategories]);
 
   return {
     categories,

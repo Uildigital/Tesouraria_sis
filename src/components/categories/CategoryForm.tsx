@@ -139,7 +139,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none disabled:opacity-50"
           >
             <option value="">Nenhuma (Será uma Categoria Pai)</option>
-            {parentCategories
+            {(parentCategories || [])
               .filter(c => c.type === type && c.id !== editingCategory?.id)
               .map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
