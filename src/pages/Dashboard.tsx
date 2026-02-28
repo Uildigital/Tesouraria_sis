@@ -8,7 +8,8 @@ import {
   ArrowDownRight,
   Calendar,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Plus
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -146,15 +147,25 @@ export const Dashboard: React.FC = () => {
             Bem-vindo ao painel de controle da <span className="font-semibold text-zinc-900">{organization?.name}</span>.
           </motion.p>
         </div>
-        <motion.div 
-          variants={itemVariants}
-          className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2 shadow-sm border border-zinc-100"
-        >
-          <Calendar className="h-4 w-4 text-emerald-600" />
-          <span className="text-sm font-medium text-zinc-600">
-            {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())}
-          </span>
-        </motion.div>
+        <div className="flex items-center gap-3">
+          <motion.button 
+            variants={itemVariants}
+            onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+            className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
+          >
+            <Plus className="h-5 w-5" />
+            Novo Lançamento
+          </motion.button>
+          <motion.div 
+            variants={itemVariants}
+            className="hidden sm:flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-sm border border-zinc-100"
+          >
+            <Calendar className="h-4 w-4 text-emerald-600" />
+            <span className="text-sm font-medium text-zinc-600">
+              {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())}
+            </span>
+          </motion.div>
+        </div>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

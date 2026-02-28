@@ -177,8 +177,19 @@ export const Transactions: React.FC = () => {
     return publicUrl;
   };
 
+  const handleAuthError = (error: any) => {
+    if (!organization || !profile) {
+      toast.error('Sessão inválida ou perfil não encontrado. Por favor, faça login novamente.');
+      return;
+    }
+    toast.error('Erro ao salvar: ' + error.message);
+  };
+
   const onSubmit = async (data: TransactionFormValues) => {
-    if (!organization || !profile) return;
+    if (!organization || !profile) {
+      toast.error('Você precisa estar logado e vinculado a uma igreja para realizar lançamentos.');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -187,14 +198,22 @@ export const Transactions: React.FC = () => {
         attachment_url = await handleFileUpload(file);
       }
 
+      // Prepare data for Supabase, converting empty strings to null for UUID fields
+      const payload = {
+        description: data.description,
+        amount: data.amount,
+        date: data.date,
+        type: data.type,
+        category_id: data.category_id,
+        department_id: data.department_id || null,
+        organization_id: organization.id,
+        attachment_url,
+        status: data.amount > 500 ? 'pending' : 'conciliated',
+      };
+
       const { error } = await supabase
         .from('transactions')
-        .insert([{
-          ...data,
-          organization_id: organization.id,
-          attachment_url,
-          status: data.amount > 500 ? 'pending' : 'conciliated', // Example logic
-        }]);
+        .insert([payload]);
 
       if (error) throw error;
 
@@ -204,7 +223,7 @@ export const Transactions: React.FC = () => {
       fetchData();
       toast.success('Lançamento salvo com sucesso!');
     } catch (error: any) {
-      toast.error('Erro ao salvar: ' + error.message);
+      handleAuthError(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -442,8 +461,23 @@ export const Transactions: React.FC = () => {
             ))}
             {filteredTransactions.length === 0 && !loading && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                  Nenhum lançamento encontrado.
+                <td colSpan={6} className="px-6 py-24 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="mb-4 rounded-full bg-zinc-50 p-4">
+                      <FileText className="h-10 w-10 text-zinc-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-zinc-900">Nenhum lançamento encontrado</h3>
+                    <p className="mt-1 text-sm text-zinc-500">Comece registrando a primeira movimentação da igreja.</p>
+                    {canEdit && (
+                      <button 
+                        onClick={() => setShowModal(true)}
+                        className="mt-6 flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Novo Lançamento
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             )}
