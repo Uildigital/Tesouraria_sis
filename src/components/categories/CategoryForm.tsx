@@ -62,33 +62,42 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold text-zinc-900 flex items-center">
           {editingCategory ? (
-            <>
+            <span className="flex items-center">
               <Edit2 className="mr-2 h-5 w-5 text-amber-600" />
-              Editando: <span className="ml-2 text-amber-700">{name || 'Categoria'}</span>
-            </>
+              <span>Editando:</span>
+              <span className="ml-2 text-amber-700">{name || 'Categoria'}</span>
+            </span>
           ) : (
-            <>
+            <span className="flex items-center">
               <Plus className="mr-2 h-5 w-5 text-emerald-600" />
-              Nova Categoria / Subcategoria
-            </>
+              <span>Nova Categoria / Subcategoria</span>
+            </span>
           )}
         </h3>
         <div className="flex gap-2">
           {canEdit && (
             <button 
-              onClick={onClearAll}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onClearAll();
+              }}
               disabled={isSubmitting}
               className="text-xs font-bold uppercase tracking-wider text-rose-600 hover:text-rose-700 border border-rose-200 rounded-lg px-3 py-1.5 bg-rose-50 transition-colors disabled:opacity-50"
             >
-              Limpar Tudo
+              <span>Limpar Tudo</span>
             </button>
           )}
           <button 
-            onClick={onImportPremium}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onImportPremium();
+            }}
             disabled={isSubmitting || !canEdit}
             className="text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1.5 bg-emerald-50 transition-colors disabled:opacity-50"
           >
-            Plano de Contas Profissional
+            <span>Plano de Contas Profissional</span>
           </button>
         </div>
       </div>
@@ -157,8 +166,14 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               editingCategory ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
             )}
           >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : editingCategory ? <Edit2 className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            {editingCategory ? 'Salvar Alterações' : 'Adicionar Categoria'}
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : editingCategory ? (
+              <Edit2 className="h-4 w-4 mr-2" />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" />
+            )}
+            <span>{editingCategory ? 'Salvar Alterações' : 'Adicionar Categoria'}</span>
           </button>
           {editingCategory && (
             <button 

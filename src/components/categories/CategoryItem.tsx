@@ -26,7 +26,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
             "mr-3 h-2 w-2 rounded-full",
             category.type === 'income' ? "bg-emerald-500" : "bg-red-500"
           )} />
-          <span className="font-bold text-zinc-900">{category.name}</span>
+          <span className="font-bold text-zinc-900"><span>{category.name}</span></span>
         </div>
         <div className="flex items-center gap-2 transition-all">
           <button 
@@ -35,7 +35,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
             title="Editar"
           >
             <Edit2 size={14} />
-            <span className="hidden sm:inline">Editar</span>
+            <span className="hidden sm:inline"><span>Editar</span></span>
           </button>
           {canEdit && (
             <button 
@@ -44,7 +44,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
               title="Excluir"
             >
               <Trash2 size={14} />
-              <span className="hidden sm:inline">Excluir</span>
+              <span className="hidden sm:inline"><span>Excluir</span></span>
             </button>
           )}
         </div>
@@ -55,7 +55,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
           <div key={sub.id} className="flex items-center justify-between group/sub py-1 border-l-2 border-zinc-100 pl-4">
             <div className="flex items-center text-sm text-zinc-600">
               <ChevronRight size={14} className="mr-1 text-zinc-300" />
-              {sub.name}
+              <span>{sub.name}</span>
             </div>
             <div className="flex items-center gap-2 transition-all">
               <button 
@@ -64,7 +64,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
                 title="Editar"
               >
                 <Edit2 size={12} />
-                <span>Editar</span>
+                <span><span>Editar</span></span>
               </button>
               {canEdit && (
                 <button 
@@ -73,7 +73,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
                   title="Excluir"
                 >
                   <Trash2 size={12} />
-                  <span>Excluir</span>
+                  <span><span>Excluir</span></span>
                 </button>
               )}
             </div>
