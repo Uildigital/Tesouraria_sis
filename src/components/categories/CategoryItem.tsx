@@ -19,18 +19,24 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
   canEdit 
 }) => {
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-4 sm:p-6" translate="no">
       <div className="flex items-center justify-between group">
         <div className="flex items-center">
           <div className={cn(
             "mr-3 h-2 w-2 rounded-full",
             category.type === 'income' ? "bg-emerald-500" : "bg-red-500"
           )} />
-          <span className="font-bold text-zinc-900"><span>{category.name}</span></span>
+          <div className="font-bold text-zinc-900">
+            <span>{category.name}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 transition-all">
           <button 
-            onClick={() => onEdit(category)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onEdit(category);
+            }}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
             title="Editar"
           >
@@ -39,7 +45,11 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
           </button>
           {canEdit && (
             <button 
-              onClick={() => onDelete(category.id)}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete(category.id);
+              }}
               className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
               title="Excluir"
             >
@@ -52,14 +62,18 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
       
       <div className="mt-3 ml-6 space-y-2">
         {subcategories.map(sub => (
-          <div key={sub.id} className="flex items-center justify-between group/sub py-1 border-l-2 border-zinc-100 pl-4">
+          <div key={`sub-${sub.id}`} className="flex items-center justify-between group/sub py-1 border-l-2 border-zinc-100 pl-4">
             <div className="flex items-center text-sm text-zinc-600">
               <ChevronRight size={14} className="mr-1 text-zinc-300" />
               <span>{sub.name}</span>
             </div>
             <div className="flex items-center gap-2 transition-all">
               <button 
-                onClick={() => onEdit(sub)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onEdit(sub);
+                }}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
                 title="Editar"
               >
@@ -68,7 +82,11 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
               </button>
               {canEdit && (
                 <button 
-                  onClick={() => onDelete(sub.id)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onDelete(sub.id);
+                  }}
                   className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                   title="Excluir"
                 >
@@ -80,7 +98,9 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
           </div>
         ))}
         {subcategories.length === 0 && (
-          <p className="text-xs text-zinc-400 italic ml-4">Sem subcategorias</p>
+          <div key="no-subs" className="text-xs text-zinc-400 italic ml-4">
+            <span>Sem subcategorias</span>
+          </div>
         )}
       </div>
     </div>
