@@ -28,6 +28,7 @@ export const CategoryManager: React.FC = () => {
     const success = await saveCategory(data);
     if (success) {
       setEditingCategory(null);
+      // The saveCategory hook already calls refresh, but we ensure it here
     }
     return success;
   }, [saveCategory]);

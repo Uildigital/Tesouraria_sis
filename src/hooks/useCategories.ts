@@ -45,22 +45,23 @@ export const useCategories = (organizationId?: string) => {
     
     setIsSubmitting(true);
     try {
-      const cleanParentId = data.parent_id && data.parent_id !== "" ? data.parent_id : null;
+      // Explicitly handle the parent_id to ensure it's either a UUID or NULL
+      const targetParentId = (data.parent_id && data.parent_id.trim() !== "") ? data.parent_id : null;
       
       if (data.id) {
-        // UPDATE: Never send organization_id in update payload to avoid RLS violations
+        // UPDATE
         const { error } = await supabase
           .from('categories')
           .update({
             name: data.name.trim(),
             type: data.type,
-            parent_id: cleanParentId,
+            parent_id: targetParentId,
           })
           .eq('id', data.id)
           .eq('organization_id', organizationId);
         
         if (error) throw error;
-        toast.success('Categoria atualizada com sucesso!');
+        toast.success('Alterações salvas com sucesso!');
       } else {
         // INSERT: Must send organization_id
         const { error } = await supabase
@@ -68,7 +69,7 @@ export const useCategories = (organizationId?: string) => {
           .insert([{
             name: data.name.trim(),
             type: data.type,
-            parent_id: cleanParentId,
+            parent_id: targetParentId,
             organization_id: organizationId
           }]);
         
