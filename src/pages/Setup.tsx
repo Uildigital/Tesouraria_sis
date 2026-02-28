@@ -76,7 +76,7 @@ export const Setup: React.FC = () => {
 
             <button 
               type="submit"
-              disabled={loading || !name}
+              disabled={loading}
               className="w-full flex items-center justify-center rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (

@@ -96,6 +96,7 @@ export const Login: React.FC = () => {
 
           <div className="mt-6 pt-6 border-t border-zinc-100 text-center">
             <button 
+              type="button"
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm font-bold text-emerald-600 hover:text-emerald-700"
             >
