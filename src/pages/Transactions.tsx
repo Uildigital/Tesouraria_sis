@@ -51,6 +51,7 @@ export const Transactions: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [file, setFile] = useState<File | null>(null);
   
   // Hierarchical category state
@@ -159,6 +160,27 @@ export const Transactions: React.FC = () => {
     }
   };
 
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setValue('description', transaction.description);
+    setValue('amount', transaction.amount);
+    setValue('date', transaction.date);
+    setValue('type', transaction.type);
+    setValue('department_id', transaction.department_id || '');
+    
+    // Set hierarchical category
+    if (transaction.category?.parent_id) {
+      setSelectedParentId(transaction.category.parent_id);
+      // Small delay to allow subcategories to filter
+      setTimeout(() => setValue('category_id', transaction.category_id), 100);
+    } else {
+      setSelectedParentId(transaction.category_id);
+      setValue('category_id', transaction.category_id);
+    }
+    
+    setShowModal(true);
+  };
+
   const handleFileUpload = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -193,7 +215,7 @@ export const Transactions: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      let attachment_url = '';
+      let attachment_url = editingTransaction?.attachment_url || '';
       if (file) {
         attachment_url = await handleFileUpload(file);
       }
@@ -208,20 +230,29 @@ export const Transactions: React.FC = () => {
         department_id: data.department_id || null,
         organization_id: organization.id,
         attachment_url,
-        status: data.amount > 500 ? 'pending' : 'conciliated',
+        status: editingTransaction?.status || (data.amount > 500 ? 'pending' : 'conciliated'),
       };
 
-      const { error } = await supabase
-        .from('transactions')
-        .insert([payload]);
-
-      if (error) throw error;
+      if (editingTransaction) {
+        const { error } = await supabase
+          .from('transactions')
+          .update(payload)
+          .eq('id', editingTransaction.id);
+        if (error) throw error;
+        toast.success('Lançamento atualizado com sucesso!');
+      } else {
+        const { error } = await supabase
+          .from('transactions')
+          .insert([payload]);
+        if (error) throw error;
+        toast.success('Lançamento salvo com sucesso!');
+      }
 
       reset();
       setFile(null);
+      setEditingTransaction(null);
       setShowModal(false);
       fetchData();
-      toast.success('Lançamento salvo com sucesso!');
     } catch (error: any) {
       handleAuthError(error);
     } finally {
@@ -447,15 +478,26 @@ export const Transactions: React.FC = () => {
                   </button>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {canEdit && (
-                    <button 
-                      onClick={() => handleDelete(t.id)}
-                      className="rounded-lg p-1 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    {canEdit && (
+                      <>
+                        <button 
+                          onClick={() => handleEdit(t)}
+                          className="rounded-lg p-1 text-zinc-400 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="h-5 w-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(t.id)}
+                          className="rounded-lg p-1 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -490,8 +532,17 @@ export const Transactions: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-zinc-900">Novo Lançamento</h3>
-              <button onClick={() => setShowModal(false)} className="text-zinc-400 hover:text-zinc-600">
+              <h3 className="text-xl font-bold text-zinc-900">
+                {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingTransaction(null);
+                  reset();
+                }} 
+                className="text-zinc-400 hover:text-zinc-600"
+              >
                 <X className="h-6 w-6" />
               </button>
             </div>
@@ -605,7 +656,11 @@ export const Transactions: React.FC = () => {
               <div className="sm:col-span-2 mt-4 flex gap-3">
                 <button 
                   type="button" 
-                  onClick={() => setShowModal(false)} 
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingTransaction(null);
+                    reset();
+                  }} 
                   className="flex-1 rounded-xl border border-zinc-200 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
                 >
                   Cancelar
@@ -613,9 +668,12 @@ export const Transactions: React.FC = () => {
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  className={cn(
+                    "flex-1 flex items-center justify-center rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:opacity-50",
+                    editingTransaction ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  )}
                 >
-                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Salvar Lançamento'}
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : editingTransaction ? 'Salvar Alterações' : 'Salvar Lançamento'}
                 </button>
               </div>
             </form>
