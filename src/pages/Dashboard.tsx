@@ -30,7 +30,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export const Dashboard: React.FC = () => {
-  const { organization } = useAuth();
+  const { organization, canEdit } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     previousBalance: 0,
@@ -148,14 +148,16 @@ export const Dashboard: React.FC = () => {
           </motion.p>
         </div>
         <div className="flex items-center gap-3">
-          <motion.button 
-            variants={itemVariants}
-            onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
-            className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
-          >
-            <Plus className="h-5 w-5" />
-            Novo Lançamento
-          </motion.button>
+          {canEdit && (
+            <motion.button 
+              variants={itemVariants}
+              onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+              className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
+            >
+              <Plus className="h-5 w-5" />
+              Novo Lançamento
+            </motion.button>
+          )}
           <motion.div 
             variants={itemVariants}
             className="hidden sm:flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-sm border border-zinc-100"
@@ -216,59 +218,61 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#a1a1aa', fontSize: 12 }} 
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#a1a1aa', fontSize: 12 }} 
-                  tickFormatter={(v) => `R$ ${v}`}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '20px', 
-                    border: 'none', 
-                    boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                    padding: '12px 16px'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="receita" 
-                  stroke="#10b981" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorReceita)" 
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="despesa" 
-                  stroke="#f43f5e" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorDespesa)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-[350px] w-full min-h-[350px]">
+            {chartData.length > 0 && (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#a1a1aa', fontSize: 12 }} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#a1a1aa', fontSize: 12 }} 
+                    tickFormatter={(v) => `R$ ${v}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '20px', 
+                      border: 'none', 
+                      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                      padding: '12px 16px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="receita" 
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorReceita)" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="despesa" 
+                    stroke="#f43f5e" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorDespesa)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 

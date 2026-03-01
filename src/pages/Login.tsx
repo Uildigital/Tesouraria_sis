@@ -62,14 +62,22 @@ export const Login: React.FC = () => {
 
         if (rpcError) {
           console.error('RPC error:', rpcError);
-          // If RPC fails, the user is created but has no church. 
-          // We redirect to setup as a fallback.
           navigate('/setup');
           return;
         }
 
-        toast.success('Igreja cadastrada com sucesso! Faça login para ativar seu acesso.');
-        setIsSignUp(false); // Force re-login to refresh the JWT token with the new org_id
+        toast.success('Igreja cadastrada com sucesso!');
+        
+        // Login immediately after signup to get the session and refresh context
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          toast.error('Conta criada, mas erro ao entrar automaticamente. Por favor, faça login.');
+          setIsSignUp(false);
+          return;
+        }
+
+        // The ProtectedRoute or the useEffect in Login will handle the redirect to dashboard
+        // once the organization is loaded in the context.
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

@@ -19,7 +19,6 @@ export const Setup: React.FC = () => {
     try {
       const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
       
-      // Use the atomic RPC function instead of multiple manual inserts
       const { error: rpcError } = await supabase.rpc('create_new_church', {
         church_name: name,
         church_slug: slug,
@@ -27,10 +26,12 @@ export const Setup: React.FC = () => {
         user_email: user.email
       });
 
-      if (rpcError) throw rpcError;
+      // If error is 409 (Conflict), it means it's already created, so we can proceed
+      if (rpcError && (rpcError as any).code !== '409' && rpcError.message?.indexOf('already exists') === -1) {
+        throw rpcError;
+      }
 
       toast.success('Igreja configurada com sucesso!');
-      // Force a reload to refresh all contexts with the new data
       window.location.href = `/${slug}/dashboard`;
     } catch (error: any) {
       console.error('Setup error:', error);
