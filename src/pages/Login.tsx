@@ -1,21 +1,38 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Church, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { cn } from '../lib/utils';
 
 export const Login: React.FC = () => {
   const { session, organization } = useAuth();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [churchName, setChurchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isInvited, setIsInvited] = useState(false);
+  const [inviteId, setInviteId] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // Handle invitation from URL
+  useEffect(() => {
+    const invite = searchParams.get('invite');
+    const emailParam = searchParams.get('email');
+    
+    if (invite && emailParam) {
+      setInviteId(invite);
+      setEmail(emailParam);
+      setIsSignUp(true);
+      setIsInvited(true);
+    }
+  }, [searchParams]);
+
   // Se já estiver logado, redireciona para fora da tela de login
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && session) {
       if (organization) {
         navigate(`/${organization.slug}/dashboard`);
@@ -29,53 +46,70 @@ export const Login: React.FC = () => {
 
     try {
       if (isSignUp) {
-        if (!churchName) {
-          toast.error('Por favor, informe o nome da igreja.');
-          setLoading(false);
-          return;
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // 1. Check for invitation
+        let inviteData = null;
+        if (isInvited || inviteId) {
+          const { data, error: inviteError } = await supabase
+            .from('invitations')
+            .select('*')
+            .eq('id', inviteId || '')
+            .maybeSingle();
+          
+          if (inviteError) throw inviteError;
+          if (!data) {
+            throw new Error('Convite inválido ou expirado. Verifique com seu Administrador.');
+          }
+          inviteData = data;
+        } else if (!churchName) {
+          throw new Error('Por favor, informe o nome da igreja para criar sua conta.');
         }
 
-        // 1. Sign Up
+        // 2. Sign Up
         const { data: authData, error: authError } = await supabase.auth.signUp({ 
-          email, 
+          email: normalizedEmail, 
           password,
-          options: {
-            data: {
-              church_name: churchName
-            }
-          }
         });
         
         if (authError) throw authError;
         if (!authData.user) throw new Error('Erro ao criar usuário');
 
-        // 2. Create Organization and Profile in a single atomic transaction via RPC
-        const slug = churchName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-        const { error: rpcError } = await supabase.rpc('create_new_church', {
-          church_name: churchName,
-          church_slug: slug,
-          user_id: authData.user.id,
-          user_email: email
-        });
+        // 3. Handle Linking (Invited vs New Owner)
+        if (inviteData) {
+          // Link to existing church
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: authData.user.id,
+              organization_id: inviteData.organization_id,
+              role: inviteData.role,
+              full_name: normalizedEmail.split('@')[0],
+              email: normalizedEmail
+            }]);
+          
+          if (profileError) throw profileError;
 
-        if (rpcError) {
-          console.error('RPC error:', rpcError);
-          toast.error('Erro ao criar igreja. Por favor, tente novamente.');
-          return;
+          // Delete the invitation
+          await supabase.from('invitations').delete().eq('id', inviteData.id);
+          
+          toast.success('Bem-vindo! Você foi vinculado à sua igreja.');
+        } else {
+          // Create new church (SaaS flow)
+          const slug = churchName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+          const { error: rpcError } = await supabase.rpc('create_new_church', {
+            church_name: churchName,
+            church_slug: slug,
+            user_id: authData.user.id,
+            user_email: normalizedEmail
+          });
+
+          if (rpcError) throw rpcError;
+          toast.success('Igreja cadastrada com sucesso!');
         }
-
-        toast.success('Igreja cadastrada com sucesso!');
         
-        // Login immediately after signup to get the session and refresh context
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          toast.error('Conta criada, mas erro ao entrar automaticamente. Por favor, faça login.');
-          setIsSignUp(false);
-          return;
-        }
-
-        // The ProtectedRoute or the useEffect in Login will handle the redirect to dashboard
-        // once the organization is loaded in the context.
+        // Auto-login
+        await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -113,27 +147,30 @@ export const Login: React.FC = () => {
                 <input
                   type="email"
                   required
+                  disabled={isInvited}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-60"
                   placeholder="seu@email.com"
                 />
               </div>
             </div>
 
-            {isSignUp && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Nome da Igreja</label>
-                <div className="relative">
-                  <Church className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-                  <input
-                    type="text"
-                    required={isSignUp}
-                    value={churchName}
-                    onChange={(e) => setChurchName(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                    placeholder="Ex: Igreja Central"
-                  />
+            {isSignUp && !isInvited && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Nome da Igreja</label>
+                  <div className="relative">
+                    <Church className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      required={!isInvited}
+                      value={churchName}
+                      onChange={(e) => setChurchName(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                      placeholder="Ex: Igreja Central"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -160,7 +197,7 @@ export const Login: React.FC = () => {
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                 <>
-                  {isSignUp ? 'Criar Conta' : 'Entrar'}
+                  {isSignUp ? (isInvited ? 'Ativar Minha Conta' : 'Criar Conta') : 'Entrar'}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}

@@ -122,6 +122,29 @@ export const Users: React.FC = () => {
     }
   };
 
+  const getInvitationLink = (inv: Invitation) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/login?invite=${inv.id}&email=${encodeURIComponent(inv.email)}`;
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Link copiado para a área de transferência!');
+  };
+
+  const shareWhatsApp = (inv: Invitation) => {
+    const link = getInvitationLink(inv);
+    const text = encodeURIComponent(`Olá! Você foi convidado para a equipe da ${organization?.name} no ChurchFinance.\n\nClique no link abaixo para ativar sua conta:\n${link}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const shareEmail = (inv: Invitation) => {
+    const link = getInvitationLink(inv);
+    const subject = encodeURIComponent(`Convite: Equipe ${organization?.name}`);
+    const body = encodeURIComponent(`Olá!\n\nVocê foi convidado para participar da gestão financeira da ${organization?.name}.\n\nPara ativar seu acesso como ${inv.role === 'admin' ? 'Administrador' : inv.role === 'treasurer' ? 'Tesoureiro' : 'Conferente'}, clique no link abaixo:\n\n${link}`);
+    window.location.href = `mailto:${inv.email}?subject=${subject}&body=${body}`;
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
@@ -208,15 +231,38 @@ export const Users: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-bold text-zinc-900">{inv.email}</p>
-                        <div className="mt-1">{getRoleBadge(inv.role)}</div>
+                        <div className="mt-1 flex items-center gap-3">
+                          {getRoleBadge(inv.role)}
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Pendente</span>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button 
+                            onClick={() => shareWhatsApp(inv)}
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          >
+                            WhatsApp
+                          </button>
+                          <button 
+                            onClick={() => shareEmail(inv)}
+                            className="flex items-center gap-1.5 rounded-lg bg-zinc-50 px-2.5 py-1.5 text-[10px] font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
+                          >
+                            E-mail
+                          </button>
+                          <button 
+                            onClick={() => copyToClipboard(getInvitationLink(inv))}
+                            className="flex items-center gap-1.5 rounded-lg bg-zinc-50 px-2.5 py-1.5 text-[10px] font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
+                          >
+                            Copiar Link
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {isAdmin && (
                       <button 
                         onClick={() => cancelInvitation(inv.id)}
-                        className="text-xs font-bold text-rose-600 hover:underline"
+                        className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                       >
-                        Cancelar
+                        <X size={20} />
                       </button>
                     )}
                   </div>
