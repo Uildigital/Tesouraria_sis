@@ -22,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'treasurer';
+  const canEdit = profile?.is_active && (profile?.role === 'admin' || profile?.role === 'treasurer');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

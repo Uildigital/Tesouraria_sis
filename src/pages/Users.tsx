@@ -10,7 +10,9 @@ import {
   Loader2,
   X,
   CheckCircle2,
-  Clock
+  Clock,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -112,6 +114,24 @@ export const Users: React.FC = () => {
     }
   };
 
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    const action = currentStatus ? 'desativar' : 'ativar';
+    if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: !currentStatus })
+        .eq('id', userId);
+        
+      if (error) throw error;
+      toast.success(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso`);
+      fetchData();
+    } catch (error: any) {
+      toast.error('Erro ao alterar status: ' + error.message);
+    }
+  };
+
   const cancelInvitation = async (id: string) => {
     try {
       const { error } = await supabase.from('invitations').delete().eq('id', id);
@@ -198,17 +218,37 @@ export const Users: React.FC = () => {
                       {u.full_name?.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-zinc-900">{u.full_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-zinc-900">{u.full_name}</p>
+                        {!u.is_active && (
+                          <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 border border-amber-100">Inativo</span>
+                        )}
+                      </div>
                       <div className="mt-1">{getRoleBadge(u.role)}</div>
                     </div>
                   </div>
                   {isAdmin && u.id !== profile?.id && (
-                    <button 
-                      onClick={() => removeUser(u.id)}
-                      className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => toggleUserStatus(u.id, u.is_active)}
+                        className={cn(
+                          "p-2 rounded-xl transition-all",
+                          u.is_active 
+                            ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
+                            : "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                        )}
+                        title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
+                      >
+                        {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
+                      </button>
+                      <button 
+                        onClick={() => removeUser(u.id)}
+                        className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                        title="Remover Permanentemente"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}

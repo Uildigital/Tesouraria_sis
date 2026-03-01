@@ -13,6 +13,8 @@ export interface Profile {
   organization_id: string;
   role: 'admin' | 'treasurer' | 'viewer';
   full_name: string;
+  email?: string;
+  is_active: boolean;
 }
 
 export interface Category {
