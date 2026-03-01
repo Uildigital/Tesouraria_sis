@@ -246,28 +246,34 @@ export const Users: React.FC = () => {
                         {getRoleBadge(u.role)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {isAdmin && u.id !== profile?.id && (
-                          <div className="flex items-center justify-end gap-2">
-                            <button 
-                              onClick={() => toggleUserStatus(u.id, u.is_active)}
-                              className={cn(
-                                "p-2 rounded-xl transition-all",
-                                u.is_active 
-                                  ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
-                                  : "text-amber-600 bg-amber-50 hover:bg-amber-100"
-                              )}
-                              title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
-                            >
-                              {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
-                            </button>
-                            <button 
-                              onClick={() => removeUser(u.id)}
-                              className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                              title="Remover Permanentemente"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                          </div>
+                        {isAdmin ? (
+                          u.id !== profile?.id ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => toggleUserStatus(u.id, u.is_active)}
+                                className={cn(
+                                  "p-2 rounded-xl transition-all",
+                                  u.is_active 
+                                    ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
+                                    : "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                                )}
+                                title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
+                              >
+                                {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
+                              </button>
+                              <button 
+                                onClick={() => removeUser(u.id)}
+                                className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                title="Remover Permanentemente"
+                              >
+                                <Trash2 size={20} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 italic">Você (Admin)</span>
+                          )
+                        ) : (
+                          <span className="text-zinc-300">—</span>
                         )}
                       </td>
                     </tr>
