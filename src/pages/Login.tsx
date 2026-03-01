@@ -16,6 +16,7 @@ export const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isInvited, setIsInvited] = useState(false);
   const [inviteId, setInviteId] = useState<string | null>(null);
+  const [formKey, setFormKey] = useState(0);
   const navigate = useNavigate();
 
   // Handle invitation from URL
@@ -117,7 +118,11 @@ export const Login: React.FC = () => {
         navigate('/'); // Redireciona para a raiz, onde o ProtectedRoute decidirá o destino
       }
     } catch (err: any) {
-      toast.error(err.message || 'Erro na autenticação');
+      console.error('Auth error:', err);
+      setFormKey(prev => prev + 1); // Force form reset on error
+      const errorMessage = err.message || 'Erro na autenticação';
+      alert(`Erro: ${errorMessage}`);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -139,7 +144,11 @@ export const Login: React.FC = () => {
             {isSignUp ? 'Criar nova conta' : 'Entrar na sua conta'}
           </h2>
 
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form 
+            key={formKey}
+            onSubmit={handleAuth} 
+            className="space-y-6"
+          >
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Email</label>
               <div className="relative">
