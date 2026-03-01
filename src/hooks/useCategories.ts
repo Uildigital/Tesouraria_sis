@@ -51,9 +51,10 @@ export const useCategories = (organizationId?: string) => {
       // Explicitly handle the parent_id to ensure it's either a UUID or NULL
       const targetParentId = (data.parent_id && data.parent_id.trim() !== "") ? data.parent_id : null;
       
+      let result;
       if (data.id) {
         // UPDATE
-        const { error } = await supabase
+        result = await supabase
           .from('categories')
           .update({
             name: data.name.trim(),
@@ -61,24 +62,29 @@ export const useCategories = (organizationId?: string) => {
             parent_id: targetParentId,
           })
           .eq('id', data.id)
-          .eq('organization_id', organizationId);
-        
-        if (error) throw error;
-        toast.success('Alterações salvas!');
+          .eq('organization_id', organizationId)
+          .select(); // Request data back to verify update
       } else {
-        // INSERT: Must send organization_id
-        const { error } = await supabase
+        // INSERT
+        result = await supabase
           .from('categories')
           .insert([{
             name: data.name.trim(),
             type: data.type,
             parent_id: targetParentId,
             organization_id: organizationId
-          }]);
-        
-        if (error) throw error;
-        toast.success('Categoria criada!');
+          }])
+          .select();
       }
+      
+      if (result.error) throw result.error;
+      
+      // Check if any rows were actually affected
+      if (!result.data || result.data.length === 0) {
+        throw new Error('Nenhuma alteração foi feita. Verifique suas permissões no Supabase (RLS).');
+      }
+
+      toast.success(data.id ? 'Alterações salvas!' : 'Categoria criada!');
       
       // Small delay to ensure DB consistency before re-fetching
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -96,13 +102,19 @@ export const useCategories = (organizationId?: string) => {
   const deleteCategory = useCallback(async (id: string) => {
     if (!organizationId) return false;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('categories')
         .delete()
         .eq('id', id)
-        .eq('organization_id', organizationId);
+        .eq('organization_id', organizationId)
+        .select(); // Request data back to verify deletion
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Não foi possível excluir. O item pode não existir ou você não tem permissão (RLS).');
+      }
+      
       toast.success('Excluído com sucesso!');
       
       // Small delay to ensure DB consistency before re-fetching
