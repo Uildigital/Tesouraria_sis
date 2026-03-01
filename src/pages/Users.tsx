@@ -58,6 +58,7 @@ export const Users: React.FC = () => {
           .from('invitations')
           .select('*')
           .eq('organization_id', organization?.id)
+          .eq('status', 'pending')
       ]);
 
       if (profilesRes.data) setUsers(profilesRes.data);

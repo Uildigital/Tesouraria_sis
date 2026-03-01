@@ -56,6 +56,7 @@ export const Login: React.FC = () => {
             .from('invitations')
             .select('*')
             .eq('id', inviteId || '')
+            .eq('status', 'pending')
             .maybeSingle();
           
           if (inviteError) throw inviteError;
@@ -91,8 +92,16 @@ export const Login: React.FC = () => {
           
           if (profileError) throw profileError;
 
-          // Delete the invitation
-          await supabase.from('invitations').delete().eq('id', inviteData.id);
+          // Mark the invitation as accepted
+          const { error: inviteUpdateError } = await supabase
+            .from('invitations')
+            .update({ status: 'accepted' })
+            .eq('id', inviteData.id);
+          
+          if (inviteUpdateError) {
+            console.error('Error updating invitation status:', inviteUpdateError);
+            // We don't throw here to avoid breaking the login flow if the profile was already created
+          }
           
           toast.success('Bem-vindo! Você foi vinculado à sua igreja.');
         } else {
