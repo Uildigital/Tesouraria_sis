@@ -127,16 +127,19 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
           <label className="mb-1 block text-xs font-medium text-zinc-500 uppercase">Tipo</label>
           <select 
             value={type}
-            disabled={!canEdit}
+            disabled={!canEdit || !!editingCategory}
             onChange={(e) => {
               setType(e.target.value as TransactionType);
               setParentId('');
             }}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none disabled:opacity-50"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none disabled:opacity-50 disabled:bg-zinc-100"
           >
             <option value="income">Receita</option>
             <option value="expense">Despesa</option>
           </select>
+          {editingCategory && (
+            <p className="mt-1 text-[10px] text-zinc-400 italic">O tipo não pode ser alterado após a criação.</p>
+          )}
         </div>
 
         <div>

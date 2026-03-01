@@ -21,6 +21,7 @@ export interface Category {
   type: TransactionType;
   organization_id: string;
   parent_id?: string | null;
+  is_default?: boolean;
 }
 
 export interface Department {

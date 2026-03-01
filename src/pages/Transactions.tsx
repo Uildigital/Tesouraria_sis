@@ -54,9 +54,6 @@ export const Transactions: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [file, setFile] = useState<File | null>(null);
   
-  // Hierarchical category state
-  const [selectedParentId, setSelectedParentId] = useState<string>('');
-  
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -92,33 +89,24 @@ export const Transactions: React.FC = () => {
     try {
       const suggestedId = await aiService.suggestCategory(description, categories);
       if (suggestedId) {
-        // Find if it's a subcategory and set parent
-        const cat = categories.find(c => c.id === suggestedId);
-        if (cat?.parent_id) {
-          setSelectedParentId(cat.parent_id);
-          // Small delay to allow subcategories to filter
-          setTimeout(() => setValue('category_id', suggestedId), 100);
-        } else {
-          setSelectedParentId(suggestedId);
-        }
+        setValue('category_id', suggestedId);
       }
     } finally {
       setIsSuggesting(false);
     }
   };
 
-  // Reset subcategory when type or parent changes
+  // Reset subcategory when type changes
   useEffect(() => {
-    setSelectedParentId('');
     setValue('category_id', '');
   }, [selectedType, setValue]);
 
-  useEffect(() => {
-    setValue('category_id', '');
-  }, [selectedParentId, setValue]);
-
-  const parentCategories = categories.filter(c => !c.parent_id && c.type === selectedType);
-  const subcategories = categories.filter(c => c.parent_id === selectedParentId);
+  const groupedCategories = categories
+    .filter(c => !c.parent_id && c.type === selectedType)
+    .map(parent => ({
+      ...parent,
+      children: categories.filter(c => c.parent_id === parent.id)
+    }));
 
   useEffect(() => {
     if (organization) {
@@ -167,16 +155,7 @@ export const Transactions: React.FC = () => {
     setValue('date', transaction.date);
     setValue('type', transaction.type);
     setValue('department_id', transaction.department_id || '');
-    
-    // Set hierarchical category
-    if (transaction.category?.parent_id) {
-      setSelectedParentId(transaction.category.parent_id);
-      // Small delay to allow subcategories to filter
-      setTimeout(() => setValue('category_id', transaction.category_id), 100);
-    } else {
-      setSelectedParentId(transaction.category_id);
-      setValue('category_id', transaction.category_id);
-    }
+    setValue('category_id', transaction.category_id);
     
     setShowModal(true);
   };
@@ -601,27 +580,20 @@ export const Transactions: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Categoria Pai</label>
-                <select 
-                  value={selectedParentId}
-                  onChange={(e) => setSelectedParentId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                >
-                  <option value="">Selecione...</option>
-                  {parentCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Subcategoria</label>
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Categoria</label>
                 <select 
                   {...register('category_id')}
-                  disabled={!selectedParentId}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-50"
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                 >
-                  <option value="">Selecione...</option>
-                  {subcategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">Selecione uma subcategoria...</option>
+                  {groupedCategories.map(parent => (
+                    <optgroup key={parent.id} label={parent.name}>
+                      {parent.children.map(child => (
+                        <option key={child.id} value={child.id}>{child.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
                 {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p>}
               </div>
