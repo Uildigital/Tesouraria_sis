@@ -208,50 +208,72 @@ export const Users: React.FC = () => {
                 Usuários Ativos
               </h3>
             </div>
-            <div className="divide-y divide-zinc-100">
-              {loading ? (
-                <div className="p-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-zinc-300" /></div>
-              ) : users.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-6 hover:bg-zinc-50/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-zinc-100 flex items-center justify-center text-lg font-bold text-zinc-400">
-                      {u.full_name?.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-zinc-900">{u.full_name}</p>
-                        {!u.is_active && (
-                          <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 border border-amber-100">Inativo</span>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-zinc-50 text-xs font-semibold uppercase text-zinc-500">
+                  <tr>
+                    <th className="px-6 py-4">Usuário</th>
+                    <th className="px-6 py-4">Cargo</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-12 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-zinc-300" />
+                      </td>
+                    </tr>
+                  ) : users.map((u) => (
+                    <tr key={u.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-xl bg-zinc-100 flex items-center justify-center text-sm font-bold text-zinc-400">
+                            {u.full_name?.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-zinc-900">{u.full_name}</p>
+                              {!u.is_active && (
+                                <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 border border-amber-100">Inativo</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-zinc-500">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getRoleBadge(u.role)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {isAdmin && u.id !== profile?.id && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => toggleUserStatus(u.id, u.is_active)}
+                              className={cn(
+                                "p-2 rounded-xl transition-all",
+                                u.is_active 
+                                  ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
+                                  : "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                              )}
+                              title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
+                            >
+                              {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
+                            </button>
+                            <button 
+                              onClick={() => removeUser(u.id)}
+                              className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                              title="Remover Permanentemente"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                          </div>
                         )}
-                      </div>
-                      <div className="mt-1">{getRoleBadge(u.role)}</div>
-                    </div>
-                  </div>
-                  {isAdmin && u.id !== profile?.id && (
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => toggleUserStatus(u.id, u.is_active)}
-                        className={cn(
-                          "p-2 rounded-xl transition-all",
-                          u.is_active 
-                            ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
-                            : "text-amber-600 bg-amber-50 hover:bg-amber-100"
-                        )}
-                        title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
-                      >
-                        {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
-                      </button>
-                      <button 
-                        onClick={() => removeUser(u.id)}
-                        className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                        title="Remover Permanentemente"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
