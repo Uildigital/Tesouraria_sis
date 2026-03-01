@@ -93,21 +93,17 @@ export const Login: React.FC = () => {
               organization_id: inviteData.organization_id,
               role: inviteData.role,
               full_name: normalizedEmail.split('@')[0],
-              email: normalizedEmail
+              email: normalizedEmail,
+              is_active: true
             }]);
           
           if (profileError) throw profileError;
 
-          // Mark the invitation as accepted
-          const { error: inviteUpdateError } = await supabase
+          // Mark the invitation as accepted immediately
+          await supabase
             .from('invitations')
             .update({ status: 'accepted' })
             .eq('id', inviteData.id);
-          
-          if (inviteUpdateError) {
-            console.error('Error updating invitation status:', inviteUpdateError);
-            // We don't throw here to avoid breaking the login flow if the profile was already created
-          }
           
           toast.success('Bem-vindo! Você foi vinculado à sua igreja.');
         } else {
