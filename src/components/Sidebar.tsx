@@ -7,7 +7,8 @@ import {
   Settings, 
   LogOut,
   Church,
-  X
+  X,
+  Users as UsersIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
@@ -25,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: 'Dashboard', href: `/${slug}/dashboard`, icon: LayoutDashboard },
     { name: 'Lançamentos', href: `/${slug}/lancamentos`, icon: ArrowLeftRight },
     { name: 'Relatórios', href: `/${slug}/relatorios`, icon: FileText },
+    { name: 'Equipe', href: `/${slug}/equipe`, icon: UsersIcon },
     { name: 'Configurações', href: `/${slug}/configuracoes`, icon: Settings },
   ];
 

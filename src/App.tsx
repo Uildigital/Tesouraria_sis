@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Transactions } from './pages/Transactions';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Users } from './pages/Users';
 import { Setup } from './pages/Setup';
 import { Toaster } from 'sonner';
 
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="lancamentos" element={<Transactions />} />
               <Route path="relatorios" element={<Reports />} />
+              <Route path="equipe" element={<Users />} />
               <Route path="configuracoes" element={<Settings />} />
             </Route>
           </Route>
