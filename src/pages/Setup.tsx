@@ -19,30 +19,21 @@ export const Setup: React.FC = () => {
     try {
       const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
       
-      // 1. Create Organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert([{ name, slug }])
-        .select()
-        .single();
+      // Use the atomic RPC function instead of multiple manual inserts
+      const { error: rpcError } = await supabase.rpc('create_new_church', {
+        church_name: name,
+        church_slug: slug,
+        user_id: user.id,
+        user_email: user.email
+      });
 
-      if (orgError) throw orgError;
-
-      // 2. Create Profile as Admin
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: user.id,
-          organization_id: org.id,
-          role: 'admin',
-          full_name: user.email?.split('@')[0] || 'Admin'
-        }]);
-
-      if (profileError) throw profileError;
+      if (rpcError) throw rpcError;
 
       toast.success('Igreja configurada com sucesso!');
+      // Force a reload to refresh all contexts with the new data
       window.location.href = `/${slug}/dashboard`;
     } catch (error: any) {
+      console.error('Setup error:', error);
       toast.error('Erro ao configurar: ' + error.message);
     } finally {
       setLoading(false);
