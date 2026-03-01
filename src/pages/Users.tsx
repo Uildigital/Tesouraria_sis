@@ -118,6 +118,9 @@ export const Users: React.FC = () => {
     const action = currentStatus ? 'desativar' : 'ativar';
     if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
     
+    // Optimistic update
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -126,8 +129,12 @@ export const Users: React.FC = () => {
         
       if (error) throw error;
       toast.success(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso`);
+      // No need to call fetchData() as we already updated optimistically, 
+      // but we can call it to be sure
       fetchData();
     } catch (error: any) {
+      // Rollback on error
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: currentStatus } : u));
       toast.error('Erro ao alterar status: ' + error.message);
     }
   };
@@ -166,7 +173,10 @@ export const Users: React.FC = () => {
     window.location.href = `mailto:${inv.email}?subject=${subject}&body=${body}`;
   };
 
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (role: string, isActive: boolean = true) => {
+    if (!isActive) {
+      return <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border border-zinc-200"><UserX size={12} /> Inativo</span>;
+    }
     switch (role) {
       case 'admin':
         return <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"><ShieldCheck size={12} /> Administrador</span>;
@@ -243,7 +253,7 @@ export const Users: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {getRoleBadge(u.role)}
+                        {getRoleBadge(u.role, u.is_active)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         {isAdmin ? (
@@ -301,7 +311,7 @@ export const Users: React.FC = () => {
                       <div>
                         <p className="font-bold text-zinc-900">{inv.email}</p>
                         <div className="mt-1 flex items-center gap-3">
-                          {getRoleBadge(inv.role)}
+                          {getRoleBadge(inv.role, true)}
                           <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Pendente</span>
                         </div>
                         <div className="mt-3 flex items-center gap-2">
