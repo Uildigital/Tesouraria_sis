@@ -9,6 +9,7 @@ export const Login: React.FC = () => {
   const { session, organization } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [churchName, setChurchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
@@ -30,10 +31,45 @@ export const Login: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        toast.success('Conta criada! Verifique seu email ou faça login.');
-        setIsSignUp(false);
+        if (!churchName) {
+          toast.error('Por favor, informe o nome da igreja.');
+          setLoading(false);
+          return;
+        }
+
+        // 1. Sign Up
+        const { data: authData, error: authError } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              church_name: churchName
+            }
+          }
+        });
+        
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('Erro ao criar usuário');
+
+        // 2. Create Organization and Profile in a single atomic transaction via RPC
+        const slug = churchName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        const { error: rpcError } = await supabase.rpc('create_new_church', {
+          church_name: churchName,
+          church_slug: slug,
+          user_id: authData.user.id,
+          user_email: email
+        });
+
+        if (rpcError) {
+          console.error('RPC error:', rpcError);
+          // If RPC fails, the user is created but has no church. 
+          // We redirect to setup as a fallback.
+          navigate('/setup');
+          return;
+        }
+
+        toast.success('Igreja cadastrada com sucesso! Faça login para ativar seu acesso.');
+        setIsSignUp(false); // Force re-login to refresh the JWT token with the new org_id
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -78,6 +114,23 @@ export const Login: React.FC = () => {
                 />
               </div>
             </div>
+
+            {isSignUp && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Nome da Igreja</label>
+                <div className="relative">
+                  <Church className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    required={isSignUp}
+                    value={churchName}
+                    onChange={(e) => setChurchName(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                    placeholder="Ex: Igreja Central"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Senha</label>
