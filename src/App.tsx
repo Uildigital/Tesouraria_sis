@@ -8,7 +8,6 @@ import { Transactions } from './pages/Transactions';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
-import { Setup } from './pages/Setup';
 import { Toaster } from 'sonner';
 
 export default function App() {
@@ -20,7 +19,6 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           
           <Route element={<ProtectedRoute />}>
-            <Route path="/setup" element={<Setup />} />
             <Route path="/:slug" element={<Layout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />

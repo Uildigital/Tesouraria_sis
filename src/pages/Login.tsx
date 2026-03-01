@@ -16,14 +16,12 @@ export const Login: React.FC = () => {
 
   // Se já estiver logado, redireciona para fora da tela de login
   React.useEffect(() => {
-    if (session) {
+    if (!loading && session) {
       if (organization) {
         navigate(`/${organization.slug}/dashboard`);
-      } else {
-        navigate('/setup');
       }
     }
-  }, [session, organization, navigate]);
+  }, [session, organization, loading, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +60,7 @@ export const Login: React.FC = () => {
 
         if (rpcError) {
           console.error('RPC error:', rpcError);
-          navigate('/setup');
+          toast.error('Erro ao criar igreja. Por favor, tente novamente.');
           return;
         }
 
