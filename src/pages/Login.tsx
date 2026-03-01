@@ -52,16 +52,22 @@ export const Login: React.FC = () => {
         // 1. Check for invitation
         let inviteData = null;
         if (isInvited || inviteId) {
-          const { data, error: inviteError } = await supabase
+          const query = supabase
             .from('invitations')
             .select('*')
-            .eq('id', inviteId || '')
-            .eq('status', 'pending')
-            .maybeSingle();
+            .eq('status', 'pending');
+          
+          if (inviteId) {
+            query.eq('id', inviteId);
+          } else {
+            query.eq('email', normalizedEmail);
+          }
+
+          const { data, error: inviteError } = await query.maybeSingle();
           
           if (inviteError) throw inviteError;
           if (!data) {
-            throw new Error('Convite inválido ou expirado. Verifique com seu Administrador.');
+            throw new Error('Nenhum convite pendente encontrado para este e-mail. Verifique com seu Administrador.');
           }
           inviteData = data;
         } else if (!churchName) {
