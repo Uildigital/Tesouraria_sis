@@ -1,84 +1,65 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import { Profile, Organization } from '../types';
+import { Profile } from '../types';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  session: any | null;
+  user: any | null;
   profile: Profile | null;
-  organization: Organization | null;
   loading: boolean;
   canEdit: boolean;
   signOut: () => Promise<void>;
+  signIn: (user: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = profile?.is_active && (profile?.role === 'admin' || profile?.role === 'treasurer');
+  const canEdit = profile?.role === 'admin' || profile?.role === 'treasurer';
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setLoading(false);
-    }).catch(err => {
-      console.error('Auth session error:', err);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else {
-        setProfile(null);
-        setOrganization(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    const savedUser = localStorage.getItem('church_user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setSession({ user: userData });
+      setUser(userData);
+      setProfile({
+        id: userData.id,
+        email: userData.email,
+        full_name: userData.full_name,
+        role: userData.role,
+        is_active: true
+      } as Profile);
+    }
+    setLoading(false);
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, organizations(*)')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      if (profileData) {
-        setProfile(profileData);
-        setOrganization(profileData.organizations);
-      } else {
-        setProfile(null);
-        setOrganization(null);
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
+  const signIn = (userData: any) => {
+    localStorage.setItem('church_user', JSON.stringify(userData));
+    setSession({ user: userData });
+    setUser(userData);
+    setProfile({
+      id: userData.id,
+      email: userData.email,
+      full_name: userData.full_name,
+      role: userData.role,
+      is_active: true
+    } as Profile);
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('church_user');
+    setSession(null);
+    setUser(null);
+    setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, organization, loading, canEdit, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, canEdit, signOut, signIn }}>
       {children}
     </AuthContext.Provider>
   );

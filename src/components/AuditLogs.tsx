@@ -1,43 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, cn } from '../lib/utils';
 import { History, User, Activity, Loader2 } from 'lucide-react';
 
 export const AuditLogs: React.FC = () => {
-  const { organization } = useAuth();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (organization) {
-      fetchLogs();
-    }
-  }, [organization]);
+    fetchLogs();
+  }, []);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // In a real app, you'd have an 'audit_logs' table. 
-      // For this demo, we'll simulate it or use a metadata field if available.
-      // Let's assume we have a table 'audit_logs' (id, organization_id, user_email, action, details, created_at)
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('organization_id', organization?.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error && error.code !== 'PGRST116') {
-        // If table doesn't exist, we'll show a mock for the premium feel
-        setLogs([
-          { id: 1, user_email: 'tesoureiro@igreja.org', action: 'Criou Lançamento', details: 'Oferta de Domingo - R$ 1.200,00', created_at: new Date().toISOString() },
-          { id: 2, user_email: 'pastor@igreja.org', action: 'Visualizou Relatório', details: 'Balancete de Janeiro', created_at: new Date(Date.now() - 3600000).toISOString() },
-          { id: 3, user_email: 'admin@igreja.org', action: 'Alterou Configuração', details: 'Nome da Organização', created_at: new Date(Date.now() - 86400000).toISOString() },
-        ]);
-      } else {
-        setLogs(data || []);
-      }
+      // Mock logs for now as we don't have an audit_logs sheet yet
+      setLogs([
+        { id: 1, user_email: 'tesoureiro@igreja.org', action: 'Criou Lançamento', details: 'Oferta de Domingo - R$ 1.200,00', created_at: new Date().toISOString() },
+        { id: 2, user_email: 'pastor@igreja.org', action: 'Visualizou Relatório', details: 'Balancete de Janeiro', created_at: new Date(Date.now() - 3600000).toISOString() },
+        { id: 3, user_email: 'admin@igreja.org', action: 'Alterou Configuração', details: 'Nome da Organização', created_at: new Date(Date.now() - 86400000).toISOString() },
+      ]);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {

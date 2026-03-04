@@ -1,27 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/apiService';
 import { Category, TransactionType } from '../types';
 import { toast } from 'sonner';
 
-export const useCategories = (organizationId?: string) => {
+export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCategories = useCallback(async (isSilent = false) => {
-    if (!organizationId) return;
     if (!isSilent) setIsLoading(true);
     try {
-      // Add a timestamp to bypass any potential browser caching
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('name');
-
-      if (error) throw error;
-      
-      console.log(`Fetched ${data?.length || 0} categories for org ${organizationId}`);
+      const data = await apiService.getCategories();
       setCategories(data || []);
     } catch (error: any) {
       console.error('Error fetching categories:', error);
@@ -29,7 +19,7 @@ export const useCategories = (organizationId?: string) => {
     } finally {
       if (!isSilent) setIsLoading(false);
     }
-  }, [organizationId]);
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -41,151 +31,43 @@ export const useCategories = (organizationId?: string) => {
     type: TransactionType;
     parent_id: string | null;
   }) => {
-    if (!organizationId) {
-      toast.error('Sessão inválida. Recarregue a página.');
-      return false;
-    }
-    
     setIsSubmitting(true);
     try {
-      // Explicitly handle the parent_id to ensure it's either a UUID or NULL
-      const targetParentId = (data.parent_id && data.parent_id.trim() !== "") ? data.parent_id : null;
+      const result = await apiService.createCategory(data);
       
-      let result;
-      if (data.id) {
-        // UPDATE
-        result = await supabase
-          .from('categories')
-          .update({
-            name: data.name.trim(),
-            type: data.type,
-            parent_id: targetParentId,
-          })
-          .eq('id', data.id)
-          .eq('organization_id', organizationId)
-          .select(); // Request data back to verify update
-      } else {
-        // INSERT
-        result = await supabase
-          .from('categories')
-          .insert([{
-            name: data.name.trim(),
-            type: data.type,
-            parent_id: targetParentId,
-            organization_id: organizationId
-          }])
-          .select();
-      }
+      if (!result.success) throw new Error('Erro ao salvar');
       
-      if (result.error) throw result.error;
-      
-      // Check if any rows were actually affected
-      if (!result.data || result.data.length === 0) {
-        throw new Error('Nenhuma alteração foi feita. Verifique suas permissões no Supabase (RLS).');
-      }
-
       toast.success(data.id ? 'Alterações salvas!' : 'Categoria criada!');
-      
-      // Small delay to ensure DB consistency before re-fetching
-      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchCategories(true);
       return true;
     } catch (error: any) {
-      console.error('Save error:', error);
       toast.error('Erro ao salvar: ' + error.message);
       return false;
     } finally {
       setIsSubmitting(false);
     }
-  }, [organizationId, fetchCategories]);
+  }, [fetchCategories]);
 
   const deleteCategory = useCallback(async (id: string) => {
-    if (!organizationId) return false;
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id)
-        .eq('organization_id', organizationId)
-        .select(); // Request data back to verify deletion
-
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
-        throw new Error('Não foi possível excluir. O item pode não existir ou você não tem permissão (RLS).');
-      }
-      
-      toast.success('Excluído com sucesso!');
-      
-      // Small delay to ensure DB consistency before re-fetching
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await fetchCategories(true);
-      return true;
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      toast.error('Erro ao excluir: ' + error.message);
-      return false;
-    }
-  }, [organizationId, fetchCategories]);
+    toast.info('Exclusão não implementada para Google Sheets ainda.');
+    return false;
+  }, []);
 
   const clearAll = useCallback(async () => {
-    if (!organizationId) return;
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('organization_id', organizationId);
-
-      if (error) throw error;
-      toast.success('Todas as categorias foram removidas.');
-      await fetchCategories();
-    } catch (error: any) {
-      toast.error('Erro ao limpar: ' + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [organizationId, fetchCategories]);
+    toast.info('Limpeza não implementada para Google Sheets ainda.');
+  }, []);
 
   const importPremium = useCallback(async (structure: any[]) => {
-    if (!organizationId) return;
     setIsSubmitting(true);
     try {
-      // 1. Batch insert parents
-      const parentsToInsert = structure.map(item => ({
-        name: item.name,
-        type: item.type,
-        organization_id: organizationId
-      }));
-
-      const { data: insertedParents, error: pError } = await supabase
-        .from('categories')
-        .insert(parentsToInsert)
-        .select();
-
-      if (pError) throw pError;
-
-      // 2. Batch insert children
-      const subsToInsert: any[] = [];
-      insertedParents?.forEach(parent => {
-        const originalItem = structure.find(s => s.name === parent.name);
-        if (originalItem && originalItem.sub.length > 0) {
-          originalItem.sub.forEach((subName: string) => {
-            subsToInsert.push({
-              name: subName,
-              type: parent.type,
-              parent_id: parent.id,
-              organization_id: organizationId
-            });
-          });
+      for (const item of structure) {
+        const res = await apiService.createCategory({ name: item.name, type: item.type });
+        if (res.success && item.sub.length > 0) {
+          for (const subName of item.sub) {
+            await apiService.createCategory({ name: subName, type: item.type, parent_id: res.id });
+          }
         }
-      });
-
-      if (subsToInsert.length > 0) {
-        const { error: sError } = await supabase.from('categories').insert(subsToInsert);
-        if (sError) throw sError;
       }
-
       await fetchCategories();
       toast.success('Plano de Contas importado!');
     } catch (error: any) {
@@ -193,7 +75,7 @@ export const useCategories = (organizationId?: string) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [organizationId, fetchCategories]);
+  }, [fetchCategories]);
 
   return {
     categories,

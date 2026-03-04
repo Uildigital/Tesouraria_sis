@@ -15,11 +15,11 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { Profile } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { apiService } from '../services/apiService';
 
 interface Invitation {
   id: string;
@@ -29,7 +29,7 @@ interface Invitation {
 }
 
 export const Users: React.FC = () => {
-  const { organization, profile } = useAuth();
+  const { profile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,28 +43,17 @@ export const Users: React.FC = () => {
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
-    if (organization) {
-      fetchData();
-    }
-  }, [organization]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [profilesRes, invitesRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('organization_id', organization?.id),
-        supabase
-          .from('invitations')
-          .select('*')
-          .eq('organization_id', organization?.id)
-          .eq('status', 'pending')
-      ]);
-
-      if (profilesRes.data) setUsers(profilesRes.data);
-      if (invitesRes.data) setInvitations(invitesRes.data);
+      // For now, we don't have a list users endpoint that returns all users from Sheets
+      // but we can simulate it or just show a message.
+      // In a real scenario, we'd add an endpoint to server.ts to list users.
+      setUsers([]);
+      setInvitations([]);
     } catch (error: any) {
       toast.error('Erro ao carregar equipe');
     } finally {
@@ -74,80 +63,19 @@ export const Users: React.FC = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
-    setIsSubmitting(true);
-
-    try {
-      const { error } = await supabase
-        .from('invitations')
-        .insert([{
-          organization_id: organization?.id,
-          email,
-          role
-        }]);
-
-      if (error) {
-        if (error.code === '23505') throw new Error('Já existe um convite pendente para este email.');
-        throw error;
-      }
-
-      toast.success('Convite enviado! O usuário deve se cadastrar com este email.');
-      setShowModal(false);
-      setEmail('');
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast.info('Convites desativados temporariamente na migração para Google Sheets.');
   };
 
   const removeUser = async (userId: string) => {
-    if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) return;
-    try {
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
-      if (error) throw error;
-      toast.success('Usuário removido');
-      fetchData();
-    } catch (error: any) {
-      toast.error('Erro ao remover: ' + error.message);
-    }
+    toast.info('Remoção de usuários não disponível via interface no momento.');
   };
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    const action = currentStatus ? 'desativar' : 'ativar';
-    if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
-    
-    // Optimistic update
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
-        
-      if (error) throw error;
-      toast.success(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso`);
-      // No need to call fetchData() as we already updated optimistically, 
-      // but we can call it to be sure
-      fetchData();
-    } catch (error: any) {
-      // Rollback on error
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: currentStatus } : u));
-      toast.error('Erro ao alterar status: ' + error.message);
-    }
+    toast.info('Alteração de status não disponível via interface no momento.');
   };
 
   const cancelInvitation = async (id: string) => {
-    try {
-      const { error } = await supabase.from('invitations').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Convite cancelado');
-      fetchData();
-    } catch (error: any) {
-      toast.error('Erro ao cancelar');
-    }
+    toast.info('Cancelamento de convites não disponível no momento.');
   };
 
   const getInvitationLink = (inv: Invitation) => {
@@ -162,14 +90,14 @@ export const Users: React.FC = () => {
 
   const shareWhatsApp = (inv: Invitation) => {
     const link = getInvitationLink(inv);
-    const text = encodeURIComponent(`Olá! Você foi convidado para a equipe da ${organization?.name} no ChurchFinance.\n\nClique no link abaixo para ativar sua conta:\n${link}`);
+    const text = encodeURIComponent(`Olá! Você foi convidado para a equipe da Igreja no ChurchFinance.\n\nClique no link abaixo para ativar sua conta:\n${link}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const shareEmail = (inv: Invitation) => {
     const link = getInvitationLink(inv);
-    const subject = encodeURIComponent(`Convite: Equipe ${organization?.name}`);
-    const body = encodeURIComponent(`Olá!\n\nVocê foi convidado para participar da gestão financeira da ${organization?.name}.\n\nPara ativar seu acesso como ${inv.role === 'admin' ? 'Administrador' : inv.role === 'treasurer' ? 'Tesoureiro' : 'Conferente'}, clique no link abaixo:\n\n${link}`);
+    const subject = encodeURIComponent(`Convite: Equipe Igreja`);
+    const body = encodeURIComponent(`Olá!\n\nVocê foi convidado para participar da gestão financeira da Igreja.\n\nPara ativar seu acesso como ${inv.role === 'admin' ? 'Administrador' : inv.role === 'treasurer' ? 'Tesoureiro' : 'Conferente'}, clique no link abaixo:\n\n${link}`);
     window.location.href = `mailto:${inv.email}?subject=${subject}&body=${body}`;
   };
 

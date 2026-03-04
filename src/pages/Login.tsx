@@ -1,45 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/apiService';
 import { Church, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { cn } from '../lib/utils';
 
 export const Login: React.FC = () => {
-  const { session, organization } = useAuth();
+  const { session, signIn } = useAuth();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [churchName, setChurchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isInvited, setIsInvited] = useState(false);
-  const [inviteId, setInviteId] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
   const navigate = useNavigate();
-
-  // Handle invitation from URL
-  useEffect(() => {
-    const invite = searchParams.get('invite');
-    const emailParam = searchParams.get('email');
-    
-    if (invite && emailParam) {
-      setInviteId(invite);
-      setEmail(emailParam);
-      setIsSignUp(true);
-      setIsInvited(true);
-    }
-  }, [searchParams]);
 
   // Se já estiver logado, redireciona para fora da tela de login
   useEffect(() => {
     if (!loading && session) {
-      if (organization) {
-        navigate(`/${organization.slug}/dashboard`);
-      }
+      navigate('/');
     }
-  }, [session, organization, loading, navigate]);
+  }, [session, loading, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,91 +29,30 @@ export const Login: React.FC = () => {
     try {
       if (isSignUp) {
         const normalizedEmail = email.toLowerCase().trim();
-
-        // 1. Check for invitation
-        let inviteData = null;
-        if (isInvited || inviteId) {
-          const query = supabase
-            .from('invitations')
-            .select('*')
-            .eq('status', 'pending');
-          
-          if (inviteId) {
-            query.eq('id', inviteId);
-          } else {
-            query.eq('email', normalizedEmail);
-          }
-
-          const { data, error: inviteError } = await query.maybeSingle();
-          
-          if (inviteError) throw inviteError;
-          if (!data) {
-            throw new Error('Nenhum convite pendente encontrado para este e-mail. Verifique com seu Administrador.');
-          }
-          inviteData = data;
-        } else if (!churchName) {
-          throw new Error('Por favor, informe o nome da igreja para criar sua conta.');
-        }
-
-        // 2. Sign Up
-        const { data: authData, error: authError } = await supabase.auth.signUp({ 
-          email: normalizedEmail, 
+        const res = await apiService.signup({
+          email: normalizedEmail,
           password,
+          full_name: normalizedEmail.split('@')[0],
+          role: 'admin'
         });
         
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('Erro ao criar usuário');
-
-        // 3. Handle Linking (Invited vs New Owner)
-        if (inviteData) {
-          // Link to existing church
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: authData.user.id,
-              organization_id: inviteData.organization_id,
-              role: inviteData.role,
-              full_name: normalizedEmail.split('@')[0],
-              email: normalizedEmail,
-              is_active: true
-            }]);
-          
-          if (profileError) throw profileError;
-
-          // Mark the invitation as accepted immediately
-          await supabase
-            .from('invitations')
-            .update({ status: 'accepted' })
-            .eq('id', inviteData.id);
-          
-          toast.success('Bem-vindo! Você foi vinculado à sua igreja.');
-        } else {
-          // Create new church (SaaS flow)
-          const slug = churchName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-          const { error: rpcError } = await supabase.rpc('create_new_church', {
-            church_name: churchName,
-            church_slug: slug,
-            user_id: authData.user.id,
-            user_email: normalizedEmail
-          });
-
-          if (rpcError) throw rpcError;
-          toast.success('Igreja cadastrada com sucesso!');
+        if (res.success) {
+          toast.success('Conta criada com sucesso!');
+          signIn(res.user);
+          navigate('/');
         }
-        
-        // Auto-login
-        await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success('Login realizado com sucesso!');
-        navigate('/'); // Redireciona para a raiz, onde o ProtectedRoute decidirá o destino
+        const res = await apiService.login({ email, password });
+        if (res.success) {
+          toast.success('Login realizado com sucesso!');
+          signIn(res.user);
+          navigate('/');
+        }
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      setFormKey(prev => prev + 1); // Force form reset on error
+      setFormKey(prev => prev + 1);
       const errorMessage = err.message || 'Erro na autenticação';
-      alert(`Erro: ${errorMessage}`);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -167,7 +87,6 @@ export const Login: React.FC = () => {
                 <input
                   type="email"
                   required
-                  disabled={isInvited}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 disabled:opacity-60"
@@ -176,21 +95,12 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
-            {isSignUp && !isInvited && (
+            {isSignUp && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4">
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Nome da Igreja</label>
-                  <div className="relative">
-                    <Church className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      type="text"
-                      required={!isInvited}
-                      value={churchName}
-                      onChange={(e) => setChurchName(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                      placeholder="Ex: Igreja Central"
-                    />
-                  </div>
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <strong>Atenção:</strong> Se você não foi convidado, sua conta será criada como Administrador.
+                  </p>
                 </div>
               </div>
             )}
@@ -217,7 +127,7 @@ export const Login: React.FC = () => {
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                 <>
-                  {isSignUp ? (isInvited ? 'Ativar Minha Conta' : 'Criar Conta') : 'Entrar'}
+                  {isSignUp ? 'Criar Conta' : 'Entrar'}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
@@ -230,7 +140,7 @@ export const Login: React.FC = () => {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm font-bold text-emerald-600 hover:text-emerald-700"
             >
-              {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Não tem uma conta? Cadastre sua igreja'}
+              {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Não tem uma conta? Cadastre-se'}
             </button>
           </div>
         </div>

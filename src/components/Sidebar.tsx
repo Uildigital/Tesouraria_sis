@@ -19,15 +19,14 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { slug } = useParams();
-  const { organization, signOut, profile } = useAuth();
+  const { signOut, profile } = useAuth();
 
   const navItems = [
-    { name: 'Dashboard', href: `/${slug}/dashboard`, icon: LayoutDashboard },
-    { name: 'Lançamentos', href: `/${slug}/lancamentos`, icon: ArrowLeftRight },
-    { name: 'Relatórios', href: `/${slug}/relatorios`, icon: FileText },
-    { name: 'Equipe', href: `/${slug}/equipe`, icon: UsersIcon },
-    { name: 'Configurações', href: `/${slug}/configuracoes`, icon: Settings },
+    { name: 'Dashboard', href: `/dashboard`, icon: LayoutDashboard },
+    { name: 'Lançamentos', href: `/lancamentos`, icon: ArrowLeftRight },
+    { name: 'Relatórios', href: `/relatorios`, icon: FileText },
+    { name: 'Equipe', href: `/equipe`, icon: UsersIcon },
+    { name: 'Configurações', href: `/configuracoes`, icon: Settings },
   ];
 
   return (
@@ -52,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
               <div className="ml-3">
                 <h1 className="text-lg font-bold tracking-tight text-zinc-900">ChurchFinance</h1>
-                <p className="text-xs text-zinc-500">{organization?.name || 'Carregando...'}</p>
+                <p className="text-xs text-zinc-500">Gestão Interna</p>
               </div>
             </div>
             <button onClick={onClose} className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 lg:hidden">

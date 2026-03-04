@@ -1,33 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { Department } from '../types';
 import { Plus, Trash2, Loader2, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const DepartmentManager: React.FC = () => {
-  const { organization, canEdit } = useAuth();
+  const { canEdit } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
 
   useEffect(() => {
-    if (organization) {
-      fetchDepartments();
-    }
-  }, [organization]);
+    fetchDepartments();
+  }, []);
 
   const fetchDepartments = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*')
-        .eq('organization_id', organization?.id)
-        .order('name');
-
-      if (error) throw error;
+      const data = await apiService.getDepartments();
       setDepartments(data || []);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -38,18 +30,12 @@ export const DepartmentManager: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!organization || !name) return;
+    if (!name) return;
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('departments')
-        .insert([{
-          name,
-          organization_id: organization.id
-        }]);
-
-      if (error) throw error;
+      const res = await apiService.createDepartment({ name });
+      if (!res.success) throw new Error('Erro ao salvar');
 
       setName('');
       fetchDepartments();
@@ -62,20 +48,7 @@ export const DepartmentManager: React.FC = () => {
   };
 
   const deleteDepartment = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este departamento?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('departments')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchDepartments();
-      toast.success('Departamento excluído com sucesso!');
-    } catch (error: any) {
-      toast.error('Erro ao excluir: ' + error.message);
-    }
+    toast.info('Exclusão não implementada para Google Sheets ainda.');
   };
 
   return (

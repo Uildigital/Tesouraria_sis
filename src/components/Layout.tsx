@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { organization } = useAuth();
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -20,7 +19,7 @@ export const Layout: React.FC = () => {
               <Church size={18} />
             </div>
             <span className="ml-2 text-sm font-bold text-zinc-900 truncate max-w-[150px]">
-              {organization?.name || 'ChurchFinance'}
+              ChurchFinance
             </span>
           </div>
           <button 

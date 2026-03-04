@@ -19,13 +19,13 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           
           <Route element={<ProtectedRoute />}>
-            <Route path="/:slug" element={<Layout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="lancamentos" element={<Transactions />} />
-              <Route path="relatorios" element={<Reports />} />
-              <Route path="equipe" element={<Users />} />
-              <Route path="configuracoes" element={<Settings />} />
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/lancamentos" element={<Transactions />} />
+              <Route path="/relatorios" element={<Reports />} />
+              <Route path="/equipe" element={<Users />} />
+              <Route path="/configuracoes" element={<Settings />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Route>
 

@@ -22,11 +22,10 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { Transaction, Category, Department } from '../types';
-import { n8nService } from '../services/n8nService';
 import { aiService } from '../services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -43,7 +42,7 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 export const Transactions: React.FC = () => {
-  const { organization, profile, canEdit } = useAuth();
+  const { profile, canEdit } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -69,15 +68,7 @@ export const Transactions: React.FC = () => {
   });
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este lançamento?')) return;
-    try {
-      const { error } = await supabase.from('transactions').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Lançamento excluído com sucesso!');
-      fetchData();
-    } catch (error: any) {
-      toast.error('Erro ao excluir: ' + error.message);
-    }
+    toast.info('Exclusão não implementada para Google Sheets ainda.');
   };
 
   const selectedType = watch('type');
@@ -109,40 +100,24 @@ export const Transactions: React.FC = () => {
     }));
 
   useEffect(() => {
-    if (organization) {
-      fetchData();
-    }
-  }, [organization]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [transRes, catRes, depRes] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select('*, categories(*), departments(*)')
-          .eq('organization_id', organization?.id)
-          .order('date', { ascending: false }),
-        supabase
-          .from('categories')
-          .select('*')
-          .eq('organization_id', organization?.id),
-        supabase
-          .from('departments')
-          .select('*')
-          .eq('organization_id', organization?.id)
+        apiService.getTransactions(),
+        apiService.getCategories(),
+        apiService.getDepartments()
       ]);
 
-      if (transRes.data) setTransactions(transRes.data);
-      if (catRes.data) setCategories(catRes.data);
-      if (depRes.data) setDepartments(depRes.data);
-
-      if (transRes.error) throw transRes.error;
+      setTransactions(transRes || []);
+      setCategories(catRes || []);
+      setDepartments(depRes || []);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      if (error.message?.includes('relation "transactions" does not exist')) {
-        toast.error('As tabelas ainda não foram criadas no Supabase. Verifique o SQL Editor.');
-      }
+      toast.error('Erro ao carregar dados: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -161,25 +136,12 @@ export const Transactions: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${organization?.id}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    toast.info('Upload de arquivos não disponível para Google Sheets.');
+    return '';
   };
 
   const handleAuthError = (error: any) => {
-    if (!organization || !profile) {
+    if (!profile) {
       toast.error('Sessão inválida ou perfil não encontrado. Por favor, faça login novamente.');
       return;
     }
@@ -187,8 +149,8 @@ export const Transactions: React.FC = () => {
   };
 
   const onSubmit = async (data: TransactionFormValues) => {
-    if (!organization || !profile) {
-      toast.error('Você precisa estar logado e vinculado a uma igreja para realizar lançamentos.');
+    if (!profile) {
+      toast.error('Você precisa estar logado para realizar lançamentos.');
       return;
     }
     setIsSubmitting(true);
@@ -199,7 +161,7 @@ export const Transactions: React.FC = () => {
         attachment_url = await handleFileUpload(file);
       }
 
-      // Prepare data for Supabase, converting empty strings to null for UUID fields
+      // Prepare data for Google Sheets
       const payload = {
         description: data.description,
         amount: data.amount,
@@ -207,23 +169,14 @@ export const Transactions: React.FC = () => {
         type: data.type,
         category_id: data.category_id,
         department_id: data.department_id || null,
-        organization_id: organization.id,
-        attachment_url,
-        status: editingTransaction?.status || (data.amount > 500 ? 'pending' : 'conciliated'),
+        user_id: profile.id
       };
 
       if (editingTransaction) {
-        const { error } = await supabase
-          .from('transactions')
-          .update(payload)
-          .eq('id', editingTransaction.id);
-        if (error) throw error;
-        toast.success('Lançamento atualizado com sucesso!');
+        toast.info('Edição não implementada para Google Sheets ainda.');
       } else {
-        const { error } = await supabase
-          .from('transactions')
-          .insert([payload]);
-        if (error) throw error;
+        const res = await apiService.createTransaction(payload);
+        if (!res.success) throw new Error('Erro ao salvar');
         toast.success('Lançamento salvo com sucesso!');
       }
 
@@ -240,15 +193,7 @@ export const Transactions: React.FC = () => {
   };
 
   const toggleConciliation = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'conciliated' ? 'pending' : 'conciliated';
-    const { error } = await supabase
-      .from('transactions')
-      .update({ status: newStatus })
-      .eq('id', id);
-
-    if (!error) {
-      setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as any } : t));
-    }
+    toast.info('Conciliação não implementada para Google Sheets ainda.');
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -271,25 +216,6 @@ export const Transactions: React.FC = () => {
         <div className="flex gap-3">
           {canEdit && (
             <>
-              <button 
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.onchange = async (e: any) => {
-                    const file = e.target.files[0];
-                    if (file && organization && profile) {
-                      const res = await n8nService.processFile(file, organization.id, profile.id);
-                      if (res.success) toast.success('Arquivo enviado para processamento!');
-                      else toast.error('Erro: ' + res.error);
-                    }
-                  };
-                  input.click();
-                }}
-                className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
-              >
-                <Upload className="mr-2 h-5 w-5" />
-                Processar Comprovantes
-              </button>
               <button 
                 onClick={() => setShowModal(true)}
                 className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"

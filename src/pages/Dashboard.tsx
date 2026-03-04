@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/apiService';
 import { formatCurrency, cn } from '../lib/utils';
 import { Transaction } from '../types';
 
@@ -30,7 +30,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export const Dashboard: React.FC = () => {
-  const { organization, canEdit } = useAuth();
+  const { canEdit, profile } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     previousBalance: 0,
@@ -43,10 +43,8 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (organization) {
-      fetchDashboardData();
-    }
-  }, [organization]);
+    fetchDashboardData();
+  }, []);
 
   const handleShowInsights = () => {
     toast.info('A IA está analisando seus dados...', {
@@ -55,49 +53,50 @@ export const Dashboard: React.FC = () => {
   };
 
   const fetchDashboardData = async () => {
-    if (!organization) return;
     setLoading(true);
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('*, categories(*)')
-      .eq('organization_id', organization.id)
-      .order('date', { ascending: false });
+    try {
+      const transactions = await apiService.getTransactions();
 
-    if (transactions) {
-      const previousBalance = transactions
-        .filter(t => t.date && new Date(t.date) < startOfMonth)
-        .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+      if (transactions) {
+        const previousBalance = transactions
+          .filter(t => t.date && new Date(t.date) < startOfMonth)
+          .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
 
-      const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
-      
-      const income = currentMonthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((acc, t) => acc + t.amount, 0);
-      
-      const expenses = currentMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((acc, t) => acc + t.amount, 0);
-      
-      const currentBalance = transactions
-        .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+        const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
+        
+        const income = currentMonthTransactions
+          .filter(t => t.type === 'income')
+          .reduce((acc, t) => acc + Number(t.amount), 0);
+        
+        const expenses = currentMonthTransactions
+          .filter(t => t.type === 'expense')
+          .reduce((acc, t) => acc + Number(t.amount), 0);
+        
+        const currentBalance = transactions
+          .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
 
-      setStats({ previousBalance, income, expenses, currentBalance });
-      setRecentTransactions(transactions.slice(0, 5));
+        setStats({ previousBalance, income, expenses, currentBalance });
+        setRecentTransactions(transactions.slice(0, 5));
 
-      // Generate more realistic chart data
-      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-      setChartData(months.map(m => ({
-        name: m,
-        receita: Math.floor(Math.random() * 5000) + 3000,
-        despesa: Math.floor(Math.random() * 2000) + 1000
-      })));
+        // Generate more realistic chart data
+        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
+        setChartData(months.map(m => ({
+          name: m,
+          receita: Math.floor(Math.random() * 5000) + 3000,
+          despesa: Math.floor(Math.random() * 2000) + 1000
+        })));
+      }
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Erro ao carregar dashboard: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const kpis = [
@@ -144,14 +143,14 @@ export const Dashboard: React.FC = () => {
             variants={itemVariants}
             className="mt-1 text-zinc-500"
           >
-            Bem-vindo ao painel de controle da <span className="font-semibold text-zinc-900">{organization?.name}</span>.
+            Bem-vindo ao painel de controle da <span className="font-semibold text-zinc-900">Igreja</span>.
           </motion.p>
         </div>
         <div className="flex items-center gap-3">
           {canEdit && (
             <motion.button 
               variants={itemVariants}
-              onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+              onClick={() => navigate(`/lancamentos`)}
               className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-6 py-3 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
             >
               <Plus className="h-5 w-5" />
@@ -283,7 +282,7 @@ export const Dashboard: React.FC = () => {
           <div className="mb-8 flex items-center justify-between">
             <h3 className="font-display text-2xl font-bold text-zinc-900">Atividade</h3>
             <button 
-              onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+              onClick={() => navigate(`/lancamentos`)}
               className="text-xs font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
             >
               Ver Tudo
@@ -297,7 +296,7 @@ export const Dashboard: React.FC = () => {
                   initial={{ x: 20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  onClick={() => navigate(`/${organization?.slug}/lancamentos`)}
+                  onClick={() => navigate(`/lancamentos`)}
                   className="flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center">

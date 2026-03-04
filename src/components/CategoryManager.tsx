@@ -15,7 +15,7 @@ export const CategoryManager: React.FC = () => {
     deleteCategory, 
     clearAll, 
     importPremium 
-  } = useCategories(organization?.id);
+  } = useCategories();
 
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 

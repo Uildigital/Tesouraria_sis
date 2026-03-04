@@ -9,7 +9,7 @@ import {
   FileCheck,
   Loader2
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { Transaction } from '../types';
@@ -19,17 +19,14 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const Reports: React.FC = () => {
-  const { organization } = useAuth();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    if (organization) {
-      fetchReportData();
-    }
-  }, [organization, month]);
+    fetchReportData();
+  }, [month]);
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -37,16 +34,13 @@ export const Reports: React.FC = () => {
       const startOfMonth = `${month}-01`;
       const endOfMonth = new Date(new Date(month + '-01').getFullYear(), new Date(month + '-01').getMonth() + 1, 0).toISOString().split('T')[0];
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*, categories(*), departments(*)')
-        .eq('organization_id', organization?.id)
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth)
-        .order('date');
+      const data = await apiService.getTransactions();
+      
+      const filtered = data.filter(t => {
+        return t.date >= startOfMonth && t.date <= endOfMonth;
+      });
 
-      if (error) throw error;
-      setTransactions(data || []);
+      setTransactions(filtered || []);
     } catch (error) {
       console.error('Error fetching report data:', error);
     } finally {
@@ -55,7 +49,7 @@ export const Reports: React.FC = () => {
   };
 
   const generatePDF = () => {
-    if (!organization || transactions.length === 0) return;
+    if (transactions.length === 0) return;
     setIsExporting(true);
 
     try {
@@ -65,7 +59,7 @@ export const Reports: React.FC = () => {
       // Header
       doc.setFontSize(22);
       doc.setTextColor(26, 34, 56); // Premium Navy
-      doc.text(organization.name, 14, 22);
+      doc.text('Igreja', 14, 22);
       
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
@@ -114,7 +108,7 @@ export const Reports: React.FC = () => {
         doc.text(`Página ${i} de ${pageCount}`, 180, 285);
       }
 
-      doc.save(`Balancete_${organization.slug}_${month}.pdf`);
+      doc.save(`Balancete_${month}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Erro ao gerar PDF. Tente novamente.');
