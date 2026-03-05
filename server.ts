@@ -40,7 +40,8 @@ async function getRows(range: string) {
     return response.data.values || [];
   } catch (error: any) {
     if (error.message.includes('Unable to parse range') || error.message.includes('not found')) {
-      throw new Error(`A aba '${range.split('!')[0]}' não existe na planilha. Vá em Configurações e clique em 'Configurar Planilha' para criar as abas necessárias.`);
+      console.warn(`Aba não encontrada: ${range}`);
+      return []; 
     }
     throw error;
   }

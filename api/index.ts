@@ -50,8 +50,10 @@ async function getRows(range: string) {
     });
     return response.data.values || [];
   } catch (error: any) {
+    // Se a aba não existir, não trava o app, apenas retorna vazio
     if (error.message.includes('Unable to parse range') || error.message.includes('not found')) {
-      throw new Error(`A aba '${range.split('!')[0]}' não existe na planilha. Vá em Configurações e clique em 'Configurar Planilha' para criar as abas necessárias.`);
+      console.warn(`Aba não encontrada: ${range}`);
+      return []; 
     }
     throw error;
   }
@@ -194,7 +196,7 @@ app.get(["/api/transactions", "/transactions"], async (req, res) => {
     res.json(data);
   } catch (error: any) {
     res.status(500).json({ 
-      error: "Falha ao buscar transações", 
+      error: "Erro ao buscar transações", 
       details: error.message 
     });
   }
