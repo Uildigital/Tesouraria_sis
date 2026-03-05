@@ -8,11 +8,11 @@ const PORT = 3000;
 app.use(express.json());
 
 // API ROUTES
-app.get("/api/health", (req, res) => {
+app.get(["/api/health", "/health"], (req, res) => {
   res.json({ status: "ok", message: "Servidor Completo Ativo" });
 });
 
-app.get("/api/init", async (req, res) => {
+app.get(["/api/init", "/init"], async (req, res) => {
   try {
     await googleSheets.initializeSheets();
     res.json({ success: true });
@@ -21,7 +21,7 @@ app.get("/api/init", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", (req, res) => {
+app.post(["/api/auth/login", "/auth/login"], (req, res) => {
   res.json({ 
     success: true, 
     user: { 
@@ -33,7 +33,7 @@ app.post("/api/auth/login", (req, res) => {
   });
 });
 
-app.get("/api/transactions", async (req, res) => {
+app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Transactions!A:I');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -51,7 +51,7 @@ app.get("/api/transactions", async (req, res) => {
   }
 });
 
-app.post("/api/transactions", async (req, res) => {
+app.post(["/api/transactions", "/transactions"], async (req, res) => {
   try {
     const { date, description, amount, type, category_id, department_id, user_id } = req.body;
     const id = uuidv4();
@@ -63,7 +63,7 @@ app.post("/api/transactions", async (req, res) => {
   }
 });
 
-app.get("/api/categories", async (req, res) => {
+app.get(["/api/categories", "/categories"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Categories!A:E');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -81,7 +81,7 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-app.post("/api/categories", async (req, res) => {
+app.post(["/api/categories", "/categories"], async (req, res) => {
   try {
     const { name, type, parent_id } = req.body;
     const id = uuidv4();
@@ -93,7 +93,7 @@ app.post("/api/categories", async (req, res) => {
   }
 });
 
-app.get("/api/departments", async (req, res) => {
+app.get(["/api/departments", "/departments"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Departments!A:C');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -111,7 +111,7 @@ app.get("/api/departments", async (req, res) => {
   }
 });
 
-app.post("/api/departments", async (req, res) => {
+app.post(["/api/departments", "/departments"], async (req, res) => {
   try {
     const { name } = req.body;
     const id = uuidv4();

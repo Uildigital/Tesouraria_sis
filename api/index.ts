@@ -6,17 +6,18 @@ const app = express();
 app.use(express.json());
 
 // Health check
-app.get("/api/health", (req, res) => {
+app.get(["/api/health", "/health"], (req, res) => {
   res.json({ 
     status: "ok", 
     message: "API Direta Ativa",
     env: process.env.NODE_ENV,
-    vercel: !!process.env.VERCEL
+    vercel: !!process.env.VERCEL,
+    url: req.url
   });
 });
 
 // INIT
-app.get("/api/init", async (req, res) => {
+app.get(["/api/init", "/init"], async (req, res) => {
   try {
     await googleSheets.initializeSheets();
     res.json({ success: true });
@@ -25,8 +26,8 @@ app.get("/api/init", async (req, res) => {
   }
 });
 
-// LOGIN TOTALMENTE ABERTO
-app.post("/api/auth/login", (req, res) => {
+// LOGIN
+app.post(["/api/auth/login", "/auth/login"], (req, res) => {
   res.json({ 
     success: true, 
     user: { 
@@ -39,7 +40,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // TRANSACTIONS
-app.get("/api/transactions", async (req, res) => {
+app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Transactions!A:I');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -56,13 +57,12 @@ app.get("/api/transactions", async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ 
       error: "Transactions fetch failed", 
-      message: error.message,
-      stack: error.stack 
+      message: error.message
     });
   }
 });
 
-app.post("/api/transactions", async (req, res) => {
+app.post(["/api/transactions", "/transactions"], async (req, res) => {
   try {
     const { date, description, amount, type, category_id, department_id, user_id } = req.body;
     const id = uuidv4();
@@ -70,12 +70,12 @@ app.post("/api/transactions", async (req, res) => {
     await googleSheets.appendRow('Transactions!A:I', [id, date, description, amount, type, category_id, department_id, user_id, createdAt]);
     res.json({ success: true, id });
   } catch (error: any) {
-    res.status(500).json({ error: error.message, stack: error.stack });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // CATEGORIES
-app.get("/api/categories", async (req, res) => {
+app.get(["/api/categories", "/categories"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Categories!A:E');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -93,7 +93,7 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-app.post("/api/categories", async (req, res) => {
+app.post(["/api/categories", "/categories"], async (req, res) => {
   try {
     const { name, type, parent_id } = req.body;
     const id = uuidv4();
@@ -106,7 +106,7 @@ app.post("/api/categories", async (req, res) => {
 });
 
 // DEPARTMENTS
-app.get("/api/departments", async (req, res) => {
+app.get(["/api/departments", "/departments"], async (req, res) => {
   try {
     const rows = await googleSheets.getRows('Departments!A:C');
     if (!rows || rows.length <= 1) return res.json([]);
@@ -124,7 +124,7 @@ app.get("/api/departments", async (req, res) => {
   }
 });
 
-app.post("/api/departments", async (req, res) => {
+app.post(["/api/departments", "/departments"], async (req, res) => {
   try {
     const { name } = req.body;
     const id = uuidv4();
@@ -134,6 +134,16 @@ app.post("/api/departments", async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// CATCH ALL FOR DEBUGGING
+app.all("*", (req, res) => {
+  res.status(404).json({
+    error: "Route not found in API",
+    method: req.method,
+    url: req.url,
+    path: req.path
+  });
 });
 
 export default app;
