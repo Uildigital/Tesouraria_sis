@@ -40,6 +40,8 @@ export const Users: React.FC = () => {
 
   // Form state
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'treasurer' | 'viewer'>('viewer');
 
   if (!isAdmin) {
@@ -71,7 +73,25 @@ export const Users: React.FC = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.info('Convites desativados temporariamente na migração para Google Sheets.');
+    setIsSubmitting(true);
+    try {
+      await apiService.createUser({
+        email,
+        full_name: fullName,
+        password,
+        role
+      });
+      toast.success('Membro convidado com sucesso!');
+      setShowModal(false);
+      setEmail('');
+      setFullName('');
+      setPassword('');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeUser = async (userId: string) => {
@@ -329,6 +349,18 @@ export const Users: React.FC = () => {
 
               <form onSubmit={handleInvite} className="space-y-6">
                 <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Nome Completo</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                    placeholder="Nome do membro"
+                  />
+                </div>
+
+                <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Email do Usuário</label>
                   <input 
                     type="email" 
@@ -337,6 +369,18 @@ export const Users: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
                     placeholder="exemplo@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-400">Senha Inicial</label>
+                  <input 
+                    type="password" 
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                    placeholder="••••••••"
                   />
                 </div>
 

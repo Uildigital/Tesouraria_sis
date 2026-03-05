@@ -291,6 +291,31 @@ app.get(["/api/users", "/users"], async (req, res) => {
   }
 });
 
+app.post(["/api/users", "/users"], async (req, res) => {
+  try {
+    const { email, full_name, password, role } = req.body;
+    
+    // Check if user already exists
+    const rows = await getRows('Users!A:F');
+    if (rows && rows.length > 1) {
+      const headers = rows[0];
+      const emailIndex = headers.indexOf('email');
+      const exists = rows.slice(1).some((row: any) => row[emailIndex] === email);
+      if (exists) {
+        return res.status(400).json({ error: "Usuário com este email já existe" });
+      }
+    }
+
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+    // headers: ['id', 'email', 'password', 'full_name', 'role', 'created_at']
+    await appendRow('Users!A:F', [id, email, password, full_name, role, createdAt]);
+    res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Server initialization logic
 const startServer = async () => {
   if (process.env.NODE_ENV !== "production") {

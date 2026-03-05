@@ -107,5 +107,18 @@ export const apiService = {
     const res = await fetch(`${API_BASE}/users`);
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
+  },
+
+  async createUser(data: any): Promise<{ success: boolean; id: string }> {
+    const res = await fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Erro ao criar usuário');
+    }
+    return res.json();
   }
 };
