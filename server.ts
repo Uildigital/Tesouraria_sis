@@ -208,19 +208,27 @@ app.post(["/api/departments", "/departments"], async (req, res) => {
 });
 
 // Server initialization logic
-if (process.env.NODE_ENV !== "production") {
-  const startDevServer = async () => {
+const startServer = async () => {
+  if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Dev server running on http://localhost:${PORT}`);
+  } else {
+    // In production mode, serve static files from dist
+    app.use(express.static("dist"));
+    app.get("*", (req, res) => {
+      res.sendFile("dist/index.html", { root: "." });
     });
-  };
-  startDevServer();
-}
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+};
+
+startServer();
 
 export { app };
