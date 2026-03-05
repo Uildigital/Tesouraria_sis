@@ -52,6 +52,27 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleTestConnection = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      if (data.status === 'ok' && data.sheets?.connected) {
+        toast.success('Conexão com Google Sheets estabelecida!', {
+          description: `Planilha: ${data.sheets.title}`
+        });
+      } else {
+        toast.error('Falha na conexão', {
+          description: data.sheets?.error || 'Verifique as variáveis de ambiente.'
+        });
+      }
+    } catch (error: any) {
+      toast.error('Erro ao testar conexão: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleInitSheets = async () => {
     setIsSaving(true);
     try {
@@ -205,13 +226,22 @@ export const Settings: React.FC = () => {
                         <p className="text-xs text-zinc-500">Use uma planilha como banco de dados principal.</p>
                       </div>
                     </div>
-                    <button 
-                      onClick={handleInitSheets}
-                      disabled={isSaving}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Configurar Planilha'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={handleTestConnection}
+                        disabled={isSaving}
+                        className="rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Testar Conexão'}
+                      </button>
+                      <button 
+                        onClick={handleInitSheets}
+                        disabled={isSaving}
+                        className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Configurar Planilha'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

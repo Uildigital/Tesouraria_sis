@@ -35,8 +35,15 @@ async function getRows(range: string) {
   const auth = getAuth();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
-  const response = await sheets.spreadsheets.values.get({ auth, spreadsheetId, range });
-  return response.data.values || [];
+  try {
+    const response = await sheets.spreadsheets.values.get({ auth, spreadsheetId, range });
+    return response.data.values || [];
+  } catch (error: any) {
+    if (error.message.includes('Unable to parse range') || error.message.includes('not found')) {
+      throw new Error(`A aba '${range.split('!')[0]}' não existe na planilha. Vá em Configurações e clique em 'Configurar Planilha' para criar as abas necessárias.`);
+    }
+    throw error;
+  }
 }
 
 async function appendRow(range: string, values: any[]) {

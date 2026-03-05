@@ -42,12 +42,19 @@ async function getRows(range: string) {
   const auth = getAuth();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
-  const response = await sheets.spreadsheets.values.get({
-    auth,
-    spreadsheetId,
-    range,
-  });
-  return response.data.values || [];
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      auth,
+      spreadsheetId,
+      range,
+    });
+    return response.data.values || [];
+  } catch (error: any) {
+    if (error.message.includes('Unable to parse range') || error.message.includes('not found')) {
+      throw new Error(`A aba '${range.split('!')[0]}' não existe na planilha. Vá em Configurações e clique em 'Configurar Planilha' para criar as abas necessárias.`);
+    }
+    throw error;
+  }
 }
 
 async function appendRow(range: string, values: any[]) {
@@ -115,16 +122,36 @@ async function initializeSheets() {
 
 // --- API ROUTES ---
 
-app.get(["/api/health", "/health"], (req, res) => {
-  res.json({ 
-    status: "ok", 
-    message: "API Integrada e Robusta",
-    config: {
+app.get(["/api/health", "/health"], async (req, res) => {
+  const diagnostics: any = {
+    status: "ok",
+    env: {
       hasKey: !!process.env.GOOGLE_PRIVATE_KEY,
       hasEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      hasSheetId: !!process.env.GOOGLE_SHEET_ID
+      hasSheetId: !!process.env.GOOGLE_SHEET_ID,
+      nodeEnv: process.env.NODE_ENV
     }
-  });
+  };
+
+  try {
+    const auth = getAuth();
+    const sheets = getSheets();
+    const spreadsheetId = getSpreadsheetId();
+    const spreadsheet = await sheets.spreadsheets.get({ auth, spreadsheetId });
+    diagnostics.sheets = {
+      connected: true,
+      title: spreadsheet.data.properties?.title,
+      sheets: spreadsheet.data.sheets?.map(s => s.properties?.title)
+    };
+  } catch (error: any) {
+    diagnostics.status = "error";
+    diagnostics.sheets = {
+      connected: false,
+      error: error.message
+    };
+  }
+
+  res.json(diagnostics);
 });
 
 app.get(["/api/init", "/init"], async (req, res) => {
@@ -166,7 +193,10 @@ app.get(["/api/transactions", "/transactions"], async (req, res) => {
     });
     res.json(data);
   } catch (error: any) {
-    res.json([]); // Silent fail for dashboard
+    res.status(500).json({ 
+      error: "Falha ao buscar transações", 
+      details: error.message 
+    });
   }
 });
 
@@ -184,6 +214,7 @@ app.post(["/api/transactions", "/transactions"], async (req, res) => {
 
 app.get(["/api/categories", "/categories"], async (req, res) => {
   try {
+    console.log("Fetching categories...");
     const rows = await getRows('Categories!A:E');
     if (!rows || rows.length <= 1) return res.json([]);
     const headers = rows[0];
@@ -196,7 +227,12 @@ app.get(["/api/categories", "/categories"], async (req, res) => {
     });
     res.json(data);
   } catch (error: any) {
-    res.json([]);
+    console.error("Categories error:", error.message);
+    res.status(500).json({ 
+      error: "Erro ao buscar categorias", 
+      details: error.message,
+      hint: "Verifique se o GOOGLE_SHEET_ID está correto e se o e-mail do Service Account tem permissão de Editor na planilha."
+    });
   }
 });
 

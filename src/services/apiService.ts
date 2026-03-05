@@ -6,7 +6,10 @@ export const apiService = {
   // Transactions
   async getTransactions(): Promise<Transaction[]> {
     const res = await fetch(`${API_BASE}/transactions`);
-    if (!res.ok) throw new Error('Failed to fetch transactions');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao buscar transações' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao buscar transações');
+    }
     return res.json();
   },
 
@@ -16,14 +19,20 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create transaction');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao criar transação' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao criar transação');
+    }
     return res.json();
   },
 
   // Categories
   async getCategories(): Promise<Category[]> {
     const res = await fetch(`${API_BASE}/categories`);
-    if (!res.ok) throw new Error('Failed to fetch categories');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao buscar categorias' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao buscar categorias');
+    }
     return res.json();
   },
 
@@ -40,7 +49,10 @@ export const apiService = {
   // Departments
   async getDepartments(): Promise<Department[]> {
     const res = await fetch(`${API_BASE}/departments`);
-    if (!res.ok) throw new Error('Failed to fetch departments');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao buscar departamentos' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao buscar departamentos');
+    }
     return res.json();
   },
 
@@ -50,7 +62,10 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create department');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao criar departamento' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao criar departamento');
+    }
     return res.json();
   },
 
