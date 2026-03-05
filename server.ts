@@ -6,161 +6,161 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+// Users
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { email, password, full_name, role } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+    
+    // Check if user exists
+    const rows = await googleSheets.getRows('Users!A:E');
+    const exists = rows.some(row => (row[1] || '').toString().toLowerCase().trim() === normalizedEmail);
+    if (exists) return res.status(400).json({ error: 'Usuário já existe' });
+
+    await googleSheets.appendRow('Users!A:F', [id, normalizedEmail, password, full_name, role || 'admin', createdAt]);
+    res.json({ success: true, user: { id, email: normalizedEmail, full_name, role: role || 'admin' } });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const rows = await googleSheets.getRows('Users!A:E');
+    
+    // Skip header row and find user
+    const userRow = rows.slice(1).find(row => {
+      const rowEmail = (row[1] || '').toString().toLowerCase().trim();
+      const rowPassword = (row[2] || '').toString().trim();
+      return rowEmail === normalizedEmail && rowPassword === password.trim();
+    });
+    
+    if (!userRow) return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha na planilha (aba Users).' });
+
+    const user = {
+      id: userRow[0] || uuidv4(),
+      email: userRow[1],
+      full_name: userRow[3] || userRow[1].split('@')[0],
+      role: userRow[4] || 'admin'
+    };
+    res.json({ success: true, user });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API Routes
+app.get("/api/init", async (req, res) => {
+  try {
+    await googleSheets.initializeSheets();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Transactions
+app.get("/api/transactions", async (req, res) => {
+  try {
+    const rows = await googleSheets.getRows('Transactions!A:I');
+    const headers = rows[0];
+    const data = rows.slice(1).map(row => {
+      const obj: any = {};
+      headers.forEach((header: string, index: number) => {
+        obj[header] = row[index];
+      });
+      return obj;
+    });
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/transactions", async (req, res) => {
+  try {
+    const { date, description, amount, type, category_id, department_id, user_id } = req.body;
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+    await googleSheets.appendRow('Transactions!A:I', [id, date, description, amount, type, category_id, department_id, user_id, createdAt]);
+    res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Categories
+app.get("/api/categories", async (req, res) => {
+  try {
+    const rows = await googleSheets.getRows('Categories!A:E');
+    if (rows.length === 0) return res.json([]);
+    const headers = rows[0];
+    const data = rows.slice(1).map(row => {
+      const obj: any = {};
+      headers.forEach((header: string, index: number) => {
+        obj[header] = row[index];
+      });
+      return obj;
+    });
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/categories", async (req, res) => {
+  try {
+    const { name, type, parent_id } = req.body;
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+    await googleSheets.appendRow('Categories!A:E', [id, name, type, parent_id || '', createdAt]);
+    res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Departments
+app.get("/api/departments", async (req, res) => {
+  try {
+    const rows = await googleSheets.getRows('Departments!A:C');
+    if (rows.length === 0) return res.json([]);
+    const headers = rows[0];
+    const data = rows.slice(1).map(row => {
+      const obj: any = {};
+      headers.forEach((header: string, index: number) => {
+        obj[header] = row[index];
+      });
+      return obj;
+    });
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/departments", async (req, res) => {
+  try {
+    const { name } = req.body;
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+    await googleSheets.appendRow('Departments!A:C', [id, name, createdAt]);
+    res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
-
-  app.use(express.json());
-
-  // Users
-  app.post("/api/auth/signup", async (req, res) => {
-    try {
-      const { email, password, full_name, role } = req.body;
-      const normalizedEmail = email.toLowerCase().trim();
-      const id = uuidv4();
-      const createdAt = new Date().toISOString();
-      
-      // Check if user exists
-      const rows = await googleSheets.getRows('Users!A:E');
-      const exists = rows.some(row => (row[1] || '').toString().toLowerCase().trim() === normalizedEmail);
-      if (exists) return res.status(400).json({ error: 'Usuário já existe' });
-
-      await googleSheets.appendRow('Users!A:F', [id, normalizedEmail, password, full_name, role || 'admin', createdAt]);
-      res.json({ success: true, user: { id, email: normalizedEmail, full_name, role: role || 'admin' } });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      const normalizedEmail = email.toLowerCase().trim();
-      const rows = await googleSheets.getRows('Users!A:E');
-      
-      // Skip header row and find user
-      const userRow = rows.slice(1).find(row => {
-        const rowEmail = (row[1] || '').toString().toLowerCase().trim();
-        const rowPassword = (row[2] || '').toString().trim();
-        return rowEmail === normalizedEmail && rowPassword === password.trim();
-      });
-      
-      if (!userRow) return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha na planilha (aba Users).' });
-
-      const user = {
-        id: userRow[0] || uuidv4(),
-        email: userRow[1],
-        full_name: userRow[3] || userRow[1].split('@')[0],
-        role: userRow[4] || 'admin'
-      };
-      res.json({ success: true, user });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // API Routes
-  app.get("/api/init", async (req, res) => {
-    try {
-      await googleSheets.initializeSheets();
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Transactions
-  app.get("/api/transactions", async (req, res) => {
-    try {
-      const rows = await googleSheets.getRows('Transactions!A:I');
-      const headers = rows[0];
-      const data = rows.slice(1).map(row => {
-        const obj: any = {};
-        headers.forEach((header: string, index: number) => {
-          obj[header] = row[index];
-        });
-        return obj;
-      });
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/transactions", async (req, res) => {
-    try {
-      const { date, description, amount, type, category_id, department_id, user_id } = req.body;
-      const id = uuidv4();
-      const createdAt = new Date().toISOString();
-      await googleSheets.appendRow('Transactions!A:I', [id, date, description, amount, type, category_id, department_id, user_id, createdAt]);
-      res.json({ success: true, id });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Categories
-  app.get("/api/categories", async (req, res) => {
-    try {
-      const rows = await googleSheets.getRows('Categories!A:E');
-      if (rows.length === 0) return res.json([]);
-      const headers = rows[0];
-      const data = rows.slice(1).map(row => {
-        const obj: any = {};
-        headers.forEach((header: string, index: number) => {
-          obj[header] = row[index];
-        });
-        return obj;
-      });
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/categories", async (req, res) => {
-    try {
-      const { name, type, parent_id } = req.body;
-      const id = uuidv4();
-      const createdAt = new Date().toISOString();
-      await googleSheets.appendRow('Categories!A:E', [id, name, type, parent_id || '', createdAt]);
-      res.json({ success: true, id });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Departments
-  app.get("/api/departments", async (req, res) => {
-    try {
-      const rows = await googleSheets.getRows('Departments!A:C');
-      if (rows.length === 0) return res.json([]);
-      const headers = rows[0];
-      const data = rows.slice(1).map(row => {
-        const obj: any = {};
-        headers.forEach((header: string, index: number) => {
-          obj[header] = row[index];
-        });
-        return obj;
-      });
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/departments", async (req, res) => {
-    try {
-      const { name } = req.body;
-      const id = uuidv4();
-      const createdAt = new Date().toISOString();
-      await googleSheets.appendRow('Departments!A:C', [id, name, createdAt]);
-      res.json({ success: true, id });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -175,9 +175,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export { app };
