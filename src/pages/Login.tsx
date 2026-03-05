@@ -42,7 +42,8 @@ export const Login: React.FC = () => {
           navigate('/');
         }
       } else {
-        const res = await apiService.login({ email, password });
+        const normalizedEmail = email.toLowerCase().trim();
+        const res = await apiService.login({ email: normalizedEmail, password });
         if (res.success) {
           toast.success('Login realizado com sucesso!');
           signIn(res.user);

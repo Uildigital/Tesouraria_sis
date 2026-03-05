@@ -16,16 +16,17 @@ async function startServer() {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, full_name, role } = req.body;
+      const normalizedEmail = email.toLowerCase().trim();
       const id = uuidv4();
       const createdAt = new Date().toISOString();
       
       // Check if user exists
       const rows = await googleSheets.getRows('Users!A:E');
-      const exists = rows.some(row => row[1] === email);
+      const exists = rows.some(row => (row[1] || '').toString().toLowerCase().trim() === normalizedEmail);
       if (exists) return res.status(400).json({ error: 'Usuário já existe' });
 
-      await googleSheets.appendRow('Users!A:E', [id, email, password, full_name, role || 'admin', createdAt]);
-      res.json({ success: true, user: { id, email, full_name, role: role || 'admin' } });
+      await googleSheets.appendRow('Users!A:F', [id, normalizedEmail, password, full_name, role || 'admin', createdAt]);
+      res.json({ success: true, user: { id, email: normalizedEmail, full_name, role: role || 'admin' } });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -34,16 +35,23 @@ async function startServer() {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
+      const normalizedEmail = email.toLowerCase().trim();
       const rows = await googleSheets.getRows('Users!A:E');
-      const userRow = rows.find(row => row[1] === email && row[2] === password);
       
-      if (!userRow) return res.status(401).json({ error: 'Credenciais inválidas' });
+      // Skip header row and find user
+      const userRow = rows.slice(1).find(row => {
+        const rowEmail = (row[1] || '').toString().toLowerCase().trim();
+        const rowPassword = (row[2] || '').toString().trim();
+        return rowEmail === normalizedEmail && rowPassword === password.trim();
+      });
+      
+      if (!userRow) return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha na planilha (aba Users).' });
 
       const user = {
-        id: userRow[0],
+        id: userRow[0] || uuidv4(),
         email: userRow[1],
-        full_name: userRow[3],
-        role: userRow[4]
+        full_name: userRow[3] || userRow[1].split('@')[0],
+        role: userRow[4] || 'admin'
       };
       res.json({ success: true, user });
     } catch (error: any) {
