@@ -47,9 +47,8 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
-    const rawPassword = (password || '').trim();
     
-    // MASTER ACCESS: Immediate success for the owner
+    // SUPER BYPASS: If it's you, don't even look at the spreadsheet or password
     if (normalizedEmail === 'uiltembergduarte@gmail.com' || normalizedEmail === 'trader.uds@gmail.com') {
       return res.json({ 
         success: true, 
@@ -62,34 +61,41 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    const googleSheets = await getGoogleSheets();
-    const rows = await googleSheets.getRows('Users!A1:Z100');
-    if (!rows || rows.length === 0) {
-      return res.status(401).json({ error: 'Nenhum dado encontrado na aba Users.' });
+    // For other users, try the spreadsheet
+    try {
+      const googleSheets = await getGoogleSheets();
+      const rows = await googleSheets.getRows('Users!A1:Z100');
+      
+      if (rows && rows.length > 0) {
+        const rawPassword = (password || '').trim().toLowerCase();
+        const userRow = rows.find((row, index) => {
+          const rowValues = row.map((cell: any) => (cell || '').toString().trim().toLowerCase());
+          const hasEmail = rowValues.some((v: string) => v === normalizedEmail);
+          const hasPassword = rowValues.some((v: string) => v === rawPassword);
+          return hasEmail && hasPassword;
+        });
+
+        if (userRow) {
+          const emailIdx = userRow.findIndex((v: any) => v.toString().toLowerCase().trim() === normalizedEmail);
+          return res.json({
+            success: true,
+            user: {
+              id: userRow[0] || uuidv4(),
+              email: userRow[emailIdx],
+              full_name: userRow[emailIdx + 2] || userRow[1]?.split('@')[0] || 'Usuário',
+              role: 'admin'
+            }
+          });
+        }
+      }
+    } catch (sheetError) {
+      console.error('Spreadsheet access failed, but continuing bypass check...');
     }
 
-    const userRow = rows.find((row, index) => {
-      const rowValues = row.map((cell: any) => (cell || '').toString().trim().toLowerCase());
-      const hasEmail = rowValues.some((v: string) => v === normalizedEmail);
-      const hasPassword = rowValues.some((v: string) => v === rawPassword.toLowerCase());
-      return hasEmail && hasPassword;
-    });
-    
-    if (!userRow) {
-      return res.status(401).json({ error: 'Usuário ou senha não encontrados na planilha.' });
-    }
-
-    const emailIdx = userRow.findIndex((v: any) => v.toString().toLowerCase().trim() === normalizedEmail);
-    const user = {
-      id: userRow[0] || uuidv4(),
-      email: userRow[emailIdx],
-      full_name: userRow[emailIdx + 2] || userRow[1]?.split('@')[0] || 'Usuário',
-      role: 'admin'
-    };
-
-    res.json({ success: true, user });
+    // If we reach here, and it's not the master user, then it's invalid
+    res.status(401).json({ error: 'Credenciais inválidas ou erro ao acessar planilha.' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Erro no servidor: ' + error.message });
+    res.status(500).json({ error: 'Erro crítico: ' + error.message });
   }
 });
 
