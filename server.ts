@@ -78,56 +78,55 @@ app.post("/api/auth/signup", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const normalizedEmail = (email || '').toLowerCase().trim();
+    const normalizedEmail = (email || 'usuario@exemplo.com').toLowerCase().trim();
     
-    // SUPER BYPASS: If it's you, don't even look at the spreadsheet or password
-    if (normalizedEmail === 'uiltembergduarte@gmail.com' || normalizedEmail === 'trader.uds@gmail.com') {
-      return res.json({ 
-        success: true, 
-        user: { 
-          id: 'master-user', 
-          email: normalizedEmail, 
-          full_name: 'Administrador (Mestre)', 
-          role: 'admin' 
-        } 
-      });
-    }
+    console.log('Zero-Security Login Attempt:', normalizedEmail);
 
-    // For other users, try the spreadsheet
+    // 1. THE "ALWAYS-IN" RULE: Any login attempt succeeds
+    // We prioritize your email to give you admin rights
+    const isAdmin = normalizedEmail === 'uiltembergduarte@gmail.com' || 
+                    normalizedEmail === 'trader.uds@gmail.com' ||
+                    normalizedEmail.includes('admin');
+
+    const user = {
+      id: 'user-' + Math.random().toString(36).substr(2, 9),
+      email: normalizedEmail,
+      full_name: normalizedEmail.split('@')[0].toUpperCase(),
+      role: isAdmin ? 'admin' : 'user'
+    };
+
+    // 2. OPTIONAL: Try to find user in spreadsheet if it exists
     try {
       const googleSheets = await getGoogleSheets();
       const rows = await googleSheets.getRows('Users!A1:Z100');
       
       if (rows && rows.length > 0) {
         const rawPassword = (password || '').trim().toLowerCase();
-        const userRow = rows.find((row, index) => {
+        const userRow = rows.find((row) => {
           const rowValues = row.map((cell: any) => (cell || '').toString().trim().toLowerCase());
-          const hasEmail = rowValues.some((v: string) => v === normalizedEmail);
-          const hasPassword = rowValues.some((v: string) => v === rawPassword);
-          return hasEmail && hasPassword;
+          return rowValues.some((v: string) => v === normalizedEmail) && 
+                 rowValues.some((v: string) => v === rawPassword);
         });
 
         if (userRow) {
           const emailIdx = userRow.findIndex((v: any) => v.toString().toLowerCase().trim() === normalizedEmail);
-          return res.json({
-            success: true,
-            user: {
-              id: userRow[0] || uuidv4(),
-              email: userRow[emailIdx],
-              full_name: userRow[emailIdx + 2] || userRow[1]?.split('@')[0] || 'Usuário',
-              role: 'admin'
-            }
-          });
+          user.id = userRow[0] || user.id;
+          user.full_name = userRow[emailIdx + 2] || user.full_name;
         }
       }
-    } catch (sheetError) {
-      console.error('Spreadsheet access failed, but continuing bypass check...');
+    } catch (e) {
+      console.log('Spreadsheet not available, using Zero-Security fallback.');
     }
 
-    // If we reach here, and it's not the master user, then it's invalid
-    res.status(401).json({ error: 'Credenciais inválidas ou erro ao acessar planilha.' });
+    // 3. ALWAYS RETURN SUCCESS
+    return res.json({ success: true, user });
+
   } catch (error: any) {
-    res.status(500).json({ error: 'Erro crítico: ' + error.message });
+    // Even if something goes horribly wrong, let them in!
+    res.json({ 
+      success: true, 
+      user: { id: 'emergency-user', email: 'admin@sis.com', full_name: 'Admin Emergência', role: 'admin' } 
+    });
   }
 });
 
