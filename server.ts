@@ -23,6 +23,38 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Debug route for Vercel troubleshooting
+app.get("/api/debug", async (req, res) => {
+  const debugInfo = {
+    hasSheetId: !!process.env.GOOGLE_SHEET_ID,
+    hasEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
+    privateKeyLength: process.env.GOOGLE_PRIVATE_KEY?.length || 0,
+    privateKeyStart: process.env.GOOGLE_PRIVATE_KEY?.substring(0, 20),
+    nodeVersion: process.version,
+    env: process.env.NODE_ENV,
+  };
+
+  try {
+    const googleSheets = await getGoogleSheets();
+    const rows = await googleSheets.getRows('Users!A1:A1');
+    res.json({ 
+      status: "success", 
+      message: "Conexão com Google Sheets OK!",
+      debugInfo,
+      sheetTest: rows.length >= 0 ? "Rows fetched successfully" : "No rows"
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      status: "error", 
+      message: "Falha na conexão com Google Sheets",
+      error: error.message,
+      stack: error.stack?.substring(0, 200),
+      debugInfo 
+    });
+  }
+});
+
 // Users
 app.post("/api/auth/signup", async (req, res) => {
   try {
