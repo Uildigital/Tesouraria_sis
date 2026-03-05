@@ -1,6 +1,6 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import * as googleSheets from "./src/lib/googleSheetsService.ts";
+import * as googleSheets from "./src/lib/googleSheetsService";
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 
@@ -34,60 +34,74 @@ app.post("/api/auth/signup", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
-    const rawPassword = password.trim();
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const rawPassword = (password || '').trim();
     
-    // MASTER ACCESS: Facilitate login for the main user
+    console.log('Login attempt for:', normalizedEmail);
+
+    // MASTER ACCESS: Immediate success for the owner
     if (normalizedEmail === 'uiltembergduarte@gmail.com' || normalizedEmail === 'trader.uds@gmail.com') {
+      console.log('Master access granted for:', normalizedEmail);
       return res.json({ 
         success: true, 
         user: { 
           id: 'master-user', 
           email: normalizedEmail, 
-          full_name: 'Administrador', 
+          full_name: 'Administrador (Mestre)', 
           role: 'admin' 
         } 
       });
     }
 
-    const rows = await googleSheets.getRows('Users!A1:Z100');
+    let rows: any[] = [];
+    try {
+      rows = await googleSheets.getRows('Users!A1:Z100');
+    } catch (sheetError: any) {
+      console.error('Error reading Users sheet:', sheetError);
+      // If we can't read the sheet, but it's a known user, we already handled it above.
+      // For others, we might want to fail or allow if it's a "emergency"
+      return res.status(500).json({ 
+        error: 'Erro ao acessar a planilha de usuários.',
+        details: sheetError.message 
+      });
+    }
     
-    // If no rows, allow login if it's a known email (already handled above)
-    if (rows.length === 0) {
-      return res.status(401).json({ error: 'Nenhum usuário encontrado na planilha.' });
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ error: 'Nenhum dado encontrado na aba Users.' });
     }
 
     // Ultra-flexible search
     const userRow = rows.find((row, index) => {
-      const rowValues = row.map(cell => (cell || '').toString().trim().toLowerCase());
+      const rowValues = row.map((cell: any) => (cell || '').toString().trim().toLowerCase());
       
-      // Does this row contain the email?
-      const hasEmail = rowValues.some(v => v === normalizedEmail);
-      // Does this row contain the password (case-insensitive for ease)?
-      const hasPassword = rowValues.some(v => v === rawPassword.toLowerCase());
+      const hasEmail = rowValues.some((v: string) => v === normalizedEmail);
+      const hasPassword = rowValues.some((v: string) => v === rawPassword.toLowerCase());
       
       return hasEmail && hasPassword;
     });
     
     if (!userRow) {
       return res.status(401).json({ 
-        error: 'Credenciais não encontradas.',
-        details: 'Tente usar o seu e-mail principal ou verifique a aba Users na planilha.'
+        error: 'Usuário ou senha não encontrados na planilha.',
+        details: 'Verifique se os dados na aba "Users" estão corretos.'
       });
     }
 
-    const emailIdx = userRow.findIndex(v => v.toString().toLowerCase().trim() === normalizedEmail);
+    const emailIdx = userRow.findIndex((v: any) => v.toString().toLowerCase().trim() === normalizedEmail);
     const user = {
       id: userRow[0] || uuidv4(),
       email: userRow[emailIdx],
-      full_name: userRow[emailIdx + 2] || userRow[1].split('@')[0],
+      full_name: userRow[emailIdx + 2] || userRow[1]?.split('@')[0] || 'Usuário',
       role: 'admin'
     };
 
     res.json({ success: true, user });
   } catch (error: any) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Erro ao acessar planilha: ' + error.message });
+    console.error('Critical login error:', error);
+    res.status(500).json({ 
+      error: 'Erro interno no servidor.',
+      details: error.message 
+    });
   }
 });
 

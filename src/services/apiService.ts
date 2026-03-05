@@ -67,7 +67,11 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    if (!res.ok) throw new Error('Credenciais inválidas');
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido no servidor' }));
+      throw new Error(errorData.error || errorData.details || 'Credenciais inválidas');
+    }
     return res.json();
   },
 
