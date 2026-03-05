@@ -29,7 +29,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

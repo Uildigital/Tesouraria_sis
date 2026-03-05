@@ -34,6 +34,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: userData.role,
         is_active: true
       } as Profile);
+    } else {
+      // DEFAULT USER: Auto-login if no user is found
+      const defaultUser = {
+        id: 'master-user',
+        email: 'trader.uds@gmail.com',
+        full_name: 'Administrador (Mestre)',
+        role: 'admin'
+      };
+      setSession({ user: defaultUser });
+      setUser(defaultUser);
+      setProfile({
+        id: defaultUser.id,
+        email: defaultUser.email,
+        full_name: defaultUser.full_name,
+        role: defaultUser.role,
+        is_active: true
+      } as Profile);
     }
     setLoading(false);
   }, []);
