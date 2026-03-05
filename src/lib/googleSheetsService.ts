@@ -5,6 +5,9 @@ const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 const getAuth = () => {
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  if (!privateKey || !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+    throw new Error('GOOGLE_PRIVATE_KEY or GOOGLE_SERVICE_ACCOUNT_EMAIL is missing in environment variables');
+  }
   return new JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key: privateKey,
@@ -12,11 +15,17 @@ const getAuth = () => {
   });
 };
 
-const sheets = google.sheets('v4');
-const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+const getSheets = () => google.sheets('v4');
+const getSpreadsheetId = () => {
+  const id = process.env.GOOGLE_SHEET_ID;
+  if (!id) throw new Error('GOOGLE_SHEET_ID is missing in environment variables');
+  return id;
+};
 
 export async function getRows(range: string) {
   const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
   const response = await sheets.spreadsheets.values.get({
     auth,
     spreadsheetId,
@@ -27,6 +36,8 @@ export async function getRows(range: string) {
 
 export async function appendRow(range: string, values: any[]) {
   const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
   await sheets.spreadsheets.values.append({
     auth,
     spreadsheetId,
@@ -40,6 +51,8 @@ export async function appendRow(range: string, values: any[]) {
 
 export async function updateRow(range: string, values: any[]) {
   const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
   await sheets.spreadsheets.values.update({
     auth,
     spreadsheetId,
@@ -53,6 +66,8 @@ export async function updateRow(range: string, values: any[]) {
 
 export async function deleteRow(sheetName: string, rowIndex: number) {
   const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
   // We need the sheet ID to delete a row
   const spreadsheet = await sheets.spreadsheets.get({
     auth,
@@ -85,6 +100,8 @@ export async function deleteRow(sheetName: string, rowIndex: number) {
 
 export async function initializeSheets() {
   const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
   const sheetsToCreate = ['Transactions', 'Categories', 'Departments', 'Users'];
   
   const spreadsheet = await sheets.spreadsheets.get({

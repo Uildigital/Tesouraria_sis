@@ -1,6 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
-import * as googleSheets from "./src/lib/googleSheetsService";
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 
@@ -11,15 +9,29 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Lazy load googleSheets to avoid heavy imports at startup
+const getGoogleSheets = async () => {
+  return await import("./src/lib/googleSheetsService");
+};
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    environment: process.env.VERCEL ? "vercel" : "local",
+    time: new Date().toISOString()
+  });
+});
+
 // Users
 app.post("/api/auth/signup", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const { email, password, full_name, role } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = (email || '').toLowerCase().trim();
     const id = uuidv4();
     const createdAt = new Date().toISOString();
     
-    // Check if user exists
     const rows = await googleSheets.getRows('Users!A:E');
     const exists = rows.some(row => (row[1] || '').toString().toLowerCase().trim() === normalizedEmail);
     if (exists) return res.status(400).json({ error: 'Usuário já existe' });
@@ -37,11 +49,8 @@ app.post("/api/auth/login", async (req, res) => {
     const normalizedEmail = (email || '').toLowerCase().trim();
     const rawPassword = (password || '').trim();
     
-    console.log('Login attempt for:', normalizedEmail);
-
     // MASTER ACCESS: Immediate success for the owner
     if (normalizedEmail === 'uiltembergduarte@gmail.com' || normalizedEmail === 'trader.uds@gmail.com') {
-      console.log('Master access granted for:', normalizedEmail);
       return res.json({ 
         success: true, 
         user: { 
@@ -53,38 +62,21 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    let rows: any[] = [];
-    try {
-      rows = await googleSheets.getRows('Users!A1:Z100');
-    } catch (sheetError: any) {
-      console.error('Error reading Users sheet:', sheetError);
-      // If we can't read the sheet, but it's a known user, we already handled it above.
-      // For others, we might want to fail or allow if it's a "emergency"
-      return res.status(500).json({ 
-        error: 'Erro ao acessar a planilha de usuários.',
-        details: sheetError.message 
-      });
-    }
-    
+    const googleSheets = await getGoogleSheets();
+    const rows = await googleSheets.getRows('Users!A1:Z100');
     if (!rows || rows.length === 0) {
       return res.status(401).json({ error: 'Nenhum dado encontrado na aba Users.' });
     }
 
-    // Ultra-flexible search
     const userRow = rows.find((row, index) => {
       const rowValues = row.map((cell: any) => (cell || '').toString().trim().toLowerCase());
-      
       const hasEmail = rowValues.some((v: string) => v === normalizedEmail);
       const hasPassword = rowValues.some((v: string) => v === rawPassword.toLowerCase());
-      
       return hasEmail && hasPassword;
     });
     
     if (!userRow) {
-      return res.status(401).json({ 
-        error: 'Usuário ou senha não encontrados na planilha.',
-        details: 'Verifique se os dados na aba "Users" estão corretos.'
-      });
+      return res.status(401).json({ error: 'Usuário ou senha não encontrados na planilha.' });
     }
 
     const emailIdx = userRow.findIndex((v: any) => v.toString().toLowerCase().trim() === normalizedEmail);
@@ -97,17 +89,14 @@ app.post("/api/auth/login", async (req, res) => {
 
     res.json({ success: true, user });
   } catch (error: any) {
-    console.error('Critical login error:', error);
-    res.status(500).json({ 
-      error: 'Erro interno no servidor.',
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Erro no servidor: ' + error.message });
   }
 });
 
 // API Routes
 app.get("/api/init", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     await googleSheets.initializeSheets();
     res.json({ success: true });
   } catch (error: any) {
@@ -115,9 +104,9 @@ app.get("/api/init", async (req, res) => {
   }
 });
 
-// Transactions
 app.get("/api/transactions", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const rows = await googleSheets.getRows('Transactions!A:I');
     const headers = rows[0];
     const data = rows.slice(1).map(row => {
@@ -135,6 +124,7 @@ app.get("/api/transactions", async (req, res) => {
 
 app.post("/api/transactions", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const { date, description, amount, type, category_id, department_id, user_id } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -145,9 +135,9 @@ app.post("/api/transactions", async (req, res) => {
   }
 });
 
-// Categories
 app.get("/api/categories", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const rows = await googleSheets.getRows('Categories!A:E');
     if (rows.length === 0) return res.json([]);
     const headers = rows[0];
@@ -166,6 +156,7 @@ app.get("/api/categories", async (req, res) => {
 
 app.post("/api/categories", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const { name, type, parent_id } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -176,9 +167,9 @@ app.post("/api/categories", async (req, res) => {
   }
 });
 
-// Departments
 app.get("/api/departments", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const rows = await googleSheets.getRows('Departments!A:C');
     if (rows.length === 0) return res.json([]);
     const headers = rows[0];
@@ -197,6 +188,7 @@ app.get("/api/departments", async (req, res) => {
 
 app.post("/api/departments", async (req, res) => {
   try {
+    const googleSheets = await getGoogleSheets();
     const { name } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -207,28 +199,29 @@ app.post("/api/departments", async (req, res) => {
   }
 });
 
-async function startServer() {
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+// Server initialization logic
+if (process.env.NODE_ENV !== "production") {
+  const startDevServer = async () => {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    app.use(express.static("dist"));
-    app.get("*", (req, res) => {
-      res.sendFile("dist/index.html", { root: "." });
-    });
-  }
-
-  if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Dev server running on http://localhost:${PORT}`);
     });
-  }
+  };
+  startDevServer();
+} else if (!process.env.VERCEL) {
+  // Standard production (non-Vercel)
+  app.use(express.static("dist"));
+  app.get("*", (req, res) => {
+    res.sendFile("dist/index.html", { root: "." });
+  });
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Production server running on http://localhost:${PORT}`);
+  });
 }
-
-startServer();
 
 export { app };
