@@ -101,5 +101,11 @@ export const apiService = {
       throw new Error(error.error || 'Erro ao criar conta');
     }
     return res.json();
+  },
+
+  async getUsers(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/users`);
+    if (!res.ok) throw new Error('Failed to fetch users');
+    return res.json();
   }
 };

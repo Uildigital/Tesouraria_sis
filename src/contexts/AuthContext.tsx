@@ -19,7 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = profile?.role === 'admin' || profile?.role === 'treasurer';
+  const canEdit = profile?.role === 'admin';
 
   useEffect(() => {
     const savedUser = localStorage.getItem('church_user');
@@ -32,23 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: userData.email,
         full_name: userData.full_name,
         role: userData.role,
-        is_active: true
-      } as Profile);
-    } else {
-      // DEFAULT USER: Auto-login if no user is found
-      const defaultUser = {
-        id: 'master-user',
-        email: 'trader.uds@gmail.com',
-        full_name: 'Administrador (Mestre)',
-        role: 'admin'
-      };
-      setSession({ user: defaultUser });
-      setUser(defaultUser);
-      setProfile({
-        id: defaultUser.id,
-        email: defaultUser.email,
-        full_name: defaultUser.full_name,
-        role: defaultUser.role,
         is_active: true
       } as Profile);
     }

@@ -14,6 +14,9 @@ export const ProtectedRoute: React.FC = () => {
     );
   }
 
-  // Bypass session check - always allow access
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <Outlet />;
 };

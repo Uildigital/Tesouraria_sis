@@ -32,6 +32,16 @@ export const Settings: React.FC = () => {
   
   const [churchName, setChurchName] = useState('Minha Igreja');
 
+  if (!canEdit) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+        <Shield className="h-16 w-16 text-zinc-200 mb-4" />
+        <h2 className="text-2xl font-bold text-zinc-900 font-display">Acesso Restrito</h2>
+        <p className="text-zinc-500 max-w-md mt-2">Apenas administradores podem acessar as configurações do sistema.</p>
+      </div>
+    );
+  }
+
   const sections = [
     { id: 'depts', title: 'Departamentos', description: 'Gerenciar centros de custo e ministérios', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { id: 'cats', title: 'Categorias', description: 'Plano de contas e hierarquia de gastos', icon: Tags, color: 'text-amber-600', bg: 'bg-amber-50' },

@@ -25,8 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: 'Dashboard', href: `/dashboard`, icon: LayoutDashboard },
     { name: 'Lançamentos', href: `/lancamentos`, icon: ArrowLeftRight },
     { name: 'Relatórios', href: `/relatorios`, icon: FileText },
-    { name: 'Equipe', href: `/equipe`, icon: UsersIcon },
-    { name: 'Configurações', href: `/configuracoes`, icon: Settings },
+    ...(profile?.role === 'admin' ? [
+      { name: 'Equipe', href: `/equipe`, icon: UsersIcon },
+      { name: 'Configurações', href: `/configuracoes`, icon: Settings },
+    ] : []),
   ];
 
   return (

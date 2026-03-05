@@ -36,11 +36,21 @@ export const Users: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isAdmin = profile?.role === 'admin';
+
   // Form state
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'treasurer' | 'viewer'>('viewer');
 
-  const isAdmin = profile?.role === 'admin';
+  if (!isAdmin) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
+        <UserX className="h-16 w-16 text-zinc-200 mb-4" />
+        <h2 className="text-2xl font-bold text-zinc-900 font-display">Acesso Restrito</h2>
+        <p className="text-zinc-500 max-w-md mt-2">Apenas administradores podem gerenciar a equipe.</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchData();
@@ -49,10 +59,8 @@ export const Users: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // For now, we don't have a list users endpoint that returns all users from Sheets
-      // but we can simulate it or just show a message.
-      // In a real scenario, we'd add an endpoint to server.ts to list users.
-      setUsers([]);
+      const data = await apiService.getUsers();
+      setUsers(data);
       setInvitations([]);
     } catch (error: any) {
       toast.error('Erro ao carregar equipe');
