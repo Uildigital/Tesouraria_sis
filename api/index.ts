@@ -545,8 +545,25 @@ app.post(["/api/departments", "/departments"], async (req, res) => {
 app.get(["/api/users", "/users"], async (req, res) => {
   try {
     const rows = await getRows('Users!A:G');
-    if (!rows || rows.length <= 1) return res.json([]);
-    const headers = rows[0];
+    if (!rows || rows.length === 0) return res.json([]);
+    
+    let headers = rows[0];
+    
+    // Auto-fix headers if missing is_active
+    if (!headers.includes('is_active')) {
+      headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
+      const auth = getAuth();
+      const sheets = getSheets();
+      const spreadsheetId = getSpreadsheetId();
+      await sheets.spreadsheets.values.update({
+        auth,
+        spreadsheetId,
+        range: 'Users!A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [headers] },
+      });
+    }
+
     const data = rows.slice(1).map((row: any) => {
       const obj: any = {};
       headers.forEach((header: string, index: number) => {
@@ -554,9 +571,12 @@ app.get(["/api/users", "/users"], async (req, res) => {
       });
       // Remove password for security
       const { password: _, ...userWithoutPassword } = obj;
+      
+      // If the row was shorter than headers, obj.is_active might be empty
+      const isActiveValue = obj.is_active;
       return { 
         ...userWithoutPassword, 
-        is_active: obj.is_active !== 'FALSE' 
+        is_active: isActiveValue !== 'FALSE' 
       };
     });
     res.json(data);
@@ -613,24 +633,29 @@ app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
     const rowIndex = rows.findIndex(row => row[0] === id);
     if (rowIndex === -1) return res.status(404).json({ error: "Usuário não encontrado" });
     
-    const oldUser = rows[rowIndex];
     const headers = rows[0];
-    const isActiveIndex = headers.indexOf('is_active');
-    const createdAtIndex = headers.indexOf('created_at');
+    const oldUserRow = rows[rowIndex];
     
-    const newUser = [
+    // Map old user data to object for easier manipulation
+    const oldUserObj: any = {};
+    headers.forEach((header, index) => {
+      oldUserObj[header] = oldUserRow[index] || '';
+    });
+
+    // Prepare new user data based on standard 7-column structure
+    const newUserRow = [
       id,
-      email || oldUser[1],
-      password || oldUser[2],
-      full_name || oldUser[3],
-      role || oldUser[4],
+      email || oldUserObj.email || '',
+      password || oldUserObj.password || '',
+      full_name || oldUserObj.full_name || '',
+      role || oldUserObj.role || 'viewer',
       is_active !== undefined 
         ? (is_active ? 'TRUE' : 'FALSE') 
-        : (isActiveIndex !== -1 ? (oldUser[isActiveIndex] || 'TRUE') : 'TRUE'),
-      createdAtIndex !== -1 ? oldUser[createdAtIndex] : (oldUser[5] || new Date().toISOString())
+        : (oldUserObj.is_active || 'TRUE'),
+      oldUserObj.created_at || new Date().toISOString()
     ];
     
-    await updateRow('Users', id, newUser);
+    await updateRow('Users', id, newUserRow);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
