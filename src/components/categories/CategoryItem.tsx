@@ -5,30 +5,33 @@ import { cn } from '../../lib/utils';
 
 interface CategoryItemProps {
   category: Category;
-  subcategories: Category[];
+  allCategories: Category[];
   onDelete: (id: string) => void;
   onEdit: (category: Category) => void;
   canEdit: boolean;
+  level?: number;
 }
 
 export const CategoryItem: React.FC<CategoryItemProps> = ({ 
   category, 
-  subcategories, 
+  allCategories, 
   onDelete, 
   onEdit, 
-  canEdit 
+  canEdit,
+  level = 0
 }) => {
+  const subcategories = allCategories.filter(c => c.parent_id === category.id);
   const hasSubcategories = subcategories.length > 0;
 
   return (
-    <div className="p-4 sm:p-6" translate="no" key={`item-${category.id}`}>
+    <div className={cn("translate-no", level === 0 ? "p-4 sm:p-6" : "mt-3 ml-6 border-l-2 border-zinc-100 pl-4")} key={`item-${category.id}`}>
       <div className="flex items-center justify-between group">
         <div className="flex items-center">
           <div className={cn(
             "mr-3 h-2 w-2 rounded-full",
             category.type === 'income' ? "bg-emerald-500" : "bg-red-500"
           )} />
-          <div className="font-bold text-zinc-900">
+          <div className={cn("font-bold text-zinc-900", level > 0 && "text-sm font-medium text-zinc-600")}>
             {category.name}
           </div>
         </div>
@@ -38,7 +41,7 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
             onClick={(e) => { e.preventDefault(); onEdit(category); }}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
           >
-            <Edit2 size={14} />
+            <Edit2 size={level === 0 ? 14 : 12} />
             <span className="hidden sm:inline">Editar</span>
           </button>
           {canEdit && (
@@ -47,49 +50,28 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
               onClick={(e) => { e.preventDefault(); onDelete(category.id); }}
               className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
-              <Trash2 size={14} />
+              <Trash2 size={level === 0 ? 14 : 12} />
               <span className="hidden sm:inline">Excluir</span>
             </button>
           )}
         </div>
       </div>
       
-      <div className="mt-3 ml-6 space-y-2 border-l-2 border-zinc-100 pl-4">
-        {hasSubcategories ? (
-          subcategories.map(sub => (
-            <div key={`sub-${sub.id}`} className="flex items-center justify-between group/sub py-1">
-              <div className="flex items-center text-sm text-zinc-600">
-                <ChevronRight size={14} className="mr-1 text-zinc-300" />
-                {sub.name}
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); onEdit(sub); }}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
-                >
-                  <Edit2 size={12} />
-                  <span>Editar</span>
-                </button>
-                {canEdit && (
-                  <button 
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); onDelete(sub.id); }}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={12} />
-                    <span>Excluir</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-xs text-zinc-400 italic py-1">
-            Sem subcategorias
-          </div>
-        )}
-      </div>
+      {hasSubcategories && (
+        <div className="space-y-2">
+          {subcategories.map(sub => (
+            <CategoryItem 
+              key={`sub-${sub.id}`}
+              category={sub}
+              allCategories={allCategories}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              canEdit={canEdit}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

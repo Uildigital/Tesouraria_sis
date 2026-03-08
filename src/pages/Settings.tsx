@@ -99,6 +99,24 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleResetCategories = async () => {
+    if (!window.confirm('Isso irá apagar todas as categorias atuais e criar a nova estrutura hierárquica. Deseja continuar?')) return;
+    
+    setIsSaving(true);
+    try {
+      const res = await apiService.resetCategories();
+      if (res.success) {
+        toast.success('Estrutura de categorias atualizada!', {
+          description: 'A nova hierarquia foi aplicada com sucesso.'
+        });
+      }
+    } catch (error: any) {
+      toast.error('Erro ao atualizar categorias: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderHeader = (title: string) => (
     <div className="mb-10 flex items-center gap-4">
       <button 
@@ -250,6 +268,13 @@ export const Settings: React.FC = () => {
                         className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                       >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Configurar Planilha'}
+                      </button>
+                      <button 
+                        onClick={handleResetCategories}
+                        disabled={isSaving}
+                        className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Categorias (Hierarquia)'}
                       </button>
                     </div>
                   </div>

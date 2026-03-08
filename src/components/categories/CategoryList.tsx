@@ -63,7 +63,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({
                   <div key={`parent-${parent.id}`}>
                     <CategoryItem 
                       category={parent} 
-                      subcategories={getSubcategories(parent.id)} 
+                      allCategories={categories} 
                       onDelete={onDelete}
                       onEdit={onEdit}
                       canEdit={canEdit}
@@ -90,7 +90,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({
                   <div key={`parent-${parent.id}`}>
                     <CategoryItem 
                       category={parent} 
-                      subcategories={getSubcategories(parent.id)} 
+                      allCategories={categories} 
                       onDelete={onDelete}
                       onEdit={onEdit}
                       canEdit={canEdit}

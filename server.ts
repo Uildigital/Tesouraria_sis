@@ -88,6 +88,58 @@ async function initializeSheets() {
         requestBody: { values: [headers] },
       });
 
+      // Add default categories if it's the Categories sheet
+      if (title === 'Categories') {
+        const defaultCategories = [
+          // Receitas
+          { id: 'inc_1', name: '1. ARRECADAÇÃO DIRETA', type: 'income', parent_id: '' },
+          { id: 'inc_1_1', name: '1.1. Ofertas', type: 'income', parent_id: 'inc_1' },
+          { id: 'inc_1_1_1', name: '1.1.1. Gasofilácio (Dinheiro/Espécie)', type: 'income', parent_id: 'inc_1_1' },
+          { id: 'inc_1_1_2', name: '1.1.2. PIX / Transferência', type: 'income', parent_id: 'inc_1_1' },
+          { id: 'inc_1_2', name: '1.2. Dízimos', type: 'income', parent_id: 'inc_1' },
+          { id: 'inc_1_2_1', name: '1.2.1. PIX / Transferência', type: 'income', parent_id: 'inc_1_2' },
+          { id: 'inc_1_2_2', name: '1.2.2. Espécie', type: 'income', parent_id: 'inc_1_2' },
+          { id: 'inc_2', name: '2. DOAÇÕES E OUTROS', type: 'income', parent_id: '' },
+          { id: 'inc_2_1', name: '2.1. Doação Específica (Ex: Campanhas, Construção)', type: 'income', parent_id: 'inc_2' },
+          { id: 'inc_2_2', name: '2.2. Doação Geral', type: 'income', parent_id: 'inc_2' },
+          { id: 'inc_3', name: '3. RENDIMENTOS E RESERVAS', type: 'income', parent_id: '' },
+          { id: 'inc_3_1', name: '3.1. Rendimentos', type: 'income', parent_id: 'inc_3' },
+          { id: 'inc_3_1_1', name: '3.1.1. Rendimento de Aplicação (CDB/Investimentos)', type: 'income', parent_id: 'inc_3_1' },
+          { id: 'inc_3_1_2', name: '3.1.2. Rendimento de Poupança', type: 'income', parent_id: 'inc_3_1' },
+          { id: 'inc_3_2', name: '3.2. Transferências Internas', type: 'income', parent_id: 'inc_3' },
+          { id: 'inc_3_2_1', name: '3.2.1. Entrada de Transferência p/ Poupança', type: 'income', parent_id: 'inc_3_2' },
+          // Despesas
+          { id: 'exp_4', name: '4. MANUTENÇÃO E INFRAESTRUTURA', type: 'expense', parent_id: '' },
+          { id: 'exp_4_1', name: '4.1. Reparos e Obras', type: 'expense', parent_id: 'exp_4' },
+          { id: 'exp_4_1_1', name: '4.1.1. Pintura', type: 'expense', parent_id: 'exp_4_1' },
+          { id: 'exp_4_1_2', name: '4.1.2. Serralharia / Portas', type: 'expense', parent_id: 'exp_4_1' },
+          { id: 'exp_4_1_3', name: '4.1.3. Elétrica / Hidráulica', type: 'expense', parent_id: 'exp_4_1' },
+          { id: 'exp_4_2', name: '4.2. Limpeza e Conservação', type: 'expense', parent_id: 'exp_4' },
+          { id: 'exp_5', name: '5. PESSOAL E ENCARGOS', type: 'expense', parent_id: '' },
+          { id: 'exp_5_1', name: '5.1. Folha de Pagamento', type: 'expense', parent_id: 'exp_5' },
+          { id: 'exp_5_1_1', name: '5.1.1. Salários', type: 'expense', parent_id: 'exp_5_1' },
+          { id: 'exp_5_1_2', name: '5.1.2. Pró-labore / Prebenda Ministerial', type: 'expense', parent_id: 'exp_5_1' },
+          { id: 'exp_5_2', name: '5.2. Encargos Sociais', type: 'expense', parent_id: 'exp_5' },
+          { id: 'exp_5_2_1', name: '5.2.1. INSS / FGTS / Impostos', type: 'expense', parent_id: 'exp_5_2' },
+          { id: 'exp_6', name: '6. DESPESAS OPERACIONAIS', type: 'expense', parent_id: '' },
+          { id: 'exp_6_1', name: '6.1. Taxas Bancárias', type: 'expense', parent_id: 'exp_6' },
+          { id: 'exp_6_1_1', name: '6.1.1. Tarifas de Conta', type: 'expense', parent_id: 'exp_6_1' },
+          { id: 'exp_6_1_2', name: '6.1.2. Juros / IOF', type: 'expense', parent_id: 'exp_6_1' },
+          { id: 'exp_6_2', name: '6.2. Contas de Consumo', type: 'expense', parent_id: 'exp_6' },
+          { id: 'exp_6_2_1', name: '6.2.1. Energia / Água / Internet', type: 'expense', parent_id: 'exp_6_2' },
+        ];
+
+        const createdAt = new Date().toISOString();
+        const values = defaultCategories.map(c => [c.id, c.name, c.type, c.parent_id, createdAt]);
+        await sheets.spreadsheets.values.append({
+          auth,
+          spreadsheetId,
+          range: 'Categories!A:E',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values },
+        });
+      }
+
       // Add default admin if it's the Users sheet
       if (title === 'Users') {
         const defaultAdmin = [
@@ -113,6 +165,74 @@ app.get(["/api/health", "/health"], (req, res) => {
 app.get(["/api/init", "/init"], async (req, res) => {
   try {
     await initializeSheets();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post(["/api/reset-categories", "/reset-categories"], async (req, res) => {
+  try {
+    const auth = getAuth();
+    const sheets = getSheets();
+    const spreadsheetId = getSpreadsheetId();
+    
+    // Clear Categories sheet (except header)
+    await sheets.spreadsheets.values.clear({
+      auth,
+      spreadsheetId,
+      range: 'Categories!A2:E1000',
+    });
+
+    const defaultCategories = [
+      // Receitas
+      { id: 'inc_1', name: '1. ARRECADAÇÃO DIRETA', type: 'income', parent_id: '' },
+      { id: 'inc_1_1', name: '1.1. Ofertas', type: 'income', parent_id: 'inc_1' },
+      { id: 'inc_1_1_1', name: '1.1.1. Gasofilácio (Dinheiro/Espécie)', type: 'income', parent_id: 'inc_1_1' },
+      { id: 'inc_1_1_2', name: '1.1.2. PIX / Transferência', type: 'income', parent_id: 'inc_1_1' },
+      { id: 'inc_1_2', name: '1.2. Dízimos', type: 'income', parent_id: 'inc_1' },
+      { id: 'inc_1_2_1', name: '1.2.1. PIX / Transferência', type: 'income', parent_id: 'inc_1_2' },
+      { id: 'inc_1_2_2', name: '1.2.2. Espécie', type: 'income', parent_id: 'inc_1_2' },
+      { id: 'inc_2', name: '2. DOAÇÕES E OUTROS', type: 'income', parent_id: '' },
+      { id: 'inc_2_1', name: '2.1. Doação Específica (Ex: Campanhas, Construção)', type: 'income', parent_id: 'inc_2' },
+      { id: 'inc_2_2', name: '2.2. Doação Geral', type: 'income', parent_id: 'inc_2' },
+      { id: 'inc_3', name: '3. RENDIMENTOS E RESERVAS', type: 'income', parent_id: '' },
+      { id: 'inc_3_1', name: '3.1. Rendimentos', type: 'income', parent_id: 'inc_3' },
+      { id: 'inc_3_1_1', name: '3.1.1. Rendimento de Aplicação (CDB/Investimentos)', type: 'income', parent_id: 'inc_3_1' },
+      { id: 'inc_3_1_2', name: '3.1.2. Rendimento de Poupança', type: 'income', parent_id: 'inc_3_1' },
+      { id: 'inc_3_2', name: '3.2. Transferências Internas', type: 'income', parent_id: 'inc_3' },
+      { id: 'inc_3_2_1', name: '3.2.1. Entrada de Transferência p/ Poupança', type: 'income', parent_id: 'inc_3_2' },
+      // Despesas
+      { id: 'exp_4', name: '4. MANUTENÇÃO E INFRAESTRUTURA', type: 'expense', parent_id: '' },
+      { id: 'exp_4_1', name: '4.1. Reparos e Obras', type: 'expense', parent_id: 'exp_4' },
+      { id: 'exp_4_1_1', name: '4.1.1. Pintura', type: 'expense', parent_id: 'exp_4_1' },
+      { id: 'exp_4_1_2', name: '4.1.2. Serralharia / Portas', type: 'expense', parent_id: 'exp_4_1' },
+      { id: 'exp_4_1_3', name: '4.1.3. Elétrica / Hidráulica', type: 'expense', parent_id: 'exp_4_1' },
+      { id: 'exp_4_2', name: '4.2. Limpeza e Conservação', type: 'expense', parent_id: 'exp_4' },
+      { id: 'exp_5', name: '5. PESSOAL E ENCARGOS', type: 'expense', parent_id: '' },
+      { id: 'exp_5_1', name: '5.1. Folha de Pagamento', type: 'expense', parent_id: 'exp_5' },
+      { id: 'exp_5_1_1', name: '5.1.1. Salários', type: 'expense', parent_id: 'exp_5_1' },
+      { id: 'exp_5_1_2', name: '5.1.2. Pró-labore / Prebenda Ministerial', type: 'expense', parent_id: 'exp_5_1' },
+      { id: 'exp_5_2', name: '5.2. Encargos Sociais', type: 'expense', parent_id: 'exp_5' },
+      { id: 'exp_5_2_1', name: '5.2.1. INSS / FGTS / Impostos', type: 'expense', parent_id: 'exp_5_2' },
+      { id: 'exp_6', name: '6. DESPESAS OPERACIONAIS', type: 'expense', parent_id: '' },
+      { id: 'exp_6_1', name: '6.1. Taxas Bancárias', type: 'expense', parent_id: 'exp_6' },
+      { id: 'exp_6_1_1', name: '6.1.1. Tarifas de Conta', type: 'expense', parent_id: 'exp_6_1' },
+      { id: 'exp_6_1_2', name: '6.1.2. Juros / IOF', type: 'expense', parent_id: 'exp_6_1' },
+      { id: 'exp_6_2', name: '6.2. Contas de Consumo', type: 'expense', parent_id: 'exp_6' },
+      { id: 'exp_6_2_1', name: '6.2.1. Energia / Água / Internet', type: 'expense', parent_id: 'exp_6_2' },
+    ];
+
+    const createdAt = new Date().toISOString();
+    const values = defaultCategories.map(c => [c.id, c.name, c.type, c.parent_id, createdAt]);
+    await sheets.spreadsheets.values.append({
+      auth,
+      spreadsheetId,
+      range: 'Categories!A:E',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values },
+    });
+
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

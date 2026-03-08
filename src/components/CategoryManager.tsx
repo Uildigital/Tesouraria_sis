@@ -44,16 +44,54 @@ export const CategoryManager: React.FC = () => {
   }, [clearAll]);
 
   const handleImportPremium = useCallback(async () => {
-    if (!confirm('ATENÇÃO: Isso criará um Plano de Contas Profissional (Padrão Contábil para Igrejas). Deseja continuar?')) return;
+    if (!confirm('ATENÇÃO: Isso criará a estrutura hierárquica solicitada. Deseja continuar?')) return;
     
     const structure = [
-      { name: '1. RECEITAS COM ATIVIDADES', type: 'income', sub: ['1.1. Dízimos', '1.2. Ofertas de Cultos', '1.3. Ofertas Especiais / Campanhas', '1.4. Contribuições de Membros'] },
-      { name: '2. RECEITAS FINANCEIRAS E OUTRAS', type: 'income', sub: ['2.1. Rendimentos de Aplicações', '2.2. Aluguéis Recebidos', '2.3. Cantina / Bazar / Eventos', '2.4. Venda de Materiais'] },
-      { name: '3. DESPESAS COM PESSOAL E MINISTROS', type: 'expense', sub: ['3.1. Côngruas / Sustento Pastoral', '3.2. Salários de Funcionários', '3.3. Encargos Sociais (INSS/FGTS)', '3.4. Benefícios e Pró-Labore'] },
-      { name: '4. DESPESAS OPERACIONAIS (CONTAS FIXAS)', type: 'expense', sub: ['4.1. Energia Elétrica', '4.2. Água e Esgoto', '4.3. Telefone e Internet', '4.4. Aluguel do Templo', '4.5. Gás e Combustível'] },
-      { name: '5. MANUTENÇÃO, REFORMAS E PATRIMÔNIO', type: 'expense', sub: ['5.1. Manutenção Predial', '5.2. Limpeza e Conservação', '5.3. Equipamentos de Som e Vídeo', '5.4. Móveis e Utensílios'] },
-      { name: '6. MINISTÉRIOS, MISSÕES E AÇÃO SOCIAL', type: 'expense', sub: ['6.1. Missões Nacionais/Estrangeiras', '6.2. Ação Social / Cestas Básicas', '6.3. Ministério Infantil (EBD)', '6.4. Ministério de Louvor', '6.5. Eventos e Congressos'] },
-      { name: '7. DESPESAS ADM, BANCÁRIAS E TAXAS', type: 'expense', sub: ['7.1. Tarifas Bancárias', '7.2. Material de Escritório', '7.3. Assessoria Contábil / Jurídica', '7.4. Impostos e Taxas Municipais'] }
+      { 
+        name: '1. ARRECADAÇÃO DIRETA', 
+        type: 'income', 
+        sub: [
+          { name: '1.1. Ofertas', sub: ['1.1.1. Gasofilácio (Dinheiro/Espécie)', '1.1.2. PIX / Transferência'] },
+          { name: '1.2. Dízimos', sub: ['1.2.1. PIX / Transferência', '1.2.2. Espécie'] }
+        ] 
+      },
+      { 
+        name: '2. DOAÇÕES E OUTROS', 
+        type: 'income', 
+        sub: ['2.1. Doação Específica (Ex: Campanhas, Construção)', '2.2. Doação Geral'] 
+      },
+      { 
+        name: '3. RENDIMENTOS E RESERVAS', 
+        type: 'income', 
+        sub: [
+          { name: '3.1. Rendimentos', sub: ['3.1.1. Rendimento de Aplicação (CDB/Investimentos)', '3.1.2. Rendimento de Poupança'] },
+          { name: '3.2. Transferências Internas', sub: ['3.2.1. Entrada de Transferência p/ Poupança'] }
+        ] 
+      },
+      { 
+        name: '4. MANUTENÇÃO E INFRAESTRUTURA', 
+        type: 'expense', 
+        sub: [
+          { name: '4.1. Reparos e Obras', sub: ['4.1.1. Pintura', '4.1.2. Serralharia / Portas', '4.1.3. Elétrica / Hidráulica'] },
+          { name: '4.2. Limpeza e Conservação' }
+        ] 
+      },
+      { 
+        name: '5. PESSOAL E ENCARGOS', 
+        type: 'expense', 
+        sub: [
+          { name: '5.1. Folha de Pagamento', sub: ['5.1.1. Salários', '5.1.2. Pró-labore / Prebenda Ministerial'] },
+          { name: '5.2. Encargos Sociais', sub: ['5.2.1. INSS / FGTS / Impostos'] }
+        ] 
+      },
+      { 
+        name: '6. DESPESAS OPERACIONAIS', 
+        type: 'expense', 
+        sub: [
+          { name: '6.1. Taxas Bancárias', sub: ['6.1.1. Tarifas de Conta', '6.1.2. Juros / IOF'] },
+          { name: '6.2. Contas de Consumo', sub: ['6.2.1. Energia / Água / Internet'] }
+        ] 
+      }
     ];
 
     await importPremium(structure);

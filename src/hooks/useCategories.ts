@@ -54,20 +54,40 @@ export const useCategories = () => {
   }, []);
 
   const clearAll = useCallback(async () => {
-    toast.info('Limpeza não implementada para Google Sheets ainda.');
-  }, []);
+    setIsSubmitting(true);
+    try {
+      await apiService.resetCategories();
+      await fetchCategories();
+      toast.success('Categorias resetadas!');
+    } catch (error: any) {
+      toast.error('Erro ao resetar: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [fetchCategories]);
 
   const importPremium = useCallback(async (structure: any[]) => {
     setIsSubmitting(true);
     try {
-      for (const item of structure) {
-        const res = await apiService.createCategory({ name: item.name, type: item.type });
-        if (res.success && item.sub.length > 0) {
-          for (const subName of item.sub) {
-            await apiService.createCategory({ name: subName, type: item.type, parent_id: res.id });
+      const createRecursive = async (items: any[], type: TransactionType, parentId: string | null = null) => {
+        for (const item of items) {
+          const name = typeof item === 'string' ? item : item.name;
+          const itemType = typeof item === 'string' ? type : (item.type || type);
+          
+          const res = await apiService.createCategory({ 
+            name, 
+            type: itemType, 
+            parent_id: parentId 
+          });
+          
+          if (res.success && typeof item === 'object' && item.sub && item.sub.length > 0) {
+            await createRecursive(item.sub, itemType, res.id);
           }
         }
-      }
+      };
+
+      await createRecursive(structure, 'income'); // Default type, will be overridden
+      
       await fetchCategories();
       toast.success('Plano de Contas importado!');
     } catch (error: any) {

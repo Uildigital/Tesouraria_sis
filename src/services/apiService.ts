@@ -75,6 +75,15 @@ export const apiService = {
     return res.json();
   },
 
+  async resetCategories(): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/reset-categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Failed to reset categories');
+    return res.json();
+  },
+
   // Auth
   async login(credentials: any): Promise<{ success: boolean; user: any }> {
     const res = await fetch(`${API_BASE}/auth/login`, {
