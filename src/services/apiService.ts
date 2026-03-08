@@ -129,5 +129,29 @@ export const apiService = {
       throw new Error(error.error || 'Erro ao criar usuário');
     }
     return res.json();
+  },
+
+  async deleteUser(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Erro ao excluir usuário');
+    }
+    return res.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Erro ao atualizar usuário');
+    }
+    return res.json();
   }
 };

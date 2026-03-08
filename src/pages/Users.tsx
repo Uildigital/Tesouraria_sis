@@ -95,11 +95,25 @@ export const Users: React.FC = () => {
   };
 
   const removeUser = async (userId: string) => {
-    toast.info('Remoção de usuários não disponível via interface no momento.');
+    if (!window.confirm('Tem certeza que deseja remover este membro permanentemente? Esta ação não pode ser desfeita.')) return;
+    
+    try {
+      await apiService.deleteUser(userId);
+      toast.success('Membro removido com sucesso!');
+      fetchData();
+    } catch (error: any) {
+      toast.error('Erro ao remover membro: ' + error.message);
+    }
   };
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    toast.info('Alteração de status não disponível via interface no momento.');
+    try {
+      await apiService.updateUser(userId, { is_active: !currentStatus });
+      toast.success(currentStatus ? 'Usuário desativado!' : 'Usuário ativado!');
+      fetchData();
+    } catch (error: any) {
+      toast.error('Erro ao alterar status: ' + error.message);
+    }
   };
 
   const cancelInvitation = async (id: string) => {

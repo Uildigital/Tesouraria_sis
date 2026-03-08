@@ -60,6 +60,63 @@ async function appendRow(range: string, values: any[]) {
   });
 }
 
+async function deleteRow(sheetName: string, id: string) {
+  const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+  
+  const rows = await getRows(`${sheetName}!A:A`);
+  const rowIndex = rows.findIndex(row => row[0] === id);
+  
+  if (rowIndex === -1) return false;
+
+  const sheetResponse = await sheets.spreadsheets.get({ auth, spreadsheetId });
+  const sheet = sheetResponse.data.sheets?.find(s => s.properties?.title === sheetName);
+  const sheetId = sheet?.properties?.sheetId;
+
+  if (sheetId === undefined) return false;
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        },
+      ],
+    },
+  });
+  return true;
+}
+
+async function updateRow(sheetName: string, id: string, values: any[]) {
+  const auth = getAuth();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+  
+  const rows = await getRows(`${sheetName}!A:A`);
+  const rowIndex = rows.findIndex(row => row[0] === id);
+  
+  if (rowIndex === -1) return false;
+
+  await sheets.spreadsheets.values.update({
+    auth,
+    spreadsheetId,
+    range: `${sheetName}!A${rowIndex + 1}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [values] },
+  });
+  return true;
+}
+
 async function initializeSheets() {
   const auth = getAuth();
   const sheets = getSheets();
@@ -79,7 +136,7 @@ async function initializeSheets() {
       if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'department_id', 'user_id', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Departments') headers = ['id', 'name', 'created_at'];
-      if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'created_at'];
+      if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       await sheets.spreadsheets.values.update({
         auth,
         spreadsheetId,
@@ -148,9 +205,27 @@ async function initializeSheets() {
           'admin123',
           'Administrador Mestre',
           'admin',
+          'TRUE',
           new Date().toISOString()
         ];
-        await appendRow('Users!A:F', defaultAdmin);
+        await appendRow('Users!A:G', defaultAdmin);
+      }
+    } else {
+      // Ensure headers are up to date even if sheet exists
+      let headers: string[] = [];
+      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'department_id', 'user_id', 'created_at'];
+      if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
+      if (title === 'Departments') headers = ['id', 'name', 'created_at'];
+      if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
+      
+      if (headers.length > 0) {
+        await sheets.spreadsheets.values.update({
+          auth,
+          spreadsheetId,
+          range: `${title}!A1`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [headers] },
+        });
       }
     }
   }
@@ -289,9 +364,9 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 
     const id = uuidv4();
     const createdAt = new Date().toISOString();
-    const newUser = [id, email, password, full_name, role || 'user', createdAt];
+    const newUser = [id, email, password, full_name, role || 'user', 'TRUE', createdAt];
     
-    await appendRow('Users!A:F', newUser);
+    await appendRow('Users!A:G', newUser);
     
     res.json({ 
       success: true, 
@@ -394,7 +469,7 @@ app.post(["/api/departments", "/departments"], async (req, res) => {
 
 app.get(["/api/users", "/users"], async (req, res) => {
   try {
-    const rows = await getRows('Users!A:F');
+    const rows = await getRows('Users!A:G');
     if (!rows || rows.length <= 1) return res.json([]);
     const headers = rows[0];
     const data = rows.slice(1).map((row: any) => {
@@ -403,7 +478,10 @@ app.get(["/api/users", "/users"], async (req, res) => {
         obj[header] = row[index] || '';
       });
       const { password: _, ...userWithoutPassword } = obj;
-      return { ...userWithoutPassword, is_active: true };
+      return { 
+        ...userWithoutPassword, 
+        is_active: obj.is_active === 'TRUE' 
+      };
     });
     res.json(data);
   } catch (error: any) {
@@ -428,9 +506,50 @@ app.post(["/api/users", "/users"], async (req, res) => {
 
     const id = uuidv4();
     const createdAt = new Date().toISOString();
-    // headers: ['id', 'email', 'password', 'full_name', 'role', 'created_at']
-    await appendRow('Users!A:F', [id, email, password, full_name, role, createdAt]);
+    // headers: ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at']
+    await appendRow('Users!A:G', [id, email, password, full_name, role, 'TRUE', createdAt]);
     res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete(["/api/users/:id", "/users/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = await deleteRow('Users', id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Usuário não encontrado" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, full_name, password, role, is_active } = req.body;
+    
+    const rows = await getRows('Users!A:F');
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) return res.status(404).json({ error: "Usuário não encontrado" });
+    
+    const oldUser = rows[rowIndex];
+    const newUser = [
+      id,
+      email || oldUser[1],
+      password || oldUser[2],
+      full_name || oldUser[3],
+      role || oldUser[4],
+      is_active !== undefined ? (is_active ? 'TRUE' : 'FALSE') : (oldUser[5] || 'TRUE'),
+      oldUser[6] || oldUser[5] // createdAt
+    ];
+    
+    await updateRow('Users', id, newUser);
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
