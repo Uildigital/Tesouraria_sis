@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: userData.email,
         full_name: userData.full_name,
         role: userData.role,
-        is_active: true
+        is_active: userData.is_active !== undefined ? userData.is_active : true
       } as Profile);
     }
     setLoading(false);
@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: userData.email,
       full_name: userData.full_name,
       role: userData.role,
-      is_active: true
+      is_active: userData.is_active !== undefined ? userData.is_active : true
     } as Profile);
   };
 

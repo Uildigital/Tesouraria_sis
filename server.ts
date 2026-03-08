@@ -317,7 +317,7 @@ app.post(["/api/reset-categories", "/reset-categories"], async (req, res) => {
 app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
   try {
     const { email, password } = req.body;
-    const rows = await getRows('Users!A:F');
+    const rows = await getRows('Users!A:G');
     if (!rows || rows.length <= 1) {
       return res.status(401).json({ error: "Nenhum usuário cadastrado. Use o botão de inicialização." });
     }
@@ -334,8 +334,11 @@ app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
     const user = users.find((u: any) => u.email === email && u.password === password);
 
     if (user) {
+      if (user.is_active === 'FALSE') {
+        return res.status(403).json({ error: "Sua conta está desativada. Entre em contato com o administrador." });
+      }
       const { password: _, ...userWithoutPassword } = user;
-      res.json({ success: true, user: userWithoutPassword });
+      res.json({ success: true, user: { ...userWithoutPassword, is_active: true } });
     } else {
       res.status(401).json({ error: "Email ou senha inválidos" });
     }
@@ -347,9 +350,9 @@ app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
 app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
   try {
     const { email, password, full_name, role } = req.body;
-    const rows = await getRows('Users!A:F');
+    const rows = await getRows('Users!A:G');
     
-    const headers = rows[0] || ['id', 'email', 'password', 'full_name', 'role', 'created_at'];
+    const headers = rows[0] || ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
     const users = rows.slice(1).map((row: any) => {
       const obj: any = {};
       headers.forEach((header: string, index: number) => {
@@ -494,7 +497,7 @@ app.post(["/api/users", "/users"], async (req, res) => {
     const { email, full_name, password, role } = req.body;
     
     // Check if user already exists
-    const rows = await getRows('Users!A:F');
+    const rows = await getRows('Users!A:G');
     if (rows && rows.length > 1) {
       const headers = rows[0];
       const emailIndex = headers.indexOf('email');
@@ -533,19 +536,25 @@ app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
     const { id } = req.params;
     const { email, full_name, password, role, is_active } = req.body;
     
-    const rows = await getRows('Users!A:F');
+    const rows = await getRows('Users!A:G');
     const rowIndex = rows.findIndex(row => row[0] === id);
     if (rowIndex === -1) return res.status(404).json({ error: "Usuário não encontrado" });
     
     const oldUser = rows[rowIndex];
+    const headers = rows[0];
+    const isActiveIndex = headers.indexOf('is_active');
+    const createdAtIndex = headers.indexOf('created_at');
+    
     const newUser = [
       id,
       email || oldUser[1],
       password || oldUser[2],
       full_name || oldUser[3],
       role || oldUser[4],
-      is_active !== undefined ? (is_active ? 'TRUE' : 'FALSE') : (oldUser[5] || 'TRUE'),
-      oldUser[6] || oldUser[5] // createdAt
+      is_active !== undefined 
+        ? (is_active ? 'TRUE' : 'FALSE') 
+        : (isActiveIndex !== -1 ? (oldUser[isActiveIndex] || 'TRUE') : 'TRUE'),
+      createdAtIndex !== -1 ? oldUser[createdAtIndex] : (oldUser[5] || new Date().toISOString())
     ];
     
     await updateRow('Users', id, newUser);
