@@ -480,7 +480,7 @@ app.get(["/api/users", "/users"], async (req, res) => {
       const { password: _, ...userWithoutPassword } = obj;
       return { 
         ...userWithoutPassword, 
-        is_active: obj.is_active === 'TRUE' 
+        is_active: obj.is_active !== 'FALSE' 
       };
     });
     res.json(data);

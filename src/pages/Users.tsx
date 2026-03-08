@@ -143,10 +143,7 @@ export const Users: React.FC = () => {
     window.location.href = `mailto:${inv.email}?subject=${subject}&body=${body}`;
   };
 
-  const getRoleBadge = (role: string, isActive: boolean = true) => {
-    if (!isActive) {
-      return <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border border-zinc-200"><UserX size={12} /> Inativo</span>;
-    }
+  const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
         return <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"><ShieldCheck size={12} /> Administrador</span>;
@@ -194,6 +191,7 @@ export const Users: React.FC = () => {
                   <tr>
                     <th className="px-6 py-4">Usuário</th>
                     <th className="px-6 py-4">Cargo</th>
+                    <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -212,18 +210,24 @@ export const Users: React.FC = () => {
                             {u.full_name?.charAt(0)}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold text-zinc-900">{u.full_name}</p>
-                              {!u.is_active && (
-                                <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 border border-amber-100">Inativo</span>
-                              )}
-                            </div>
+                            <p className="font-bold text-zinc-900">{u.full_name}</p>
                             <p className="text-xs text-zinc-500">{u.email}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {getRoleBadge(u.role, u.is_active)}
+                        {getRoleBadge(u.role)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {u.is_active ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-100">
+                            <UserCheck size={12} /> Ativo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border border-zinc-200">
+                            <UserX size={12} /> Inativo
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         {isAdmin ? (
@@ -232,14 +236,24 @@ export const Users: React.FC = () => {
                               <button 
                                 onClick={() => toggleUserStatus(u.id, u.is_active)}
                                 className={cn(
-                                  "p-2 rounded-xl transition-all",
+                                  "flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
                                   u.is_active 
                                     ? "text-zinc-400 hover:text-amber-600 hover:bg-amber-50" 
-                                    : "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                                    : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
                                 )}
                                 title={u.is_active ? "Desativar Usuário" : "Ativar Usuário"}
                               >
-                                {u.is_active ? <UserX size={20} /> : <UserCheck size={20} />}
+                                {u.is_active ? (
+                                  <>
+                                    <UserX size={14} />
+                                    Desativar
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck size={14} />
+                                    Ativar
+                                  </>
+                                )}
                               </button>
                               <button 
                                 onClick={() => removeUser(u.id)}
@@ -281,7 +295,7 @@ export const Users: React.FC = () => {
                       <div>
                         <p className="font-bold text-zinc-900">{inv.email}</p>
                         <div className="mt-1 flex items-center gap-3">
-                          {getRoleBadge(inv.role, true)}
+                          {getRoleBadge(inv.role)}
                           <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Pendente</span>
                         </div>
                         <div className="mt-3 flex items-center gap-2">
