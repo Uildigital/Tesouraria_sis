@@ -12,7 +12,7 @@ import {
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
-import { Transaction } from '../types';
+import { Transaction, Category } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
@@ -21,8 +21,13 @@ import { ptBR } from 'date-fns/locale';
 export const Reports: React.FC = () => {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Filters
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
 
   useEffect(() => {
     fetchReportData();
@@ -36,19 +41,23 @@ export const Reports: React.FC = () => {
       const lastDay = new Date(year, monthNum, 0).getDate();
       const endOfMonth = `${month}-${String(lastDay).padStart(2, '0')}`;
 
-      const data = await apiService.getTransactions();
+      const [transData, catData] = await Promise.all([
+        apiService.getTransactions(),
+        apiService.getCategories()
+      ]);
       
-      const filtered = data
+      const filtered = transData
         .filter(t => {
           return t.date >= startOfMonth && t.date <= endOfMonth;
         })
         .sort((a, b) => {
           const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
           const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
-          return dateA.getTime() - dateB.getTime(); // Ascending for reports
+          return dateA.getTime() - dateB.getTime();
         });
 
       setTransactions(filtered || []);
+      setCategories(catData || []);
     } catch (error) {
       console.error('Error fetching report data:', error);
     } finally {
@@ -56,8 +65,14 @@ export const Reports: React.FC = () => {
     }
   };
 
+  const filteredTransactions = transactions.filter(t => {
+    const matchesType = filterType === 'all' || t.type === filterType;
+    const matchesCategory = filterCategoryId === 'all' || t.category_id === filterCategoryId;
+    return matchesType && matchesCategory;
+  });
+
   const generatePDF = () => {
-    if (transactions.length === 0) return;
+    if (filteredTransactions.length === 0) return;
     setIsExporting(true);
 
     try {
@@ -79,8 +94,8 @@ export const Reports: React.FC = () => {
       doc.line(14, 35, 196, 35);
 
       // Summary
-      const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-      const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const balance = income - expenses;
 
       doc.setFontSize(10);
@@ -91,7 +106,7 @@ export const Reports: React.FC = () => {
       doc.setFont('helvetica', 'normal');
 
       // Table
-      const tableData = transactions.map(t => [
+      const tableData = filteredTransactions.map(t => [
         formatDate(t.date),
         t.description,
         t.category?.name || '-',
@@ -126,8 +141,8 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
 
   return (
     <div className="space-y-10 pb-12">
@@ -146,7 +161,7 @@ export const Reports: React.FC = () => {
           </button>
           <button 
             onClick={generatePDF}
-            disabled={isExporting || transactions.length === 0}
+            disabled={isExporting || filteredTransactions.length === 0}
             className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50"
           >
             {isExporting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
@@ -157,26 +172,56 @@ export const Reports: React.FC = () => {
       </div>
 
       <div className="premium-card p-8">
-        <div className="mb-10 flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-100 pb-8">
-          <div className="flex items-center gap-5">
-            <div className="rounded-2xl bg-indigo-50 p-4">
-              <FileText className="h-8 w-8 text-indigo-600" />
+        <div className="mb-10 flex flex-col gap-8 border-b border-zinc-100 pb-8">
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-5">
+              <div className="rounded-2xl bg-indigo-50 p-4">
+                <FileText className="h-8 w-8 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-display text-2xl font-bold text-zinc-900">Balancete Mensal</h3>
+                <p className="text-sm text-zinc-500">Relatório consolidado de movimentações.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-display text-2xl font-bold text-zinc-900">Balancete Mensal</h3>
-              <p className="text-sm text-zinc-500">Relatório consolidado de movimentações.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Mês de Referência</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <input 
+                  type="month" 
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                />
+              </div>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Mês de Referência</label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-              <input 
-                type="month" 
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-              />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Tipo</label>
+              <select 
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              >
+                <option value="all">Todos os Tipos</option>
+                <option value="income">Entradas</option>
+                <option value="expense">Saídas</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categoria</label>
+              <select 
+                value={filterCategoryId}
+                onChange={(e) => setFilterCategoryId(e.target.value)}
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              >
+                <option value="all">Todas as Categorias</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -223,14 +268,14 @@ export const Reports: React.FC = () => {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
                     </td>
                   </tr>
-                ) : transactions.length === 0 ? (
+                ) : filteredTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 font-medium">
-                      Nenhum lançamento encontrado para este período.
+                      Nenhum lançamento encontrado para os filtros selecionados.
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((t) => (
+                  filteredTransactions.map((t) => (
                     <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
                       <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
