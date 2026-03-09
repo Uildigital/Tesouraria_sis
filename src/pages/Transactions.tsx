@@ -12,7 +12,6 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Sparkles,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
@@ -25,8 +24,7 @@ import * as z from 'zod';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
-import { Transaction, Category, Department } from '../types';
-import { aiService } from '../services/aiService';
+import { Transaction, Category } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -36,7 +34,6 @@ const transactionSchema = z.object({
   date: z.string(),
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Selecione uma subcategoria'),
-  department_id: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -45,7 +42,6 @@ export const Transactions: React.FC = () => {
   const { profile, canEdit } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -75,16 +71,7 @@ export const Transactions: React.FC = () => {
   const description = watch('description');
 
   const handleSuggestCategory = async () => {
-    if (!description || description.length < 3) return;
-    setIsSuggesting(true);
-    try {
-      const suggestedId = await aiService.suggestCategory(description, categories);
-      if (suggestedId) {
-        setValue('category_id', suggestedId);
-      }
-    } finally {
-      setIsSuggesting(false);
-    }
+    // AI Suggestion removed
   };
 
   // Reset subcategory when type changes
@@ -106,15 +93,13 @@ export const Transactions: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [transRes, catRes, depRes] = await Promise.all([
+      const [transRes, catRes] = await Promise.all([
         apiService.getTransactions(),
-        apiService.getCategories(),
-        apiService.getDepartments()
+        apiService.getCategories()
       ]);
 
       setTransactions(transRes || []);
       setCategories(catRes || []);
-      setDepartments(depRes || []);
     } catch (error: any) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados: ' + error.message);
@@ -129,7 +114,6 @@ export const Transactions: React.FC = () => {
     setValue('amount', transaction.amount);
     setValue('date', transaction.date);
     setValue('type', transaction.type);
-    setValue('department_id', transaction.department_id || '');
     setValue('category_id', transaction.category_id);
     
     setShowModal(true);
@@ -168,7 +152,6 @@ export const Transactions: React.FC = () => {
         date: data.date,
         type: data.type,
         category_id: data.category_id,
-        department_id: data.department_id || null,
         user_id: profile.id
       };
 
@@ -321,7 +304,7 @@ export const Transactions: React.FC = () => {
             <tr>
               <th className="px-6 py-4">Data</th>
               <th className="px-6 py-4">Descrição</th>
-              <th className="px-6 py-4">Categoria/Depto</th>
+              <th className="px-6 py-4">Categoria</th>
               <th className="px-6 py-4">Valor</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4 text-right">Ações</th>
@@ -350,7 +333,6 @@ export const Transactions: React.FC = () => {
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="text-zinc-700">{t.category?.name}</span>
-                    <span className="text-xs text-zinc-400">{t.department?.name || 'Geral'}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -461,15 +443,6 @@ export const Transactions: React.FC = () => {
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all" 
                     placeholder="Ex: Oferta Culto de Domingo" 
                   />
-                  <button
-                    type="button"
-                    onClick={handleSuggestCategory}
-                    disabled={isSuggesting || !description}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 hover:bg-emerald-100 transition-all disabled:opacity-50"
-                  >
-                    {isSuggesting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                    Sugerir Categoria
-                  </button>
                 </div>
                 {errors.description && <p className="mt-1 text-xs font-bold text-rose-600">{errors.description.message}</p>}
               </div>
@@ -522,17 +495,6 @@ export const Transactions: React.FC = () => {
                   ))}
                 </select>
                 {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p>}
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Departamento (Opcional)</label>
-                <select 
-                  {...register('department_id')}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                >
-                  <option value="">Geral</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
               </div>
 
               <div className="sm:col-span-2">

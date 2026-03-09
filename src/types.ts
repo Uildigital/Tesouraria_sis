@@ -26,12 +26,6 @@ export interface Category {
   is_default?: boolean;
 }
 
-export interface Department {
-  id: string;
-  name: string;
-  organization_id: string;
-}
-
 export interface Transaction {
   id: string;
   date: string;
@@ -40,11 +34,9 @@ export interface Transaction {
   type: TransactionType;
   status: TransactionStatus;
   category_id: string;
-  department_id?: string;
   organization_id: string;
   attachment_url?: string;
   created_at: string;
   // Joined data
   category?: Category;
-  department?: Department;
 }

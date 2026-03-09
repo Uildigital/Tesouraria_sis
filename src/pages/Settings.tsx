@@ -10,20 +10,18 @@ import {
   Save,
   Loader2,
   History,
-  Sparkles,
   Globe,
   Church
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { CategoryManager } from '../components/CategoryManager';
-import { DepartmentManager } from '../components/DepartmentManager';
 import { AuditLogs } from '../components/AuditLogs';
 import { apiService } from '../services/apiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
-type SettingsView = 'menu' | 'org' | 'depts' | 'cats' | 'notifications' | 'audit' | 'integrations';
+type SettingsView = 'menu' | 'org' | 'cats' | 'audit' | 'integrations';
 
 export const Settings: React.FC = () => {
   const { canEdit } = useAuth();
@@ -43,10 +41,8 @@ export const Settings: React.FC = () => {
   }
 
   const sections = [
-    { id: 'depts', title: 'Departamentos', description: 'Gerenciar centros de custo e ministérios', icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { id: 'cats', title: 'Categorias', description: 'Plano de contas e hierarquia de gastos', icon: Tags, color: 'text-amber-600', bg: 'bg-amber-50' },
     { id: 'audit', title: 'Logs de Auditoria', description: 'Histórico de ações e segurança', icon: History, color: 'text-rose-600', bg: 'bg-rose-50' },
-    { id: 'notifications', title: 'Notificações', description: 'Alertas de aprovação e relatórios', icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' },
     { id: 'integrations', title: 'Integrações', description: 'Conectar com n8n e bancos', icon: Globe, color: 'text-violet-600', bg: 'bg-violet-50' },
   ];
 
@@ -89,7 +85,7 @@ export const Settings: React.FC = () => {
       const res = await apiService.initSheets();
       if (res.success) {
         toast.success('Google Sheets configurado com sucesso!', {
-          description: 'As abas Transactions, Categories e Departments foram criadas.'
+          description: 'As abas Transactions e Categories foram criadas.'
         });
       }
     } catch (error: any) {
@@ -177,12 +173,12 @@ export const Settings: React.FC = () => {
               <div className="relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-emerald-500 p-1.5">
-                    <Sparkles className="h-4 w-4 text-white" />
+                    <Church className="h-4 w-4 text-white" />
                   </div>
                   <h4 className="text-sm font-bold">Plano Premium Ativo</h4>
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-zinc-400 max-w-md">
-                  Sua organização está utilizando todos os recursos avançados, incluindo IA, relatórios em PDF e logs de auditoria.
+                  Sua organização está utilizando todos os recursos avançados, incluindo relatórios em PDF e logs de auditoria.
                 </p>
                 <button 
                   onClick={() => toast.info('Funcionalidade em desenvolvimento', { description: 'O gerenciamento de assinaturas estará disponível em breve.' })}
@@ -193,16 +189,6 @@ export const Settings: React.FC = () => {
               </div>
               <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
             </div>
-          </motion.div>
-        ) : activeView === 'depts' ? (
-          <motion.div 
-            key="depts"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-          >
-            {renderHeader('Departamentos')}
-            <DepartmentManager />
           </motion.div>
         ) : activeView === 'cats' ? (
           <motion.div 
@@ -232,9 +218,8 @@ export const Settings: React.FC = () => {
             exit={{ opacity: 0, x: -20 }}
             className="premium-card p-12 text-center"
           >
-            {renderHeader(activeView === 'notifications' ? 'Notificações' : 'Integrações')}
-            {activeView === 'integrations' ? (
-              <div className="py-12 space-y-8">
+            {renderHeader('Integrações')}
+            <div className="py-12 space-y-8">
                 <div className="flex flex-col items-center">
                   <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
                     <Globe className="h-10 w-10 text-emerald-600" />
@@ -280,15 +265,6 @@ export const Settings: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="py-12">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-zinc-50">
-                  <Bell className="h-10 w-10 text-zinc-300" />
-                </div>
-                <h3 className="text-xl font-bold text-zinc-900">Em Breve</h3>
-                <p className="mt-2 text-zinc-500">Esta funcionalidade está sendo preparada para você.</p>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

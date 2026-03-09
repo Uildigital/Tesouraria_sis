@@ -121,7 +121,7 @@ async function initializeSheets() {
   const auth = getAuth();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
-  const sheetsToCreate = ['Transactions', 'Categories', 'Departments', 'Users'];
+  const sheetsToCreate = ['Transactions', 'Categories', 'Users'];
   const spreadsheet = await sheets.spreadsheets.get({ auth, spreadsheetId });
   const existingSheets = spreadsheet.data.sheets?.map(s => s.properties?.title) || [];
 
@@ -133,9 +133,8 @@ async function initializeSheets() {
         requestBody: { requests: [{ addSheet: { properties: { title } } }] },
       });
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'department_id', 'user_id', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'user_id', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
-      if (title === 'Departments') headers = ['id', 'name', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       await sheets.spreadsheets.values.update({
         auth,
@@ -213,9 +212,8 @@ async function initializeSheets() {
     } else {
       // Ensure headers are up to date even if sheet exists
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'department_id', 'user_id', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'user_id', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
-      if (title === 'Departments') headers = ['id', 'name', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       
       if (headers.length > 0) {
@@ -382,7 +380,7 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 
 app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const rows = await getRows('Transactions!A:I');
+    const rows = await getRows('Transactions!A:H');
     if (!rows || rows.length <= 1) return res.json([]);
     const headers = rows[0];
     const data = rows.slice(1).map((row: any) => {
@@ -400,10 +398,10 @@ app.get(["/api/transactions", "/transactions"], async (req, res) => {
 
 app.post(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const { date, description, amount, type, category_id, department_id, user_id } = req.body;
+    const { date, description, amount, type, category_id, user_id } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
-    await appendRow('Transactions!A:I', [id, date, description, amount, type, category_id, department_id, user_id, createdAt]);
+    await appendRow('Transactions!A:H', [id, date, description, amount, type, category_id, user_id, createdAt]);
     res.json({ success: true, id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -434,36 +432,6 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
     await appendRow('Categories!A:E', [id, name, type, parent_id || '', createdAt]);
-    res.json({ success: true, id });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get(["/api/departments", "/departments"], async (req, res) => {
-  try {
-    const rows = await getRows('Departments!A:C');
-    if (!rows || rows.length <= 1) return res.json([]);
-    const headers = rows[0];
-    const data = rows.slice(1).map((row: any) => {
-      const obj: any = {};
-      headers.forEach((header: string, index: number) => {
-        obj[header] = row[index] || '';
-      });
-      return obj;
-    });
-    res.json(data);
-  } catch (error: any) {
-    res.json([]);
-  }
-});
-
-app.post(["/api/departments", "/departments"], async (req, res) => {
-  try {
-    const { name } = req.body;
-    const id = uuidv4();
-    const createdAt = new Date().toISOString();
-    await appendRow('Departments!A:C', [id, name, createdAt]);
     res.json({ success: true, id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

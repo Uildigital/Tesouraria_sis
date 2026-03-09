@@ -1,4 +1,4 @@
-import { Transaction, Category, Department } from '../types';
+import { Transaction, Category } from '../types';
 
 const API_BASE = '/api';
 
@@ -46,41 +46,21 @@ export const apiService = {
     return res.json();
   },
 
-  // Departments
-  async getDepartments(): Promise<Department[]> {
-    const res = await fetch(`${API_BASE}/departments`);
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'Falha ao buscar departamentos' }));
-      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao buscar departamentos');
-    }
-    return res.json();
-  },
-
-  async createDepartment(data: Partial<Department>): Promise<{ success: boolean; id: string }> {
-    const res = await fetch(`${API_BASE}/departments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'Falha ao criar departamento' }));
-      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao criar departamento');
-    }
-    return res.json();
-  },
-
-  async initSheets(): Promise<{ success: boolean }> {
-    const res = await fetch(`${API_BASE}/init`);
-    if (!res.ok) throw new Error('Failed to initialize sheets');
-    return res.json();
-  },
-
   async resetCategories(): Promise<{ success: boolean }> {
     const res = await fetch(`${API_BASE}/reset-categories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) throw new Error('Failed to reset categories');
+    return res.json();
+  },
+
+  async initSheets(): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/init-sheets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Failed to initialize sheets');
     return res.json();
   },
 

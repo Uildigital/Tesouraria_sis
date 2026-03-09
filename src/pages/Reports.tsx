@@ -204,20 +204,19 @@ export const Reports: React.FC = () => {
                   <th className="px-6 py-4">Data</th>
                   <th className="px-6 py-4">Descrição</th>
                   <th className="px-6 py-4">Categoria</th>
-                  <th className="px-6 py-4">Departamento</th>
                   <th className="px-6 py-4 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={4} className="px-6 py-12 text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
                     </td>
                   </tr>
                 ) : transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 font-medium">
                       Nenhum lançamento encontrado para este período.
                     </td>
                   </tr>
@@ -231,7 +230,6 @@ export const Reports: React.FC = () => {
                           {t.categories?.name}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-zinc-500">{t.departments?.name || '-'}</td>
                       <td className={cn(
                         "px-6 py-4 text-right font-bold",
                         t.type === 'income' ? "text-emerald-600" : "text-rose-600"

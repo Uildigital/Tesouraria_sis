@@ -8,7 +8,6 @@ import {
   ArrowDownRight,
   Calendar,
   ChevronRight,
-  Sparkles,
   Plus
 } from 'lucide-react';
 import { 
@@ -47,9 +46,7 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const handleShowInsights = () => {
-    toast.info('A IA está analisando seus dados...', {
-      description: 'Em breve você receberá relatórios preditivos detalhados.',
-    });
+    // AI Insights removed
   };
 
   const fetchDashboardData = async () => {
@@ -180,10 +177,6 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className={cn("rounded-2xl p-3", kpi.bg)}>
                 <kpi.icon className={cn("h-6 w-6", kpi.color)} />
-              </div>
-              <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                <Sparkles className="mr-1 h-3 w-3 text-amber-400" />
-                Premium
               </div>
             </div>
             <div className="mt-6">
@@ -338,24 +331,6 @@ export const Dashboard: React.FC = () => {
                 <p className="text-sm font-medium text-zinc-500">Nenhuma transação recente.</p>
               </div>
             )}
-          </div>
-
-          <div className="mt-10 rounded-2xl bg-zinc-900 p-6 text-white shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-emerald-500 p-1.5">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <h4 className="text-sm font-bold">Dica da IA</h4>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-zinc-400">
-              Suas entradas cresceram <span className="text-emerald-400 font-bold">12%</span> em relação ao mês passado. Considere provisionar para o próximo evento.
-            </p>
-            <button 
-              onClick={handleShowInsights}
-              className="mt-4 flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-colors"
-            >
-              Ver Insights <ChevronRight className="ml-1 h-3 w-3" />
-            </button>
           </div>
         </motion.div>
       </div>
