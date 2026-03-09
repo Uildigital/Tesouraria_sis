@@ -7,7 +7,10 @@ import {
   TrendingDown, 
   Calendar,
   FileCheck,
-  Loader2
+  Loader2,
+  ChevronDown,
+  X,
+  Check
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +30,8 @@ export const Reports: React.FC = () => {
   
   // Filters
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
-  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchReportData();
@@ -65,11 +69,64 @@ export const Reports: React.FC = () => {
     }
   };
 
+  // Helper to get all descendants of a category
+  const getDescendantIds = (catId: string, allCats: Category[]): string[] => {
+    const children = allCats.filter(c => c.parent_id === catId);
+    let ids = children.map(c => c.id);
+    children.forEach(child => {
+      ids = [...ids, ...getDescendantIds(child.id, allCats)];
+    });
+    return ids;
+  };
+
   const filteredTransactions = transactions.filter(t => {
     const matchesType = filterType === 'all' || t.type === filterType;
-    const matchesCategory = filterCategoryId === 'all' || t.category_id === filterCategoryId;
+    
+    let matchesCategory = true;
+    if (selectedCategoryIds.length > 0) {
+      // Get all effective IDs (selected + their descendants)
+      const effectiveIds = new Set<string>();
+      selectedCategoryIds.forEach(id => {
+        effectiveIds.add(id);
+        getDescendantIds(id, categories).forEach(childId => effectiveIds.add(childId));
+      });
+      matchesCategory = effectiveIds.has(t.category_id);
+    }
+    
     return matchesType && matchesCategory;
   });
+
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const renderCategoryOptions = (parentId: string | null = null, level = 0) => {
+    return categories
+      .filter(c => c.parent_id === (parentId || undefined) || (!parentId && !c.parent_id))
+      .map(cat => (
+        <React.Fragment key={cat.id}>
+          <button
+            onClick={() => toggleCategory(cat.id)}
+            className={cn(
+              "flex w-full items-center px-4 py-2 text-sm transition-colors hover:bg-zinc-50",
+              selectedCategoryIds.includes(cat.id) ? "bg-emerald-50 text-emerald-700 font-bold" : "text-zinc-600"
+            )}
+            style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
+          >
+            <div className={cn(
+              "mr-2 flex h-4 w-4 items-center justify-center rounded border transition-all",
+              selectedCategoryIds.includes(cat.id) ? "border-emerald-500 bg-emerald-500 text-white" : "border-zinc-300 bg-white"
+            )}>
+              {selectedCategoryIds.includes(cat.id) && <Check size={12} strokeWidth={4} />}
+            </div>
+            {cat.name}
+          </button>
+          {renderCategoryOptions(cat.id, level + 1)}
+        </React.Fragment>
+      ));
+  };
 
   const generatePDF = () => {
     if (filteredTransactions.length === 0) return;
@@ -211,17 +268,58 @@ export const Reports: React.FC = () => {
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categoria</label>
-              <select 
-                value={filterCategoryId}
-                onChange={(e) => setFilterCategoryId(e.target.value)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-              >
-                <option value="all">Todas as Categorias</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categorias (Pai/Filho)</label>
+              <div className="relative">
+                <button
+                  onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
+                  className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                >
+                  <span className="truncate">
+                    {selectedCategoryIds.length === 0 
+                      ? "Todas as Categorias" 
+                      : `${selectedCategoryIds.length} selecionada(s)`}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", isCategoryMenuOpen && "rotate-180")} />
+                </button>
+
+                {isCategoryMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsCategoryMenuOpen(false)} 
+                    />
+                    <div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-y-auto rounded-xl border border-zinc-100 bg-white py-2 shadow-xl animate-in fade-in zoom-in duration-200">
+                      <div className="sticky top-0 z-10 bg-white px-4 pb-2 border-b border-zinc-50 mb-2 flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Categorias</span>
+                        {selectedCategoryIds.length > 0 && (
+                          <button 
+                            onClick={() => setSelectedCategoryIds([])}
+                            className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600"
+                          >
+                            Limpar
+                          </button>
+                        )}
+                      </div>
+                      {renderCategoryOptions()}
+                    </div>
+                  </>
+                )}
+              </div>
+              {selectedCategoryIds.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {selectedCategoryIds.map(id => {
+                    const cat = categories.find(c => c.id === id);
+                    return (
+                      <span key={id} className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+                        {cat?.name}
+                        <button onClick={() => toggleCategory(id)} className="ml-1 hover:text-rose-500">
+                          <X size={10} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
