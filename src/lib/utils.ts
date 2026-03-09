@@ -13,5 +13,8 @@ export function formatCurrency(value: number) {
 }
 
 export function formatDate(date: string) {
-  return new Intl.DateTimeFormat('pt-BR').format(new Date(date));
+  if (!date) return '-';
+  const [year, month, day] = date.split('-');
+  if (!year || !month || !day) return date;
+  return `${day}/${month}/${year}`;
 }

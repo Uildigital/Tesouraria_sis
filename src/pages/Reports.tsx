@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { Transaction } from '../types';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -31,8 +31,10 @@ export const Reports: React.FC = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
+      const [year, monthNum] = month.split('-').map(Number);
       const startOfMonth = `${month}-01`;
-      const endOfMonth = new Date(new Date(month + '-01').getFullYear(), new Date(month + '-01').getMonth() + 1, 0).toISOString().split('T')[0];
+      const lastDay = new Date(year, monthNum, 0).getDate();
+      const endOfMonth = `${month}-${String(lastDay).padStart(2, '0')}`;
 
       const data = await apiService.getTransactions();
       
@@ -60,7 +62,8 @@ export const Reports: React.FC = () => {
 
     try {
       const doc = new jsPDF();
-      const formattedMonth = format(new Date(month + '-01'), 'MMMM yyyy', { locale: ptBR });
+      const [year, monthNum] = month.split('-').map(Number);
+      const formattedMonth = format(new Date(year, monthNum - 1, 1), 'MMMM yyyy', { locale: ptBR });
 
       // Header
       doc.setFontSize(22);
@@ -76,8 +79,8 @@ export const Reports: React.FC = () => {
       doc.line(14, 35, 196, 35);
 
       // Summary
-      const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-      const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+      const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       const balance = income - expenses;
 
       doc.setFontSize(10);
@@ -96,7 +99,7 @@ export const Reports: React.FC = () => {
         formatCurrency(t.amount)
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: 65,
         head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor']],
         body: tableData,
@@ -123,8 +126,8 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+  const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+  const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
 
   return (
     <div className="space-y-10 pb-12">
