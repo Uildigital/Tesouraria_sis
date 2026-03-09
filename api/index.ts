@@ -294,6 +294,19 @@ app.get(["/api/health", "/health"], async (req, res) => {
   res.json(diagnostics);
 });
 
+app.post(["/api/init-sheets", "/init-sheets"], async (req, res) => {
+  try {
+    await initializeSheets();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ 
+      error: "Falha na inicialização", 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 app.get(["/api/init", "/init"], async (req, res) => {
   try {
     await initializeSheets();

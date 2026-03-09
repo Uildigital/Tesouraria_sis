@@ -235,6 +235,15 @@ app.get(["/api/health", "/health"], (req, res) => {
   res.json({ status: "ok", message: "Servidor Completo Ativo" });
 });
 
+app.post(["/api/init-sheets", "/init-sheets"], async (req, res) => {
+  try {
+    await initializeSheets();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get(["/api/init", "/init"], async (req, res) => {
   try {
     await initializeSheets();
