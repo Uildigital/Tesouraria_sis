@@ -3,12 +3,76 @@ import { v4 as uuidv4 } from 'uuid';
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
+console.log('Server starting...');
+
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// --- GOOGLE SHEETS LOGIC INTEGRATED ---
+// --- API ROUTES ---
+
+app.get("/api/settings", async (req, res) => {
+  console.log('GET /api/settings called');
+  try {
+    const rows = await getRows('Settings!A:B');
+    console.log(`Fetched ${rows.length} rows from Settings`);
+    if (!rows || rows.length <= 1) return res.json({});
+    const data: any = {};
+    rows.slice(1).forEach((row: any) => {
+      if (row[0]) data[row[0]] = row[1] || '';
+    });
+    res.json(data);
+  } catch (error: any) {
+    console.error('Error in GET /api/settings:', error);
+    res.json({});
+  }
+});
+
+app.post("/api/settings", async (req, res) => {
+  console.log('POST /api/settings called', req.body);
+  try {
+    const settings = req.body;
+    const auth = getAuth();
+    const sheets = getSheets();
+    const spreadsheetId = getSpreadsheetId();
+
+    const rows = await getRows('Settings!A:B');
+    const headers = rows[0] || ['key', 'value'];
+
+    for (const [key, value] of Object.entries(settings)) {
+      const rowIndex = rows.findIndex(row => row[0] === key);
+      if (rowIndex !== -1) {
+        // Update existing
+        await sheets.spreadsheets.values.update({
+          auth,
+          spreadsheetId,
+          range: `Settings!A${rowIndex + 1}:B${rowIndex + 1}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[key, value]] },
+        });
+      } else {
+        // Append new
+        await sheets.spreadsheets.values.append({
+          auth,
+          spreadsheetId,
+          range: 'Settings!A:B',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[key, value]] },
+        });
+      }
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error in POST /api/settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get(["/api/health", "/health"], (req, res) => {
+  res.json({ status: "ok", message: "Servidor Completo Ativo" });
+});
+
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 const getAuth = () => {
@@ -248,10 +312,6 @@ async function initializeSheets() {
 
 // --- API ROUTES ---
 
-app.get(["/api/health", "/health"], (req, res) => {
-  res.json({ status: "ok", message: "Servidor Completo Ativo" });
-});
-
 app.post(["/api/init-sheets", "/init-sheets"], async (req, res) => {
   try {
     await initializeSheets();
@@ -338,57 +398,6 @@ app.post(["/api/reset-categories", "/reset-categories"], async (req, res) => {
   }
 });
 
-app.get(["/api/settings", "/settings"], async (req, res) => {
-  try {
-    const rows = await getRows('Settings!A:B');
-    if (!rows || rows.length <= 1) return res.json({});
-    const data: any = {};
-    rows.slice(1).forEach((row: any) => {
-      if (row[0]) data[row[0]] = row[1] || '';
-    });
-    res.json(data);
-  } catch (error: any) {
-    res.json({});
-  }
-});
-
-app.post(["/api/settings", "/settings"], async (req, res) => {
-  try {
-    const settings = req.body;
-    const auth = getAuth();
-    const sheets = getSheets();
-    const spreadsheetId = getSpreadsheetId();
-
-    const rows = await getRows('Settings!A:B');
-    const headers = rows[0] || ['key', 'value'];
-
-    for (const [key, value] of Object.entries(settings)) {
-      const rowIndex = rows.findIndex(row => row[0] === key);
-      if (rowIndex !== -1) {
-        // Update existing
-        await sheets.spreadsheets.values.update({
-          auth,
-          spreadsheetId,
-          range: `Settings!A${rowIndex + 1}:B${rowIndex + 1}`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [[key, value]] },
-        });
-      } else {
-        // Append new
-        await sheets.spreadsheets.values.append({
-          auth,
-          spreadsheetId,
-          range: 'Settings!A:B',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [[key, value]] },
-        });
-      }
-    }
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
   try {
@@ -703,6 +712,12 @@ app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
   }
 });
 
+// Catch-all for undefined API routes
+app.all("/api/*", (req, res) => {
+  console.log(`404 at ${req.method} ${req.url}`);
+  res.status(404).json({ error: `Route ${req.method} ${req.url} not found` });
+});
+
 // Server initialization logic
 const startServer = async () => {
   if (process.env.NODE_ENV !== "production") {
@@ -720,8 +735,14 @@ const startServer = async () => {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    try {
+      await initializeSheets();
+      console.log('Sheets initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize sheets on startup:', error);
+    }
   });
 };
 
