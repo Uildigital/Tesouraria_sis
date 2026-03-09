@@ -26,6 +26,30 @@ export const apiService = {
     return res.json();
   },
 
+  async updateTransaction(id: string, data: Partial<Transaction>): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao atualizar transação' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao atualizar transação');
+    }
+    return res.json();
+  },
+
+  async deleteTransaction(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao excluir transação' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao excluir transação');
+    }
+    return res.json();
+  },
+
   // Categories
   async getCategories(): Promise<Category[]> {
     const res = await fetch(`${API_BASE}/categories`);

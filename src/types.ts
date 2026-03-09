@@ -29,12 +29,14 @@ export interface Category {
 export interface Transaction {
   id: string;
   date: string;
+  time: string;
   description: string;
   amount: number;
   type: TransactionType;
   status: TransactionStatus;
   category_id: string;
   organization_id: string;
+  observation?: string;
   attachment_url?: string;
   created_at: string;
   // Joined data

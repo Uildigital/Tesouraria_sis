@@ -163,7 +163,7 @@ async function initializeSheets() {
       });
       
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'user_id', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
 
@@ -243,7 +243,7 @@ async function initializeSheets() {
     } else {
       // Ensure headers are up to date even if sheet exists
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'description', 'amount', 'type', 'category_id', 'user_id', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       
@@ -443,7 +443,7 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 
 app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const rows = await getRows('Transactions!A:H');
+    const rows = await getRows('Transactions!A:K');
     if (!rows || rows.length <= 1) return res.json([]);
     const headers = rows[0];
     const data = rows.slice(1).map((row: any) => {
@@ -464,11 +464,60 @@ app.get(["/api/transactions", "/transactions"], async (req, res) => {
 
 app.post(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const { date, description, amount, type, category_id, user_id } = req.body;
+    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
-    await appendRow('Transactions!A:H', [id, date, description, amount, type, category_id, user_id, createdAt]);
+    await appendRow('Transactions!A:K', [id, date, time, description, amount, type, category_id, user_id, observation || '', attachment_url || '', createdAt]);
     res.json({ success: true, id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url } = req.body;
+    
+    const rows = await getRows('Transactions!A:K');
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) return res.status(404).json({ error: "Transação não encontrada" });
+    
+    const headers = rows[0];
+    const oldRow = rows[rowIndex];
+    const oldObj: any = {};
+    headers.forEach((h, i) => oldObj[h] = oldRow[i] || '');
+
+    const newRow = [
+      id,
+      date || oldObj.date,
+      time || oldObj.time,
+      description || oldObj.description,
+      amount || oldObj.amount,
+      type || oldObj.type,
+      category_id || oldObj.category_id,
+      user_id || oldObj.user_id,
+      observation !== undefined ? observation : oldObj.observation,
+      attachment_url !== undefined ? attachment_url : oldObj.attachment_url,
+      oldObj.created_at
+    ];
+
+    await updateRow('Transactions', id, newRow);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = await deleteRow('Transactions', id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Transação não encontrada" });
+    }
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -16,7 +16,8 @@ import {
   ArrowDownRight,
   Calendar,
   Edit2,
-  Upload
+  Upload,
+  Eye
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,8 +33,11 @@ const transactionSchema = z.object({
   description: z.string().min(3, 'Descrição muito curta'),
   amount: z.number().min(0.01, 'Valor deve ser maior que zero'),
   date: z.string(),
+  time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Hora inválida'),
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Selecione uma subcategoria'),
+  observation: z.string().optional(),
+  attachment_url: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -60,11 +64,22 @@ export const Transactions: React.FC = () => {
     defaultValues: {
       type: 'income',
       date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
   });
 
   const handleDelete = async (id: string) => {
-    toast.info('Exclusão não implementada para Google Sheets ainda.');
+    if (!window.confirm('Tem certeza que deseja excluir este lançamento?')) return;
+    
+    try {
+      const res = await apiService.deleteTransaction(id);
+      if (res.success) {
+        toast.success('Lançamento excluído com sucesso!');
+        fetchData();
+      }
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + error.message);
+    }
   };
 
   const selectedType = watch('type');
@@ -113,8 +128,11 @@ export const Transactions: React.FC = () => {
     setValue('description', transaction.description);
     setValue('amount', transaction.amount);
     setValue('date', transaction.date);
+    setValue('time', transaction.time || '00:00');
     setValue('type', transaction.type);
     setValue('category_id', transaction.category_id);
+    setValue('observation', transaction.observation || '');
+    setValue('attachment_url', transaction.attachment_url || '');
     
     setShowModal(true);
   };
@@ -140,23 +158,16 @@ export const Transactions: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      let attachment_url = editingTransaction?.attachment_url || '';
-      if (file) {
-        attachment_url = await handleFileUpload(file);
-      }
-
       // Prepare data for Google Sheets
       const payload = {
-        description: data.description,
-        amount: data.amount,
-        date: data.date,
-        type: data.type,
-        category_id: data.category_id,
+        ...data,
         user_id: profile.id
       };
 
       if (editingTransaction) {
-        toast.info('Edição não implementada para Google Sheets ainda.');
+        const res = await apiService.updateTransaction(editingTransaction.id, payload);
+        if (!res.success) throw new Error('Erro ao atualizar');
+        toast.success('Lançamento atualizado com sucesso!');
       } else {
         const res = await apiService.createTransaction(payload);
         if (!res.success) throw new Error('Erro ao salvar');
@@ -179,11 +190,17 @@ export const Transactions: React.FC = () => {
     toast.info('Conciliação não implementada para Google Sheets ainda.');
   };
 
-  const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredTransactions = transactions
+    .filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+      const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+      return dateB.getTime() - dateA.getTime();
+    });
 
   return (
     <motion.div 
@@ -302,7 +319,7 @@ export const Transactions: React.FC = () => {
           <table className="w-full text-left text-sm">
           <thead className="bg-zinc-50 text-xs font-semibold uppercase text-zinc-500">
             <tr>
-              <th className="px-6 py-4">Data</th>
+              <th className="px-6 py-4">Data/Hora</th>
               <th className="px-6 py-4">Descrição</th>
               <th className="px-6 py-4">Categoria</th>
               <th className="px-6 py-4">Valor</th>
@@ -319,10 +336,16 @@ export const Transactions: React.FC = () => {
               </tr>
             ) : filteredTransactions.map((t) => (
               <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
-                <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="text-zinc-600 font-medium">{formatDate(t.date)}</span>
+                    <span className="text-[10px] text-zinc-400">{t.time || '--:--'}</span>
+                  </div>
+                </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
                     <span className="font-semibold text-zinc-900">{t.description}</span>
+                    {t.observation && <span className="text-xs text-zinc-400 italic">{t.observation}</span>}
                     {t.attachment_url && (
                       <a href={t.attachment_url} target="_blank" rel="noreferrer" className="mt-1 flex items-center text-xs text-emerald-600 hover:underline">
                         <FileText className="mr-1 h-3 w-3" /> Ver comprovante
@@ -366,6 +389,17 @@ export const Transactions: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {t.attachment_url && (
+                      <a 
+                        href={t.attachment_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="rounded-lg p-1 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                        title="Ver Comprovante"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </a>
+                    )}
                     {canEdit && (
                       <>
                         <button 
@@ -469,6 +503,16 @@ export const Transactions: React.FC = () => {
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Hora</label>
+                <input 
+                  type="time" 
+                  {...register('time')}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10" 
+                />
+                {errors.time && <p className="mt-1 text-xs text-red-600">{errors.time.message}</p>}
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Tipo</label>
                 <select 
                   {...register('type')}
@@ -498,19 +542,36 @@ export const Transactions: React.FC = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Comprovante</label>
-                <div className="relative flex w-full items-center justify-center rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 p-6 transition-colors hover:border-emerald-500 hover:bg-emerald-50/30">
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Observação</label>
+                <textarea 
+                  {...register('observation')}
+                  rows={2}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                  placeholder="Detalhes adicionais sobre o lançamento..."
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-zinc-700">URL do Comprovante</label>
+                <div className="flex gap-2">
                   <input 
-                    type="file" 
-                    className="absolute inset-0 opacity-0 cursor-pointer" 
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    type="text" 
+                    {...register('attachment_url')}
+                    className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                    placeholder="https://exemplo.com/comprovante.pdf"
                   />
-                  <div className="text-center">
-                    <Download className="mx-auto mb-2 h-8 w-8 text-zinc-400" />
-                    <p className="text-sm text-zinc-600">{file ? file.name : 'Clique para upload ou arraste o arquivo'}</p>
-                    <p className="text-xs text-zinc-400">PDF, PNG, JPG até 5MB</p>
-                  </div>
+                  {watch('attachment_url') && (
+                    <button
+                      type="button"
+                      onClick={() => setValue('attachment_url', '')}
+                      className="rounded-xl bg-rose-50 p-2.5 text-rose-600 hover:bg-rose-100 transition-colors"
+                      title="Remover comprovante"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
+                <p className="mt-1 text-[10px] text-zinc-400">Insira o link do arquivo (Google Drive, Dropbox, etc.)</p>
               </div>
 
               <div className="sm:col-span-2 mt-4 flex gap-3">
