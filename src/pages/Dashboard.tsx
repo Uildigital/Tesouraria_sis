@@ -77,8 +77,14 @@ export const Dashboard: React.FC = () => {
         const currentBalance = transactions
           .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
 
+        const sortedTransactions = [...transactions].sort((a, b) => {
+          const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+          const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+          return dateB.getTime() - dateA.getTime();
+        });
+
         setStats({ previousBalance, income, expenses, currentBalance });
-        setRecentTransactions(transactions.slice(0, 5));
+        setRecentTransactions(sortedTransactions.slice(0, 5));
 
         // Generate more realistic chart data
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];

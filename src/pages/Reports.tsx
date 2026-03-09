@@ -36,9 +36,15 @@ export const Reports: React.FC = () => {
 
       const data = await apiService.getTransactions();
       
-      const filtered = data.filter(t => {
-        return t.date >= startOfMonth && t.date <= endOfMonth;
-      });
+      const filtered = data
+        .filter(t => {
+          return t.date >= startOfMonth && t.date <= endOfMonth;
+        })
+        .sort((a, b) => {
+          const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+          const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+          return dateA.getTime() - dateB.getTime(); // Ascending for reports
+        });
 
       setTransactions(filtered || []);
     } catch (error) {
@@ -85,7 +91,7 @@ export const Reports: React.FC = () => {
       const tableData = transactions.map(t => [
         formatDate(t.date),
         t.description,
-        t.categories?.name || '-',
+        t.category?.name || '-',
         t.type === 'income' ? 'Entrada' : 'Saída',
         formatCurrency(t.amount)
       ]);
@@ -227,7 +233,7 @@ export const Reports: React.FC = () => {
                       <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
-                          {t.categories?.name}
+                          {t.category?.name}
                         </span>
                       </td>
                       <td className={cn(

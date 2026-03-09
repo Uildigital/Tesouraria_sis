@@ -389,14 +389,33 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 
 app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const rows = await getRows('Transactions!A:K');
-    if (!rows || rows.length <= 1) return res.json([]);
-    const headers = rows[0];
-    const data = rows.slice(1).map((row: any) => {
+    const [transRows, catRows] = await Promise.all([
+      getRows('Transactions!A:K'),
+      getRows('Categories!A:E')
+    ]);
+
+    if (!transRows || transRows.length <= 1) return res.json([]);
+    
+    const transHeaders = transRows[0];
+    const catHeaders = catRows[0];
+    
+    const categories = catRows.slice(1).map((row: any) => {
       const obj: any = {};
-      headers.forEach((header: string, index: number) => {
+      catHeaders.forEach((header: string, index: number) => {
         obj[header] = row[index] || '';
       });
+      return obj;
+    });
+
+    const data = transRows.slice(1).map((row: any) => {
+      const obj: any = {};
+      transHeaders.forEach((header: string, index: number) => {
+        obj[header] = row[index] || '';
+      });
+      
+      // Join category
+      obj.category = categories.find((c: any) => c.id === obj.category_id);
+      
       return obj;
     });
     res.json(data);
