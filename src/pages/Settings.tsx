@@ -11,9 +11,11 @@ import {
   Loader2,
   History,
   Globe,
-  Church
+  Church,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { CategoryManager } from '../components/CategoryManager';
 import { AuditLogs } from '../components/AuditLogs';
 import { apiService } from '../services/apiService';
@@ -25,10 +27,17 @@ type SettingsView = 'menu' | 'org' | 'cats' | 'audit' | 'integrations';
 
 export const Settings: React.FC = () => {
   const { canEdit } = useAuth();
+  const { settings, updateSettings: saveGlobalSettings } = useSettings();
   const [activeView, setActiveView] = useState<SettingsView>('menu');
   const [isSaving, setIsSaving] = useState(false);
   
-  const [churchName, setChurchName] = useState('Minha Igreja');
+  const [churchName, setChurchName] = useState(settings.app_name);
+  const [logoUrl, setLogoUrl] = useState(settings.app_logo);
+
+  useEffect(() => {
+    setChurchName(settings.app_name);
+    setLogoUrl(settings.app_logo);
+  }, [settings]);
 
   if (!canEdit) {
     return (
@@ -41,6 +50,7 @@ export const Settings: React.FC = () => {
   }
 
   const sections = [
+    { id: 'org', title: 'Organização', description: 'Nome da igreja e identidade visual', icon: Building2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { id: 'cats', title: 'Categorias', description: 'Plano de contas e hierarquia de gastos', icon: Tags, color: 'text-amber-600', bg: 'bg-amber-50' },
     { id: 'audit', title: 'Logs de Auditoria', description: 'Histórico de ações e segurança', icon: History, color: 'text-rose-600', bg: 'bg-rose-50' },
     { id: 'integrations', title: 'Integrações', description: 'Conectar com n8n e bancos', icon: Globe, color: 'text-violet-600', bg: 'bg-violet-50' },
@@ -49,7 +59,10 @@ export const Settings: React.FC = () => {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      // Logic to save general settings if needed
+      await saveGlobalSettings({
+        app_name: churchName,
+        app_logo: logoUrl
+      });
       toast.success('Configurações salvas!');
     } catch (error: any) {
       toast.error('Erro ao salvar: ' + error.message);
@@ -190,6 +203,75 @@ export const Settings: React.FC = () => {
               <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
             </div>
           </motion.div>
+        ) : activeView === 'org' ? (
+          <motion.div 
+            key="org"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-8"
+          >
+            {renderHeader('Organização')}
+            
+            <div className="premium-card p-8 space-y-8">
+              <div className="grid gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-zinc-700">Nome da Igreja / Organização</label>
+                  <div className="relative">
+                    <Church className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                    <input 
+                      type="text"
+                      value={churchName}
+                      onChange={(e) => setChurchName(e.target.value)}
+                      placeholder="Ex: Igreja Batista Central"
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-12 pr-4 text-zinc-900 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-zinc-700">URL da Logo</label>
+                  <div className="relative">
+                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                    <input 
+                      type="text"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://exemplo.com/logo.png"
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-12 pr-4 text-zinc-900 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                    />
+                  </div>
+                  <p className="text-xs text-zinc-500">Insira o link direto para a imagem da sua logo.</p>
+                </div>
+
+                {logoUrl && (
+                  <div className="mt-4 flex flex-col items-center p-6 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Pré-visualização</p>
+                    <img 
+                      src={logoUrl} 
+                      alt="Logo Preview" 
+                      className="h-24 w-auto object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Logo+Invalida';
+                        toast.error('URL da logo inválida ou inacessível');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-8 py-3 font-bold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:shadow-emerald-600/40 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save size={20} />}
+                  Salvar Alterações
+                </button>
+              </div>
+            </div>
+          </motion.div>
         ) : activeView === 'cats' ? (
           <motion.div 
             key="cats"
@@ -229,9 +311,9 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="rounded-2xl border border-zinc-100 p-6 bg-zinc-50/50">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-white shadow-sm border border-zinc-100 flex items-center justify-center">
+                      <div className="h-12 w-12 rounded-xl bg-white shadow-sm border border-zinc-100 flex items-center justify-center shrink-0">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg" alt="Google Sheets" className="h-6 w-6" />
                       </div>
                       <div>
@@ -239,27 +321,27 @@ export const Settings: React.FC = () => {
                         <p className="text-xs text-zinc-500">Use uma planilha como banco de dados principal.</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button 
                         onClick={handleTestConnection}
                         disabled={isSaving}
-                        className="rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+                        className="flex-1 sm:flex-none rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
                       >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Testar Conexão'}
                       </button>
                       <button 
                         onClick={handleInitSheets}
                         disabled={isSaving}
-                        className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                        className="flex-1 sm:flex-none rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                       >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Configurar Planilha'}
                       </button>
                       <button 
                         onClick={handleResetCategories}
                         disabled={isSaving}
-                        className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                        className="flex-1 sm:flex-none rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
                       >
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Categorias (Hierarquia)'}
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Categorias'}
                       </button>
                     </div>
                   </div>

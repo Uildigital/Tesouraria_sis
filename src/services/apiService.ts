@@ -157,5 +157,22 @@ export const apiService = {
       throw new Error(error.error || 'Erro ao atualizar usuário');
     }
     return res.json();
+  },
+
+  // Settings
+  async getSettings(): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings`);
+    if (!res.ok) throw new Error('Failed to fetch settings');
+    return res.json();
+  },
+
+  async updateSettings(data: any): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update settings');
+    return res.json();
   }
 };

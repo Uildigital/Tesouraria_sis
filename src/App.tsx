@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -13,25 +14,27 @@ import { Toaster } from 'sonner';
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Toaster position="top-right" richColors closeButton />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/lancamentos" element={<Transactions />} />
-              <Route path="/relatorios" element={<Reports />} />
-              <Route path="/equipe" element={<Users />} />
-              <Route path="/configuracoes" element={<Settings />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <SettingsProvider>
+        <Router>
+          <Toaster position="top-right" richColors closeButton />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/lancamentos" element={<Transactions />} />
+                <Route path="/relatorios" element={<Reports />} />
+                <Route path="/equipe" element={<Users />} />
+                <Route path="/configuracoes" element={<Settings />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </SettingsProvider>
     </AuthProvider>
   );
 }

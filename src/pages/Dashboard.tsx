@@ -189,22 +189,22 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <motion.div 
             key={kpi.name}
             variants={itemVariants}
             whileHover={{ y: -5 }}
-            className="premium-card p-6"
+            className="premium-card p-4 sm:p-6"
           >
             <div className="flex items-center justify-between">
-              <div className={cn("rounded-2xl p-3", kpi.bg)}>
-                <kpi.icon className={cn("h-6 w-6", kpi.color)} />
+              <div className={cn("rounded-xl sm:rounded-2xl p-2 sm:p-3", kpi.bg)}>
+                <kpi.icon className={cn("h-5 w-5 sm:h-6 sm:h-6", kpi.color)} />
               </div>
             </div>
-            <div className="mt-6">
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">{kpi.name}</p>
-              <h3 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900">
+            <div className="mt-4 sm:mt-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{kpi.name}</p>
+              <h3 className="mt-1 text-lg sm:text-3xl font-bold tracking-tight text-zinc-900 truncate">
                 {formatCurrency(kpi.value)}
               </h3>
             </div>

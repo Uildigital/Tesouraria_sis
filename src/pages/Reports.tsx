@@ -324,27 +324,27 @@ export const Reports: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-3 mb-10">
-          <div className="rounded-2xl bg-emerald-50/50 p-6 border border-emerald-100">
+        <div className="grid gap-4 sm:grid-cols-3 mb-10">
+          <div className="rounded-2xl bg-emerald-50/50 p-4 sm:p-6 border border-emerald-100">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-4 w-4 text-emerald-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Total Entradas</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Entradas</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-700">{formatCurrency(income)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-emerald-700 truncate">{formatCurrency(income)}</p>
           </div>
-          <div className="rounded-2xl bg-rose-50/50 p-6 border border-rose-100">
+          <div className="rounded-2xl bg-rose-50/50 p-4 sm:p-6 border border-rose-100">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="h-4 w-4 text-rose-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Total Saídas</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Saídas</span>
             </div>
-            <p className="text-2xl font-bold text-rose-700">{formatCurrency(expenses)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-rose-700 truncate">{formatCurrency(expenses)}</p>
           </div>
-          <div className="rounded-2xl bg-indigo-50/50 p-6 border border-indigo-100">
+          <div className="rounded-2xl bg-indigo-50/50 p-4 sm:p-6 border border-indigo-100 col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 mb-2">
               <FileCheck className="h-4 w-4 text-indigo-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Saldo Líquido</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Saldo</span>
             </div>
-            <p className="text-2xl font-bold text-indigo-700">{formatCurrency(income - expenses)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-indigo-700 truncate">{formatCurrency(income - expenses)}</p>
           </div>
         </div>
 

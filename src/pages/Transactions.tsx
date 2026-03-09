@@ -228,36 +228,36 @@ export const Transactions: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="premium-card p-6 flex items-center gap-4">
-          <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
-            <ArrowUpRight className="h-6 w-6" />
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+        <div className="premium-card p-4 sm:p-6 flex items-center gap-3 sm:gap-4">
+          <div className="rounded-xl sm:rounded-2xl bg-emerald-50 p-2 sm:p-3 text-emerald-600">
+            <ArrowUpRight className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Entradas</p>
-            <p className="text-xl font-bold text-zinc-900">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas</p>
+            <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
             </p>
           </div>
         </div>
-        <div className="premium-card p-6 flex items-center gap-4">
-          <div className="rounded-2xl bg-rose-50 p-3 text-rose-600">
-            <ArrowDownRight className="h-6 w-6" />
+        <div className="premium-card p-4 sm:p-6 flex items-center gap-3 sm:gap-4">
+          <div className="rounded-xl sm:rounded-2xl bg-rose-50 p-2 sm:p-3 text-rose-600">
+            <ArrowDownRight className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Saídas</p>
-            <p className="text-xl font-bold text-zinc-900">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas</p>
+            <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
             </p>
           </div>
         </div>
-        <div className="premium-card p-6 flex items-center gap-4">
-          <div className="rounded-2xl bg-indigo-50 p-3 text-indigo-600">
-            <Calendar className="h-6 w-6" />
+        <div className="premium-card p-4 sm:p-6 flex items-center gap-3 sm:gap-4 col-span-2 lg:col-span-1">
+          <div className="rounded-xl sm:rounded-2xl bg-indigo-50 p-2 sm:p-3 text-indigo-600">
+            <Calendar className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Lançamentos</p>
-            <p className="text-xl font-bold text-zinc-900">{transactions.length}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Itens</p>
+            <p className="text-base sm:text-xl font-bold text-zinc-900">{transactions.length}</p>
           </div>
         </div>
       </div>

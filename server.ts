@@ -121,7 +121,7 @@ async function initializeSheets() {
   const auth = getAuth();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
-  const sheetsToCreate = ['Transactions', 'Categories', 'Users'];
+  const sheetsToCreate = ['Transactions', 'Categories', 'Users', 'Settings'];
   const spreadsheet = await sheets.spreadsheets.get({ auth, spreadsheetId });
   const existingSheets = spreadsheet.data.sheets?.map(s => s.properties?.title) || [];
 
@@ -136,6 +136,7 @@ async function initializeSheets() {
       if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
+      if (title === 'Settings') headers = ['key', 'value'];
       await sheets.spreadsheets.values.update({
         auth,
         spreadsheetId,
@@ -143,6 +144,21 @@ async function initializeSheets() {
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [headers] },
       });
+
+      // Add default settings
+      if (title === 'Settings') {
+        const defaultSettings = [
+          ['app_name', 'ChurchFinance'],
+          ['app_logo', ''],
+        ];
+        await sheets.spreadsheets.values.append({
+          auth,
+          spreadsheetId,
+          range: 'Settings!A:B',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: defaultSettings },
+        });
+      }
 
       // Add default categories if it's the Categories sheet
       if (title === 'Categories') {
@@ -215,6 +231,7 @@ async function initializeSheets() {
       if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
+      if (title === 'Settings') headers = ['key', 'value'];
       
       if (headers.length > 0) {
         await sheets.spreadsheets.values.update({
@@ -315,6 +332,58 @@ app.post(["/api/reset-categories", "/reset-categories"], async (req, res) => {
       requestBody: { values },
     });
 
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get(["/api/settings", "/settings"], async (req, res) => {
+  try {
+    const rows = await getRows('Settings!A:B');
+    if (!rows || rows.length <= 1) return res.json({});
+    const data: any = {};
+    rows.slice(1).forEach((row: any) => {
+      if (row[0]) data[row[0]] = row[1] || '';
+    });
+    res.json(data);
+  } catch (error: any) {
+    res.json({});
+  }
+});
+
+app.post(["/api/settings", "/settings"], async (req, res) => {
+  try {
+    const settings = req.body;
+    const auth = getAuth();
+    const sheets = getSheets();
+    const spreadsheetId = getSpreadsheetId();
+
+    const rows = await getRows('Settings!A:B');
+    const headers = rows[0] || ['key', 'value'];
+
+    for (const [key, value] of Object.entries(settings)) {
+      const rowIndex = rows.findIndex(row => row[0] === key);
+      if (rowIndex !== -1) {
+        // Update existing
+        await sheets.spreadsheets.values.update({
+          auth,
+          spreadsheetId,
+          range: `Settings!A${rowIndex + 1}:B${rowIndex + 1}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[key, value]] },
+        });
+      } else {
+        // Append new
+        await sheets.spreadsheets.values.append({
+          auth,
+          spreadsheetId,
+          range: 'Settings!A:B',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[key, value]] },
+        });
+      }
+    }
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

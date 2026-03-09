@@ -11,6 +11,7 @@ import {
   Users as UsersIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
 
 interface SidebarProps {
@@ -20,6 +21,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { signOut, profile } = useAuth();
+  const { settings } = useSettings();
 
   const navItems = [
     { name: 'Dashboard', href: `/dashboard`, icon: LayoutDashboard },
@@ -48,11 +50,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="flex h-full flex-col px-3 py-4">
           <div className="mb-10 flex items-center justify-between px-2">
             <div className="flex items-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                <Church size={24} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white overflow-hidden">
+                {settings.app_logo ? (
+                  <img src={settings.app_logo} alt="Logo" className="h-full w-full object-cover" />
+                ) : (
+                  <Church size={24} />
+                )}
               </div>
               <div className="ml-3">
-                <h1 className="text-lg font-bold tracking-tight text-zinc-900">ChurchFinance</h1>
+                <h1 className="text-lg font-bold tracking-tight text-zinc-900 leading-tight">{settings.app_name}</h1>
                 <p className="text-xs text-zinc-500">Gestão Interna</p>
               </div>
             </div>
