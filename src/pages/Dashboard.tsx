@@ -86,13 +86,30 @@ export const Dashboard: React.FC = () => {
         setStats({ previousBalance, income, expenses, currentBalance });
         setRecentTransactions(sortedTransactions.slice(0, 5));
 
-        // Generate more realistic chart data
-        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-        setChartData(months.map(m => ({
-          name: m,
-          receita: Math.floor(Math.random() * 5000) + 3000,
-          despesa: Math.floor(Math.random() * 2000) + 1000
-        })));
+        // Generate real chart data from transactions
+        const monthsData: any[] = [];
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthStr = d.toISOString().slice(0, 7); // YYYY-MM
+          const monthLabel = monthNames[d.getMonth()];
+          
+          const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(monthStr));
+          const monthIncome = monthTransactions
+            .filter(t => t.type === 'income')
+            .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+          const monthExpenses = monthTransactions
+            .filter(t => t.type === 'expense')
+            .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+            
+          monthsData.push({
+            name: monthLabel,
+            receita: monthIncome,
+            despesa: monthExpenses
+          });
+        }
+        setChartData(monthsData);
       }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
