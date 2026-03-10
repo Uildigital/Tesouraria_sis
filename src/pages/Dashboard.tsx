@@ -55,18 +55,19 @@ export const Dashboard: React.FC = () => {
     setLoading(true);
 
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startOfMonthStr = `${year}-${String(month).padStart(2, '0')}-01`;
 
     try {
       const transactions = await apiService.getTransactions();
 
       if (transactions) {
         const previousBalance = transactions
-          .filter(t => t.date && new Date(t.date) < startOfMonth)
+          .filter(t => t.date && t.date < startOfMonthStr)
           .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
-        const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
+        const currentMonthTransactions = transactions.filter(t => t.date && t.date >= startOfMonthStr);
         
         // Helper to check if a transaction is an internal transfer
         const isTransfer = (t: Transaction) => 
@@ -323,7 +324,7 @@ export const Dashboard: React.FC = () => {
                     }}
                   />
                   <Area 
-                    type="monotone" 
+                    type="linear" 
                     dataKey="receita" 
                     stroke="#10b981" 
                     strokeWidth={3}
@@ -331,7 +332,7 @@ export const Dashboard: React.FC = () => {
                     fill="url(#colorReceita)" 
                   />
                   <Area 
-                    type="monotone" 
+                    type="linear" 
                     dataKey="despesa" 
                     stroke="#f43f5e" 
                     strokeWidth={3}
