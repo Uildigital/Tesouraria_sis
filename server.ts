@@ -146,7 +146,7 @@ async function deleteRow(sheetName: string, id: string) {
   const spreadsheetId = getSpreadsheetId();
   
   const rows = await getRows(`${sheetName}!A:A`);
-  const rowIndex = rows.findIndex(row => row[0] === id);
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] && row[0].toString().trim() === id.trim());
   
   if (rowIndex === -1) return false;
 
@@ -183,7 +183,7 @@ async function updateRow(sheetName: string, id: string, values: any[]) {
   const spreadsheetId = getSpreadsheetId();
   
   const rows = await getRows(`${sheetName}!A:A`);
-  const rowIndex = rows.findIndex(row => row[0] === id);
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] && row[0].toString().trim() === id.trim());
   
   if (rowIndex === -1) return false;
 
@@ -536,7 +536,7 @@ app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
     const { date, time, description, amount, type, category_id, user_id, observation, attachment_url } = req.body;
     
     const rows = await getRows('Transactions!A:K');
-    const rowIndex = rows.findIndex(row => row[0] === id);
+    const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] && row[0].toString().trim() === id.trim());
     if (rowIndex === -1) return res.status(404).json({ error: "Transação não encontrada" });
     
     const headers = rows[0];
@@ -615,7 +615,7 @@ app.put(["/api/categories/:id", "/categories/:id"], async (req, res) => {
     const { name, type, parent_id } = req.body;
     
     const rows = await getRows('Categories!A:E');
-    const rowIndex = rows.findIndex(row => row[0] === id);
+    const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] && row[0].toString().trim() === id.trim());
     if (rowIndex === -1) return res.status(404).json({ error: "Categoria não encontrada" });
     
     const headers = rows[0];
@@ -644,7 +644,7 @@ app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
     
     // Optional: Check if there are transactions using this category
     const transRows = await getRows('Transactions!A:K');
-    const hasTransactions = transRows.slice(1).some(row => row[6] === id);
+    const hasTransactions = transRows.slice(1).some(row => row[6] && row[6].toString().trim() === id.trim());
     if (hasTransactions) {
       return res.status(400).json({ error: "Não é possível excluir uma categoria que possui lançamentos vinculados." });
     }
