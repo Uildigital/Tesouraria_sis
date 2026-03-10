@@ -87,10 +87,17 @@ async function deleteRow(sheetName: string, id: string) {
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
   
+  console.log(`Attempting to delete row with ID: ${id} from sheet: ${sheetName}`);
   const rows = await getRows(`${sheetName}!A:A`);
-  const rowIndex = rows.findIndex(row => row[0] === id);
+  const rowIndex = rows.findIndex((row, index) => {
+    if (index === 0 || !row[0]) return false;
+    return row[0].toString().trim().toLowerCase() === id.trim().toLowerCase();
+  });
   
-  if (rowIndex === -1) return false;
+  if (rowIndex === -1) {
+    console.warn(`Row with ID ${id} not found in ${sheetName} for deletion`);
+    return false;
+  }
 
   const sheetResponse = await sheets.spreadsheets.get({ auth, spreadsheetId });
   const sheet = sheetResponse.data.sheets?.find(s => s.properties?.title === sheetName);
@@ -116,6 +123,7 @@ async function deleteRow(sheetName: string, id: string) {
       ],
     },
   });
+  console.log(`Successfully deleted row ${rowIndex + 1} from ${sheetName}`);
   return true;
 }
 
@@ -124,10 +132,17 @@ async function updateRow(sheetName: string, id: string, values: any[]) {
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
   
+  console.log(`Attempting to update row with ID: ${id} in sheet: ${sheetName}`);
   const rows = await getRows(`${sheetName}!A:A`);
-  const rowIndex = rows.findIndex(row => row[0] === id);
+  const rowIndex = rows.findIndex((row, index) => {
+    if (index === 0 || !row[0]) return false;
+    return row[0].toString().trim().toLowerCase() === id.trim().toLowerCase();
+  });
   
-  if (rowIndex === -1) return false;
+  if (rowIndex === -1) {
+    console.warn(`Row with ID ${id} not found in ${sheetName} for update`);
+    return false;
+  }
 
   await sheets.spreadsheets.values.update({
     auth,
@@ -136,6 +151,7 @@ async function updateRow(sheetName: string, id: string, values: any[]) {
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [values] },
   });
+  console.log(`Successfully updated row ${rowIndex + 1} in ${sheetName}`);
   return true;
 }
 
@@ -596,9 +612,17 @@ app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
     const { id } = req.params;
     const { date, time, description, amount, type, category_id, user_id, observation, attachment_url, account } = req.body;
     
+    console.log(`PUT /api/transactions/${id} called`);
     const rows = await getRows('Transactions!A:L');
-    const rowIndex = rows.findIndex(row => row[0] === id);
-    if (rowIndex === -1) return res.status(404).json({ error: "Transação não encontrada" });
+    const rowIndex = rows.findIndex((row, index) => {
+      if (index === 0 || !row[0]) return false;
+      return row[0].toString().trim().toLowerCase() === id.trim().toLowerCase();
+    });
+
+    if (rowIndex === -1) {
+      console.warn(`Transaction with ID ${id} not found`);
+      return res.status(404).json({ error: "Transação não encontrada" });
+    }
     
     const headers = rows[0];
     const oldRow = rows[rowIndex];
@@ -620,9 +644,13 @@ app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
       account || oldObj.account || 'Corrente'
     ];
 
-    await updateRow('Transactions', id, newRow);
+    const success = await updateRow('Transactions', id, newRow);
+    if (!success) {
+      return res.status(500).json({ error: "Falha ao atualizar transação na planilha" });
+    }
     res.json({ success: true });
   } catch (error: any) {
+    console.error(`Error updating transaction ${req.params.id}:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -630,6 +658,7 @@ app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
 app.delete(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`DELETE /api/transactions/${id} called`);
     const success = await deleteRow('Transactions', id);
     if (success) {
       res.json({ success: true });
@@ -637,6 +666,7 @@ app.delete(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
       res.status(404).json({ error: "Transação não encontrada" });
     }
   } catch (error: any) {
+    console.error(`Error deleting transaction ${req.params.id}:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -673,6 +703,75 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
     await appendRow('Categories!A:E', [id, name, type, parent_id || '', createdAt]);
     res.json({ success: true, id });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put(["/api/categories/:id", "/categories/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, parent_id } = req.body;
+    
+    console.log(`PUT /api/categories/${id} called with:`, req.body);
+    const rows = await getRows('Categories!A:E');
+    const rowIndex = rows.findIndex((row, index) => {
+      if (index === 0 || !row[0]) return false;
+      return row[0].toString().trim().toLowerCase() === id.trim().toLowerCase();
+    });
+
+    if (rowIndex === -1) {
+      console.warn(`Category with ID ${id} not found in sheet`);
+      return res.status(404).json({ error: "Categoria não encontrada" });
+    }
+    
+    const headers = rows[0];
+    const oldRow = rows[rowIndex];
+    const oldObj: any = {};
+    headers.forEach((h, i) => oldObj[h] = oldRow[i] || '');
+
+    const newRow = [
+      id,
+      name || oldObj.name,
+      type || oldObj.type,
+      parent_id !== undefined ? parent_id : oldObj.parent_id,
+      oldObj.created_at
+    ];
+
+    const success = await updateRow('Categories', id, newRow);
+    if (!success) {
+      return res.status(500).json({ error: "Falha ao atualizar a linha na planilha" });
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error(`Error updating category ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`DELETE /api/categories/${id} called`);
+    // Optional: Check if there are transactions using this category
+    const transRows = await getRows('Transactions!A:L');
+    const hasTransactions = transRows.slice(1).some(row => {
+      if (!row[6]) return false;
+      return row[6].toString().trim().toLowerCase() === id.trim().toLowerCase();
+    });
+
+    if (hasTransactions) {
+      return res.status(400).json({ error: "Não é possível excluir uma categoria que possui lançamentos vinculados." });
+    }
+
+    const success = await deleteRow('Categories', id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Categoria não encontrada" });
+    }
+  } catch (error: any) {
+    console.error(`Error deleting category ${req.params.id}:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -764,9 +863,17 @@ app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
     const { id } = req.params;
     const { email, full_name, password, role, is_active } = req.body;
     
+    console.log(`PUT /api/users/${id} called`);
     const rows = await getRows('Users!A:G');
-    const rowIndex = rows.findIndex(row => row[0] === id);
-    if (rowIndex === -1) return res.status(404).json({ error: "Usuário não encontrado" });
+    const rowIndex = rows.findIndex((row, index) => {
+      if (index === 0 || !row[0]) return false;
+      return row[0].toString().trim().toLowerCase() === id.trim().toLowerCase();
+    });
+
+    if (rowIndex === -1) {
+      console.warn(`User with ID ${id} not found`);
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
     
     const headers = rows[0];
     const oldUserRow = rows[rowIndex];
@@ -790,9 +897,13 @@ app.put(["/api/users/:id", "/users/:id"], async (req, res) => {
       oldUserObj.created_at || new Date().toISOString()
     ];
     
-    await updateRow('Users', id, newUserRow);
+    const success = await updateRow('Users', id, newUserRow);
+    if (!success) {
+      return res.status(500).json({ error: "Falha ao atualizar usuário na planilha" });
+    }
     res.json({ success: true });
   } catch (error: any) {
+    console.error(`Error updating user ${req.params.id}:`, error);
     res.status(500).json({ error: error.message });
   }
 });
