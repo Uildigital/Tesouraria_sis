@@ -55,9 +55,17 @@ export const Reports: React.FC = () => {
           return t.date >= startOfMonth && t.date <= endOfMonth;
         })
         .sort((a, b) => {
-          const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
-          const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
-          return dateA.getTime() - dateB.getTime();
+          const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+          const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+          
+          if (dateA !== dateB) {
+            return dateA - dateB; // Reports are usually ascending
+          }
+          
+          // For same day, preserve entry order (Ascending within the day)
+          const createA = new Date(a.created_at || 0).getTime();
+          const createB = new Date(b.created_at || 0).getTime();
+          return createA - createB;
         });
 
       setTransactions(filtered || []);

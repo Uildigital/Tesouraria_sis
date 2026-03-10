@@ -56,6 +56,7 @@ export const Transactions: React.FC = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -197,9 +198,17 @@ export const Transactions: React.FC = () => {
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-      const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
-      const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
-      return dateB.getTime() - dateA.getTime();
+      const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+      const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+      
+      if (dateA !== dateB) {
+        return sortDirection === 'desc' ? dateB - dateA : dateA - dateB;
+      }
+      
+      // For same day/time, preserve entry order (Ascending within the day group)
+      const createA = new Date(a.created_at || 0).getTime();
+      const createB = new Date(b.created_at || 0).getTime();
+      return createA - createB;
     });
 
   return (
@@ -285,6 +294,13 @@ export const Transactions: React.FC = () => {
               <option value="pending">Pendente</option>
               <option value="pending_approval">Aprovação</option>
             </select>
+            <button 
+              onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center justify-center rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium bg-white text-zinc-600 hover:bg-zinc-50 transition-all"
+              title={sortDirection === 'desc' ? "Mais recentes primeiro" : "Mais antigos primeiro"}
+            >
+              {sortDirection === 'desc' ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+            </button>
             <button 
               onClick={() => setShowFilters(!showFilters)}
               className={cn(

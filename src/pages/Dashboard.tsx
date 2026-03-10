@@ -78,9 +78,17 @@ export const Dashboard: React.FC = () => {
           .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
         const sortedTransactions = [...transactions].sort((a, b) => {
-          const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
-          const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
-          return dateB.getTime() - dateA.getTime();
+          const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+          const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+          
+          if (dateA !== dateB) {
+            return dateB - dateA; // Newest days first on dashboard
+          }
+          
+          // For same day, preserve entry order (Ascending within the day)
+          const createA = new Date(a.created_at || 0).getTime();
+          const createB = new Date(b.created_at || 0).getTime();
+          return createA - createB;
         });
 
         setStats({ previousBalance, income, expenses, currentBalance });
