@@ -609,6 +609,57 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
   }
 });
 
+app.put(["/api/categories/:id", "/categories/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, parent_id } = req.body;
+    
+    const rows = await getRows('Categories!A:E');
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) return res.status(404).json({ error: "Categoria não encontrada" });
+    
+    const headers = rows[0];
+    const oldRow = rows[rowIndex];
+    const oldObj: any = {};
+    headers.forEach((h, i) => oldObj[h] = oldRow[i] || '');
+
+    const newRow = [
+      id,
+      name || oldObj.name,
+      type || oldObj.type,
+      parent_id !== undefined ? parent_id : oldObj.parent_id,
+      oldObj.created_at
+    ];
+
+    await updateRow('Categories', id, newRow);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Optional: Check if there are transactions using this category
+    const transRows = await getRows('Transactions!A:K');
+    const hasTransactions = transRows.slice(1).some(row => row[6] === id);
+    if (hasTransactions) {
+      return res.status(400).json({ error: "Não é possível excluir uma categoria que possui lançamentos vinculados." });
+    }
+
+    const success = await deleteRow('Categories', id);
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Categoria não encontrada" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get(["/api/users", "/users"], async (req, res) => {
   try {
     const rows = await getRows('Users!A:G');

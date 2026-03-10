@@ -69,6 +69,30 @@ export const apiService = {
     if (!res.ok) throw new Error('Failed to create category');
     return res.json();
   },
+  
+  async updateCategory(id: string, data: Partial<Category>): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao atualizar categoria' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao atualizar categoria');
+    }
+    return res.json();
+  },
+  
+  async deleteCategory(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao excluir categoria' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao excluir categoria');
+    }
+    return res.json();
+  },
 
   async resetCategories(): Promise<{ success: boolean }> {
     const res = await fetch(`${API_BASE}/reset-categories`, {

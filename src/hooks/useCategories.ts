@@ -33,7 +33,12 @@ export const useCategories = () => {
   }) => {
     setIsSubmitting(true);
     try {
-      const result = await apiService.createCategory(data);
+      let result;
+      if (data.id) {
+        result = await apiService.updateCategory(data.id, data);
+      } else {
+        result = await apiService.createCategory(data);
+      }
       
       if (!result.success) throw new Error('Erro ao salvar');
       
@@ -49,9 +54,22 @@ export const useCategories = () => {
   }, [fetchCategories]);
 
   const deleteCategory = useCallback(async (id: string) => {
-    toast.info('Exclusão não implementada para Google Sheets ainda.');
-    return false;
-  }, []);
+    setIsSubmitting(true);
+    try {
+      const result = await apiService.deleteCategory(id);
+      if (result.success) {
+        toast.success('Categoria excluída!');
+        await fetchCategories(true);
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      toast.error('Erro ao excluir: ' + error.message);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [fetchCategories]);
 
   const clearAll = useCallback(async () => {
     setIsSubmitting(true);
