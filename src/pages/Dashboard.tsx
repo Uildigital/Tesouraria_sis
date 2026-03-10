@@ -35,7 +35,9 @@ export const Dashboard: React.FC = () => {
     previousBalance: 0,
     income: 0,
     expenses: 0,
-    currentBalance: 0
+    currentBalance: 0,
+    correnteBalance: 0,
+    poupancaBalance: 0
   });
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -66,15 +68,28 @@ export const Dashboard: React.FC = () => {
 
         const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
         
+        // Helper to check if a transaction is an internal transfer
+        const isTransfer = (t: Transaction) => 
+          t.category_id?.startsWith('inc_3_2') || 
+          t.category_id?.startsWith('exp_7');
+
         const income = currentMonthTransactions
-          .filter(t => t.type === 'income')
+          .filter(t => t.type === 'income' && !isTransfer(t))
           .reduce((acc, t) => acc + parseAmount(t.amount), 0);
         
         const expenses = currentMonthTransactions
-          .filter(t => t.type === 'expense')
+          .filter(t => t.type === 'expense' && !isTransfer(t))
           .reduce((acc, t) => acc + parseAmount(t.amount), 0);
         
         const currentBalance = transactions
+          .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
+
+        const correnteBalance = transactions
+          .filter(t => t.account === 'Corrente' || !t.account)
+          .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
+
+        const poupancaBalance = transactions
+          .filter(t => t.account === 'Poupança')
           .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
         const sortedTransactions = [...transactions].sort((a, b) => {
@@ -91,7 +106,7 @@ export const Dashboard: React.FC = () => {
           return createA - createB;
         });
 
-        setStats({ previousBalance, income, expenses, currentBalance });
+        setStats({ previousBalance, income, expenses, currentBalance, correnteBalance, poupancaBalance });
         setRecentTransactions(sortedTransactions.slice(0, 5));
 
         // Generate real chart data from transactions
@@ -220,6 +235,36 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
+      <motion.div 
+        variants={itemVariants}
+        className="grid gap-4 sm:grid-cols-2"
+      >
+        <div className="premium-card p-6 border-l-4 border-l-zinc-900">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Conta Corrente</p>
+            <span className="text-xs font-bold text-zinc-900">{formatCurrency(stats.correnteBalance)}</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100">
+            <div 
+              className="h-full rounded-full bg-zinc-900" 
+              style={{ width: `${Math.min(100, Math.max(0, (stats.correnteBalance / (stats.currentBalance || 1)) * 100))}%` }} 
+            />
+          </div>
+        </div>
+        <div className="premium-card p-6 border-l-4 border-l-indigo-600">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Poupança</p>
+            <span className="text-xs font-bold text-indigo-600">{formatCurrency(stats.poupancaBalance)}</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100">
+            <div 
+              className="h-full rounded-full bg-indigo-600" 
+              style={{ width: `${Math.min(100, Math.max(0, (stats.poupancaBalance / (stats.currentBalance || 1)) * 100))}%` }} 
+            />
+          </div>
+        </div>
+      </motion.div>
+
       <div className="grid gap-8 lg:grid-cols-3">
         <motion.div 
           variants={itemVariants}
@@ -334,9 +379,14 @@ export const Dashboard: React.FC = () => {
                       <p className="text-sm font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">
                         {t.description}
                       </p>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                        {t.category?.name || 'Sem Categoria'}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                          {t.category?.name || 'Sem Categoria'}
+                        </p>
+                        <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500">
+                          {t.account || 'Corrente'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">

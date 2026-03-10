@@ -30,6 +30,7 @@ export const Reports: React.FC = () => {
   
   // Filters
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
@@ -89,6 +90,7 @@ export const Reports: React.FC = () => {
 
   const filteredTransactions = transactions.filter(t => {
     const matchesType = filterType === 'all' || t.type === filterType;
+    const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
     
     let matchesCategory = true;
     if (selectedCategoryIds.length > 0) {
@@ -153,10 +155,13 @@ export const Reports: React.FC = () => {
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
       doc.text(`Balancete Financeiro - ${formattedMonth}`, 14, 30);
-      
-      doc.setDrawColor(212, 175, 55); // Gold
-      doc.setLineWidth(0.5);
-      doc.line(14, 35, 196, 35);
+      if (accountFilter !== 'all') {
+        doc.setFontSize(10);
+        doc.text(`Conta: ${accountFilter}`, 14, 36);
+        doc.line(14, 38, 196, 38);
+      } else {
+        doc.line(14, 35, 196, 35);
+      }
 
       // Summary
       const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
@@ -174,14 +179,15 @@ export const Reports: React.FC = () => {
       const tableData = filteredTransactions.map(t => [
         formatDate(t.date),
         t.description,
+        t.account || 'Corrente',
         t.category?.name || '-',
         t.type === 'income' ? 'Entrada' : 'Saída',
         formatCurrency(t.amount)
       ]);
 
       autoTable(doc, {
-        startY: 65,
-        head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor']],
+        startY: accountFilter !== 'all' ? 70 : 65,
+        head: [['Data', 'Descrição', 'Conta', 'Categoria', 'Tipo', 'Valor']],
         body: tableData,
         headStyles: { fillColor: [26, 34, 56], textColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: [248, 249, 250] },
@@ -276,6 +282,18 @@ export const Reports: React.FC = () => {
               </select>
             </div>
             <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Conta</label>
+              <select 
+                value={accountFilter}
+                onChange={(e) => setAccountFilter(e.target.value as any)}
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              >
+                <option value="all">Todas as Contas</option>
+                <option value="Corrente">Conta Corrente</option>
+                <option value="Poupança">Poupança</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categorias (Pai/Filho)</label>
               <div className="relative">
                 <button
@@ -363,6 +381,7 @@ export const Reports: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4">Data</th>
                   <th className="px-6 py-4">Descrição</th>
+                  <th className="px-6 py-4">Conta</th>
                   <th className="px-6 py-4">Categoria</th>
                   <th className="px-6 py-4 text-right">Valor</th>
                 </tr>
@@ -370,13 +389,13 @@ export const Reports: React.FC = () => {
               <tbody className="divide-y divide-zinc-50">
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center">
+                    <td colSpan={5} className="px-6 py-12 text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
                     </td>
                   </tr>
                 ) : filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-medium">
                       Nenhum lançamento encontrado para os filtros selecionados.
                     </td>
                   </tr>
@@ -385,6 +404,14 @@ export const Reports: React.FC = () => {
                     <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
                       <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
+                      <td className="px-6 py-4">
+                        <span className={cn(
+                          "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                          t.account === 'Poupança' ? "bg-indigo-50 text-indigo-700" : "bg-zinc-100 text-zinc-700"
+                        )}>
+                          {t.account || 'Corrente'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
                           {t.category?.name}

@@ -36,6 +36,7 @@ const transactionSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Hora inválida'),
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Selecione uma subcategoria'),
+  account: z.enum(['Corrente', 'Poupança']),
   observation: z.string().optional(),
   attachment_url: z.string().optional(),
 });
@@ -56,6 +57,7 @@ export const Transactions: React.FC = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [showFilters, setShowFilters] = useState(false);
@@ -64,6 +66,7 @@ export const Transactions: React.FC = () => {
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'income',
+      account: 'Corrente',
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
@@ -132,6 +135,7 @@ export const Transactions: React.FC = () => {
     setValue('time', transaction.time || '00:00');
     setValue('type', transaction.type);
     setValue('category_id', transaction.category_id);
+    setValue('account', transaction.account || 'Corrente');
     setValue('observation', transaction.observation || '');
     setValue('attachment_url', transaction.attachment_url || '');
     
@@ -195,7 +199,8 @@ export const Transactions: React.FC = () => {
     .filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
+      return matchesSearch && matchesStatus && matchesAccount;
     })
     .sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -294,6 +299,15 @@ export const Transactions: React.FC = () => {
               <option value="pending">Pendente</option>
               <option value="pending_approval">Aprovação</option>
             </select>
+            <select
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+            >
+              <option value="all">Todas as Contas</option>
+              <option value="Corrente">Conta Corrente</option>
+              <option value="Poupança">Poupança</option>
+            </select>
             <button 
               onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
               className="flex items-center justify-center rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium bg-white text-zinc-600 hover:bg-zinc-50 transition-all"
@@ -337,6 +351,7 @@ export const Transactions: React.FC = () => {
             <tr>
               <th className="px-6 py-4">Data/Hora</th>
               <th className="px-6 py-4">Descrição</th>
+              <th className="px-6 py-4">Conta</th>
               <th className="px-6 py-4">Categoria</th>
               <th className="px-6 py-4">Valor</th>
               <th className="px-6 py-4">Status</th>
@@ -368,6 +383,14 @@ export const Transactions: React.FC = () => {
                       </a>
                     )}
                   </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className={cn(
+                    "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                    t.account === 'Poupança' ? "bg-indigo-50 text-indigo-700" : "bg-zinc-100 text-zinc-700"
+                  )}>
+                    {t.account || 'Corrente'}
+                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col">
@@ -537,6 +560,18 @@ export const Transactions: React.FC = () => {
                   <option value="income">Entrada</option>
                   <option value="expense">Saída</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Conta</label>
+                <select 
+                  {...register('account')}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                >
+                  <option value="Corrente">Conta Corrente</option>
+                  <option value="Poupança">Poupança</option>
+                </select>
+                {errors.account && <p className="mt-1 text-xs text-red-600">{errors.account.message}</p>}
               </div>
 
               <div className="sm:col-span-2">

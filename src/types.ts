@@ -39,6 +39,7 @@ export interface Transaction {
   observation?: string;
   attachment_url?: string;
   created_at: string;
+  account: 'Corrente' | 'Poupança';
   // Joined data
   category?: Category;
 }

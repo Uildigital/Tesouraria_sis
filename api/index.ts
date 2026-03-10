@@ -163,7 +163,7 @@ async function initializeSheets() {
       });
       
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at', 'account'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       if (title === 'Settings') headers = ['key', 'value'];
@@ -210,7 +210,8 @@ async function initializeSheets() {
           { id: 'inc_3_1_1', name: '3.1.1. Rendimento de Aplicação (CDB/Investimentos)', type: 'income', parent_id: 'inc_3_1' },
           { id: 'inc_3_1_2', name: '3.1.2. Rendimento de Poupança', type: 'income', parent_id: 'inc_3_1' },
           { id: 'inc_3_2', name: '3.2. Transferências Internas', type: 'income', parent_id: 'inc_3' },
-          { id: 'inc_3_2_1', name: '3.2.1. Entrada de Transferência p/ Poupança', type: 'income', parent_id: 'inc_3_2' },
+          { id: 'inc_3_2_1', name: '3.2.1. Entrada de Transferência (Resgate Poupança)', type: 'income', parent_id: 'inc_3_2' },
+          { id: 'inc_3_2_2', name: '3.2.2. Outras Transferências de Entrada', type: 'income', parent_id: 'inc_3_2' },
           // Despesas
           { id: 'exp_4', name: '4. MANUTENÇÃO E INFRAESTRUTURA', type: 'expense', parent_id: '' },
           { id: 'exp_4_1', name: '4.1. Reparos e Obras', type: 'expense', parent_id: 'exp_4' },
@@ -230,6 +231,9 @@ async function initializeSheets() {
           { id: 'exp_6_1_2', name: '6.1.2. Juros / IOF', type: 'expense', parent_id: 'exp_6_1' },
           { id: 'exp_6_2', name: '6.2. Contas de Consumo', type: 'expense', parent_id: 'exp_6' },
           { id: 'exp_6_2_1', name: '6.2.1. Energia / Água / Internet', type: 'expense', parent_id: 'exp_6_2' },
+          { id: 'exp_7', name: '7. TRANSFERÊNCIAS INTERNAS', type: 'expense', parent_id: '' },
+          { id: 'exp_7_1', name: '7.1. Saída de Transferência (Aplicação Poupança)', type: 'expense', parent_id: 'exp_7' },
+          { id: 'exp_7_2', name: '7.2. Outras Transferências de Saída', type: 'expense', parent_id: 'exp_7' },
         ];
 
         const createdAt = new Date().toISOString();
@@ -259,7 +263,7 @@ async function initializeSheets() {
     } else {
       // Ensure headers are up to date even if sheet exists
       let headers: string[] = [];
-      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
+      if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at', 'account'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
       
@@ -538,7 +542,7 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
     const [transRows, catRows] = await Promise.all([
-      getRows('Transactions!A:K'),
+      getRows('Transactions!A:L'),
       getRows('Categories!A:E')
     ]);
 
@@ -577,10 +581,10 @@ app.get(["/api/transactions", "/transactions"], async (req, res) => {
 
 app.post(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url } = req.body;
+    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url, account } = req.body;
     const id = uuidv4();
     const createdAt = new Date().toISOString();
-    await appendRow('Transactions!A:K', [id, date, time, description, amount, type, category_id, user_id, observation || '', attachment_url || '', createdAt]);
+    await appendRow('Transactions!A:L', [id, date, time, description, amount, type, category_id, user_id, observation || '', attachment_url || '', createdAt, account || 'Corrente']);
     res.json({ success: true, id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -590,9 +594,9 @@ app.post(["/api/transactions", "/transactions"], async (req, res) => {
 app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
   try {
     const { id } = req.params;
-    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url } = req.body;
+    const { date, time, description, amount, type, category_id, user_id, observation, attachment_url, account } = req.body;
     
-    const rows = await getRows('Transactions!A:K');
+    const rows = await getRows('Transactions!A:L');
     const rowIndex = rows.findIndex(row => row[0] === id);
     if (rowIndex === -1) return res.status(404).json({ error: "Transação não encontrada" });
     
@@ -612,7 +616,8 @@ app.put(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
       user_id || oldObj.user_id,
       observation !== undefined ? observation : oldObj.observation,
       attachment_url !== undefined ? attachment_url : oldObj.attachment_url,
-      oldObj.created_at
+      oldObj.created_at,
+      account || oldObj.account || 'Corrente'
     ];
 
     await updateRow('Transactions', id, newRow);
