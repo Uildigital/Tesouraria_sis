@@ -172,7 +172,10 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update settings');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao atualizar configurações' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao atualizar configurações');
+    }
     return res.json();
   }
 };

@@ -32,50 +32,56 @@ app.get("/api/settings", async (req, res) => {
 app.post("/api/settings", async (req, res) => {
   console.log('POST /api/settings called', req.body);
   try {
-    const settings = req.body;
+    const newSettings = req.body;
     const auth = getAuth();
     const sheets = getSheets();
     const spreadsheetId = getSpreadsheetId();
 
+    if (!spreadsheetId) {
+      throw new Error('GOOGLE_SHEET_ID não configurado');
+    }
+
     const rows = await getRows('Settings!A:B');
-    
-    // Create a map of existing settings for faster lookup
     const settingsMap = new Map();
-    rows.forEach((row: any, index: number) => {
-      if (row[0]) settingsMap.set(row[0], index); // Store row index (0-based)
+    
+    // Keep the header or use default
+    const header = (rows && rows.length > 0) ? rows[0] : ['key', 'value'];
+    
+    // Load existing settings (skip header)
+    if (rows && rows.length > 1) {
+      rows.slice(1).forEach((row: any) => {
+        if (row[0]) settingsMap.set(row[0], row[1] || '');
+      });
+    }
+    
+    // Merge new settings
+    for (const [key, value] of Object.entries(newSettings)) {
+      settingsMap.set(key, value);
+    }
+    
+    // Prepare all rows starting with header
+    const allRows = [header];
+    settingsMap.forEach((value, key) => {
+      allRows.push([key, value]);
+    });
+    
+    // Overwrite the sheet with all settings
+    console.log('Updating all settings in one call');
+    await sheets.spreadsheets.values.update({
+      auth,
+      spreadsheetId,
+      range: 'Settings!A:B',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: allRows },
     });
 
-    for (const [key, value] of Object.entries(settings)) {
-      const rowIndex = settingsMap.get(key);
-      if (rowIndex !== undefined) {
-        // Update existing
-        console.log(`Updating setting ${key} at row ${rowIndex + 1}`);
-        await sheets.spreadsheets.values.update({
-          auth,
-          spreadsheetId,
-          range: `Settings!A${rowIndex + 1}:B${rowIndex + 1}`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [[key, value]] },
-        });
-      } else {
-        // Append new
-        console.log(`Appending new setting ${key}`);
-        await sheets.spreadsheets.values.append({
-          auth,
-          spreadsheetId,
-          range: 'Settings!A:B',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [[key, value]] },
-        });
-        // Update map to prevent duplicate appends in the same loop
-        settingsMap.set(key, rows.length);
-        rows.push([key, value]);
-      }
-    }
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error in POST /api/settings:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: 'Falha ao atualizar configurações', 
+      details: error.message 
+    });
   }
 });
 
