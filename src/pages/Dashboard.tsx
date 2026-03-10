@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, parseAmount } from '../lib/utils';
 import { Transaction } from '../types';
 
 import { useNavigate } from 'react-router-dom';
@@ -62,20 +62,20 @@ export const Dashboard: React.FC = () => {
       if (transactions) {
         const previousBalance = transactions
           .filter(t => t.date && new Date(t.date) < startOfMonth)
-          .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
+          .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
         const currentMonthTransactions = transactions.filter(t => t.date && new Date(t.date) >= startOfMonth);
         
         const income = currentMonthTransactions
           .filter(t => t.type === 'income')
-          .reduce((acc, t) => acc + Number(t.amount), 0);
+          .reduce((acc, t) => acc + parseAmount(t.amount), 0);
         
         const expenses = currentMonthTransactions
           .filter(t => t.type === 'expense')
-          .reduce((acc, t) => acc + Number(t.amount), 0);
+          .reduce((acc, t) => acc + parseAmount(t.amount), 0);
         
         const currentBalance = transactions
-          .reduce((acc, t) => acc + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0);
+          .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
         const sortedTransactions = [...transactions].sort((a, b) => {
           const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
@@ -98,10 +98,10 @@ export const Dashboard: React.FC = () => {
           const monthTransactions = transactions.filter(t => t.date && t.date.startsWith(monthStr));
           const monthIncome = monthTransactions
             .filter(t => t.type === 'income')
-            .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+            .reduce((acc, t) => acc + parseAmount(t.amount), 0);
           const monthExpenses = monthTransactions
             .filter(t => t.type === 'expense')
-            .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+            .reduce((acc, t) => acc + parseAmount(t.amount), 0);
             
           monthsData.push({
             name: monthLabel,

@@ -38,12 +38,18 @@ app.post("/api/settings", async (req, res) => {
     const spreadsheetId = getSpreadsheetId();
 
     const rows = await getRows('Settings!A:B');
-    const headers = rows[0] || ['key', 'value'];
+    
+    // Create a map of existing settings for faster lookup
+    const settingsMap = new Map();
+    rows.forEach((row: any, index: number) => {
+      if (row[0]) settingsMap.set(row[0], index); // Store row index (0-based)
+    });
 
     for (const [key, value] of Object.entries(settings)) {
-      const rowIndex = rows.findIndex(row => row[0] === key);
-      if (rowIndex !== -1) {
+      const rowIndex = settingsMap.get(key);
+      if (rowIndex !== undefined) {
         // Update existing
+        console.log(`Updating setting ${key} at row ${rowIndex + 1}`);
         await sheets.spreadsheets.values.update({
           auth,
           spreadsheetId,
@@ -53,6 +59,7 @@ app.post("/api/settings", async (req, res) => {
         });
       } else {
         // Append new
+        console.log(`Appending new setting ${key}`);
         await sheets.spreadsheets.values.append({
           auth,
           spreadsheetId,
@@ -60,6 +67,9 @@ app.post("/api/settings", async (req, res) => {
           valueInputOption: 'USER_ENTERED',
           requestBody: { values: [[key, value]] },
         });
+        // Update map to prevent duplicate appends in the same loop
+        settingsMap.set(key, rows.length);
+        rows.push([key, value]);
       }
     }
     res.json({ success: true });

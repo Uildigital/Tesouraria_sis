@@ -24,7 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency, formatDate, cn } from '../lib/utils';
+import { formatCurrency, formatDate, cn, parseAmount } from '../lib/utils';
 import { Transaction, Category } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -236,7 +236,7 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -247,7 +247,7 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
