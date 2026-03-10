@@ -143,7 +143,7 @@ async function initializeSheets() {
   const auth = getAuth();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
-  const sheetsToCreate = ['Transactions', 'Categories', 'Users'];
+  const sheetsToCreate = ['Transactions', 'Categories', 'Users', 'Settings'];
   
   const spreadsheet = await sheets.spreadsheets.get({
     auth,
@@ -166,6 +166,7 @@ async function initializeSheets() {
       if (title === 'Transactions') headers = ['id', 'date', 'time', 'description', 'amount', 'type', 'category_id', 'user_id', 'observation', 'attachment_url', 'created_at'];
       if (title === 'Categories') headers = ['id', 'name', 'type', 'parent_id', 'created_at'];
       if (title === 'Users') headers = ['id', 'email', 'password', 'full_name', 'role', 'is_active', 'created_at'];
+      if (title === 'Settings') headers = ['key', 'value'];
 
       await sheets.spreadsheets.values.update({
         auth,
@@ -174,6 +175,21 @@ async function initializeSheets() {
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [headers] },
       });
+
+      // Add default settings
+      if (title === 'Settings') {
+        const defaultSettings = [
+          ['app_name', 'ChurchFinance'],
+          ['app_logo', ''],
+        ];
+        await sheets.spreadsheets.values.append({
+          auth,
+          spreadsheetId,
+          range: 'Settings!A:B',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: defaultSettings },
+        });
+      }
 
       // Add default categories if it's the Categories sheet
       if (title === 'Categories') {
@@ -261,6 +277,71 @@ async function initializeSheets() {
 }
 
 // --- API ROUTES ---
+
+app.get("/api/settings", async (req, res) => {
+  try {
+    const rows = await getRows('Settings!A:B');
+    if (!rows || rows.length <= 1) return res.json({});
+    const data: any = {};
+    rows.slice(1).forEach((row: any) => {
+      if (row[0]) data[row[0]] = row[1] || '';
+    });
+    res.json(data);
+  } catch (error: any) {
+    console.error('Error in GET /api/settings:', error);
+    res.json({});
+  }
+});
+
+app.post("/api/settings", async (req, res) => {
+  try {
+    const newSettings = req.body;
+    const auth = getAuth();
+    const sheets = getSheets();
+    const spreadsheetId = getSpreadsheetId();
+
+    const rows = await getRows('Settings!A:B');
+    const settingsMap = new Map();
+    
+    // Keep the header or use default
+    const header = (rows && rows.length > 0) ? rows[0] : ['key', 'value'];
+    
+    // Load existing settings (skip header)
+    if (rows && rows.length > 1) {
+      rows.slice(1).forEach((row: any) => {
+        if (row[0]) settingsMap.set(row[0], row[1] || '');
+      });
+    }
+    
+    // Merge new settings
+    for (const [key, value] of Object.entries(newSettings)) {
+      settingsMap.set(key, value);
+    }
+    
+    // Prepare all rows starting with header
+    const allRows = [header];
+    settingsMap.forEach((value, key) => {
+      allRows.push([key, value]);
+    });
+    
+    // Overwrite the sheet with all settings
+    await sheets.spreadsheets.values.update({
+      auth,
+      spreadsheetId,
+      range: 'Settings!A:B',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: allRows },
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error in POST /api/settings:', error);
+    res.status(500).json({ 
+      error: 'Falha ao atualizar configurações', 
+      details: error.message 
+    });
+  }
+});
 
 app.get(["/api/health", "/health"], async (req, res) => {
   const diagnostics: any = {
@@ -456,14 +537,33 @@ app.post(["/api/auth/signup", "/auth/signup"], async (req, res) => {
 
 app.get(["/api/transactions", "/transactions"], async (req, res) => {
   try {
-    const rows = await getRows('Transactions!A:K');
-    if (!rows || rows.length <= 1) return res.json([]);
-    const headers = rows[0];
-    const data = rows.slice(1).map((row: any) => {
+    const [transRows, catRows] = await Promise.all([
+      getRows('Transactions!A:K'),
+      getRows('Categories!A:E')
+    ]);
+
+    if (!transRows || transRows.length <= 1) return res.json([]);
+    
+    const transHeaders = transRows[0];
+    const catHeaders = catRows[0];
+    
+    const categories = catRows.slice(1).map((row: any) => {
       const obj: any = {};
-      headers.forEach((header: string, index: number) => {
+      catHeaders.forEach((header: string, index: number) => {
         obj[header] = row[index] || '';
       });
+      return obj;
+    });
+
+    const data = transRows.slice(1).map((row: any) => {
+      const obj: any = {};
+      transHeaders.forEach((header: string, index: number) => {
+        obj[header] = row[index] || '';
+      });
+      
+      // Join category
+      obj.category = categories.find((c: any) => c.id === obj.category_id);
+      
       return obj;
     });
     res.json(data);
