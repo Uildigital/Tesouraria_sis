@@ -61,6 +61,7 @@ export const Transactions: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [showFilters, setShowFilters] = useState(false);
+  const [activeAccountTab, setActiveAccountTab] = useState<'Corrente' | 'Poupança'>('Corrente');
 
   const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -199,7 +200,7 @@ export const Transactions: React.FC = () => {
     .filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-      const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
+      const matchesAccount = t.account === activeAccountTab;
       return matchesSearch && matchesStatus && matchesAccount;
     })
     .sort((a, b) => {
@@ -231,7 +232,10 @@ export const Transactions: React.FC = () => {
           {canEdit && (
             <>
               <button 
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setValue('account', activeAccountTab);
+                  setShowModal(true);
+                }}
                 className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
               >
                 <Plus className="mr-2 h-5 w-5" />
@@ -248,9 +252,9 @@ export const Transactions: React.FC = () => {
             <ArrowUpRight className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'income' && t.account === activeAccountTab).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -259,9 +263,9 @@ export const Transactions: React.FC = () => {
             <ArrowDownRight className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'expense' && t.account === activeAccountTab).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -270,10 +274,40 @@ export const Transactions: React.FC = () => {
             <Calendar className="h-5 w-5 sm:h-6 sm:h-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total Itens</p>
-            <p className="text-base sm:text-xl font-bold text-zinc-900">{transactions.length}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo ({activeAccountTab})</p>
+            <p className={cn(
+              "text-base sm:text-xl font-bold",
+              transactions.filter(t => t.account === activeAccountTab).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+            )}>
+              {formatCurrency(transactions.filter(t => t.account === activeAccountTab).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
+            </p>
           </div>
         </div>
+      </div>
+
+      <div className="flex border-b border-zinc-200">
+        <button
+          onClick={() => setActiveAccountTab('Corrente')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold transition-all border-b-2",
+            activeAccountTab === 'Corrente' 
+              ? "border-zinc-900 text-zinc-900" 
+              : "border-transparent text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          Conta Corrente
+        </button>
+        <button
+          onClick={() => setActiveAccountTab('Poupança')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold transition-all border-b-2",
+            activeAccountTab === 'Poupança' 
+              ? "border-zinc-900 text-zinc-900" 
+              : "border-transparent text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          Poupança
+        </button>
       </div>
 
       <div className="premium-card p-8">
@@ -298,15 +332,6 @@ export const Transactions: React.FC = () => {
               <option value="conciliated">Conciliado</option>
               <option value="pending">Pendente</option>
               <option value="pending_approval">Aprovação</option>
-            </select>
-            <select
-              value={accountFilter}
-              onChange={(e) => setAccountFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-            >
-              <option value="all">Todas as Contas</option>
-              <option value="Corrente">Conta Corrente</option>
-              <option value="Poupança">Poupança</option>
             </select>
             <button 
               onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
@@ -472,7 +497,10 @@ export const Transactions: React.FC = () => {
                     <p className="mt-1 text-sm text-zinc-500">Comece registrando a primeira movimentação da igreja.</p>
                     {canEdit && (
                       <button 
-                        onClick={() => setShowModal(true)}
+                        onClick={() => {
+                          setValue('account', activeAccountTab);
+                          setShowModal(true);
+                        }}
                         className="mt-6 flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all"
                       >
                         <Plus className="mr-2 h-4 w-4" />
