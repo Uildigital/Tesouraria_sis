@@ -11,13 +11,15 @@ import {
   Plus
 } from 'lucide-react';
 import { 
-  AreaChart, 
-  Area, 
+  BarChart, 
+  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
+  Legend,
+  Cell
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,22 +44,19 @@ export const Dashboard: React.FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear]);
 
-  const handleShowInsights = () => {
-    // AI Insights removed
-  };
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (month: number, year: number) => {
     setLoading(true);
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startOfMonthStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const startOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endOfMonth = new Date(year, month + 1, 0);
+    const endOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
 
     try {
       const transactions = await apiService.getTransactions();
@@ -67,7 +66,7 @@ export const Dashboard: React.FC = () => {
           .filter(t => t.date && t.date < startOfMonthStr)
           .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
-        const currentMonthTransactions = transactions.filter(t => t.date && t.date >= startOfMonthStr);
+        const currentMonthTransactions = transactions.filter(t => t.date && t.date >= startOfMonthStr && t.date <= endOfMonthStr);
         
         // Helper to check if a transaction is an internal transfer
         const isTransfer = (t: Transaction) => 
@@ -110,12 +109,12 @@ export const Dashboard: React.FC = () => {
         setStats({ previousBalance, income, expenses, currentBalance, correnteBalance, poupancaBalance });
         setRecentTransactions(sortedTransactions.slice(0, 5));
 
-        // Generate real chart data from transactions
+        // Generate real chart data from transactions (last 6 months including selected)
         const monthsData: any[] = [];
         const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         
         for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const d = new Date(year, month - i, 1);
           const monthStr = d.toISOString().slice(0, 7); // YYYY-MM
           const monthLabel = monthNames[d.getMonth()];
           
@@ -203,12 +202,27 @@ export const Dashboard: React.FC = () => {
           )}
           <motion.div 
             variants={itemVariants}
-            className="hidden sm:flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-sm border border-zinc-100"
+            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm border border-zinc-100"
           >
             <Calendar className="h-4 w-4 text-emerald-600" />
-            <span className="text-sm font-medium text-zinc-600">
-              {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date())}
-            </span>
+            <select 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer"
+            >
+              {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
+                <option key={m} value={i}>{m}</option>
+              ))}
+            </select>
+            <select 
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer border-l border-zinc-100 pl-2"
+            >
+              {[2024, 2025, 2026, 2027].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </motion.div>
         </div>
       </div>
@@ -290,17 +304,7 @@ export const Dashboard: React.FC = () => {
           <div className="h-[350px] w-full min-h-[350px]">
             {chartData.length > 0 && (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
                   <XAxis 
                     dataKey="name" 
@@ -316,6 +320,7 @@ export const Dashboard: React.FC = () => {
                     tickFormatter={(v) => `R$ ${v}`}
                   />
                   <Tooltip 
+                    cursor={{ fill: '#f8fafc' }}
                     contentStyle={{ 
                       borderRadius: '20px', 
                       border: 'none', 
@@ -323,23 +328,22 @@ export const Dashboard: React.FC = () => {
                       padding: '12px 16px'
                     }}
                   />
-                  <Area 
-                    type="linear" 
+                  <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
+                  <Bar 
                     dataKey="receita" 
-                    stroke="#10b981" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorReceita)" 
+                    name="Receitas"
+                    fill="#10b981" 
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
                   />
-                  <Area 
-                    type="linear" 
+                  <Bar 
                     dataKey="despesa" 
-                    stroke="#f43f5e" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorDespesa)" 
+                    name="Despesas"
+                    fill="#f43f5e" 
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
                   />
-                </AreaChart>
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
