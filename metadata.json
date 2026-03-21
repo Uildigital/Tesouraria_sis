@@ -1,0 +1,8 @@
+{
+  "name": "ChurchFinance",
+  "description": "SaaS de Tesouraria Eclesiástica para gestão financeira de igrejas com integração Supabase e n8n.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
