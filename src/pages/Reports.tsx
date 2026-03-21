@@ -1,31 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
-  FileText, 
-  Download, 
-  Printer, 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar,
-  FileCheck,
-  Loader2,
-  ChevronDown,
-  X,
-  Check
+  FileText, Download, Printer, TrendingUp, TrendingDown, 
+  FileCheck, Loader2, ChevronDown, X, Check
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
-import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn, parseAmount } from '../lib/utils';
-import { Transaction, Category } from '../types';
+import { Category } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { MonthPicker } from '../components/shared/MonthPicker';
 
 export const Reports: React.FC = () => {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [isExporting, setIsExporting] = useState(false);
   
   // Filters
@@ -34,49 +24,18 @@ export const Reports: React.FC = () => {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
-  useEffect(() => {
-    fetchReportData();
-  }, [month]);
+  // Queries
+  const { data: transactions = [], isLoading: isLoadingTrans } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: apiService.getTransactions,
+  });
+  
+  const { data: categories = [], isLoading: isLoadingCat } = useQuery({
+    queryKey: ['categories'],
+    queryFn: apiService.getCategories,
+  });
 
-  const fetchReportData = async () => {
-    setLoading(true);
-    try {
-      const [year, monthNum] = month.split('-').map(Number);
-      const startOfMonth = `${month}-01`;
-      const lastDay = new Date(year, monthNum, 0).getDate();
-      const endOfMonth = `${month}-${String(lastDay).padStart(2, '0')}`;
-
-      const [transData, catData] = await Promise.all([
-        apiService.getTransactions(),
-        apiService.getCategories()
-      ]);
-      
-      const filtered = transData
-        .filter(t => {
-          return t.date >= startOfMonth && t.date <= endOfMonth;
-        })
-        .sort((a, b) => {
-          const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
-          const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
-          
-          if (dateA !== dateB) {
-            return dateA - dateB; // Reports are usually ascending
-          }
-          
-          // For same day, preserve entry order (Ascending within the day)
-          const createA = new Date(a.created_at || 0).getTime();
-          const createB = new Date(b.created_at || 0).getTime();
-          return createA - createB;
-        });
-
-      setTransactions(filtered || []);
-      setCategories(catData || []);
-    } catch (error) {
-      console.error('Error fetching report data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = isLoadingTrans || isLoadingCat;
 
   // Helper to get all descendants of a category
   const getDescendantIds = (catId: string, allCats: Category[]): string[] => {
@@ -88,28 +47,40 @@ export const Reports: React.FC = () => {
     return ids;
   };
 
-  const filteredTransactions = transactions.filter(t => {
-    const matchesType = filterType === 'all' || t.type === filterType;
-    const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
-    
-    let matchesCategory = true;
-    if (selectedCategoryIds.length > 0) {
-      // Get all effective IDs (selected + their descendants)
-      const effectiveIds = new Set<string>();
-      selectedCategoryIds.forEach(id => {
-        effectiveIds.add(id);
-        getDescendantIds(id, categories).forEach(childId => effectiveIds.add(childId));
-      });
-      matchesCategory = effectiveIds.has(t.category_id);
-    }
-    
-    return matchesType && matchesCategory;
-  });
+  const filteredTransactions = transactions
+    .filter(t => {
+      let matchesDate = true;
+      if (t.date) {
+        const [tYear, tMonth] = t.date.split('-');
+        matchesDate = parseInt(tYear, 10) === selectedYear && (parseInt(tMonth, 10) - 1) === selectedMonth;
+      }
+
+      const matchesType = filterType === 'all' || t.type === filterType;
+      const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
+      
+      let matchesCategory = true;
+      if (selectedCategoryIds.length > 0) {
+        const effectiveIds = new Set<string>();
+        selectedCategoryIds.forEach(id => {
+          effectiveIds.add(id);
+          getDescendantIds(id, categories).forEach(childId => effectiveIds.add(childId));
+        });
+        matchesCategory = effectiveIds.has(t.category_id);
+      }
+      
+      return matchesDate && matchesType && matchesAccount && matchesCategory;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+      const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      const createA = new Date(a.created_at || 0).getTime();
+      const createB = new Date(b.created_at || 0).getTime();
+      return createA - createB;
+    });
 
   const toggleCategory = (id: string) => {
-    setSelectedCategoryIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedCategoryIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const renderCategoryOptions = (parentId: string | null = null, level = 0) => {
@@ -144,12 +115,10 @@ export const Reports: React.FC = () => {
 
     try {
       const doc = new jsPDF();
-      const [year, monthNum] = month.split('-').map(Number);
-      const formattedMonth = format(new Date(year, monthNum - 1, 1), 'MMMM yyyy', { locale: ptBR });
+      const formattedMonth = format(new Date(selectedYear, selectedMonth, 1), 'MMMM yyyy', { locale: ptBR });
 
-      // Header
       doc.setFontSize(22);
-      doc.setTextColor(26, 34, 56); // Premium Navy
+      doc.setTextColor(26, 34, 56);
       doc.text('Igreja', 14, 22);
       
       doc.setFontSize(12);
@@ -163,19 +132,17 @@ export const Reports: React.FC = () => {
         doc.line(14, 35, 196, 35);
       }
 
-      // Summary
-      const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-      const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-      const balance = income - expenses;
+      const incomeVal = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      const expensesVal = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      const balanceVal = incomeVal - expensesVal;
 
       doc.setFontSize(10);
-      doc.text(`Total de Entradas: ${formatCurrency(income)}`, 14, 45);
-      doc.text(`Total de Saídas: ${formatCurrency(expenses)}`, 14, 50);
+      doc.text(`Total de Entradas: ${formatCurrency(incomeVal)}`, 14, 45);
+      doc.text(`Total de Saídas: ${formatCurrency(expensesVal)}`, 14, 50);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Saldo do Período: ${formatCurrency(balance)}`, 14, 55);
+      doc.text(`Saldo do Período: ${formatCurrency(balanceVal)}`, 14, 55);
       doc.setFont('helvetica', 'normal');
 
-      // Table
       const tableData = filteredTransactions.map(t => [
         formatDate(t.date),
         t.description,
@@ -194,7 +161,6 @@ export const Reports: React.FC = () => {
         margin: { top: 65 },
       });
 
-      // Footer
       const pageCount = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
@@ -203,7 +169,7 @@ export const Reports: React.FC = () => {
         doc.text(`Página ${i} de ${pageCount}`, 180, 285);
       }
 
-      doc.save(`Balancete_${month}.pdf`);
+      doc.save(`Balancete_${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Erro ao gerar PDF. Tente novamente.');
@@ -256,15 +222,12 @@ export const Reports: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Mês de Referência</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="month" 
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                  className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-                />
-              </div>
+              <MonthPicker 
+                selectedMonth={selectedMonth} 
+                selectedYear={selectedYear} 
+                onMonthChange={setSelectedMonth} 
+                onYearChange={setSelectedYear} 
+              />
             </div>
           </div>
 
@@ -294,7 +257,7 @@ export const Reports: React.FC = () => {
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categorias (Pai/Filho)</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categorias</label>
               <div className="relative">
                 <button
                   onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
@@ -310,18 +273,12 @@ export const Reports: React.FC = () => {
 
                 {isCategoryMenuOpen && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-10" 
-                      onClick={() => setIsCategoryMenuOpen(false)} 
-                    />
+                    <div className="fixed inset-0 z-10" onClick={() => setIsCategoryMenuOpen(false)} />
                     <div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-y-auto rounded-xl border border-zinc-100 bg-white py-2 shadow-xl animate-in fade-in zoom-in duration-200">
                       <div className="sticky top-0 z-10 bg-white px-4 pb-2 border-b border-zinc-50 mb-2 flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Categorias</span>
                         {selectedCategoryIds.length > 0 && (
-                          <button 
-                            onClick={() => setSelectedCategoryIds([])}
-                            className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600"
-                          >
+                          <button onClick={() => setSelectedCategoryIds([])} className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600">
                             Limpar
                           </button>
                         )}
@@ -338,9 +295,7 @@ export const Reports: React.FC = () => {
                     return (
                       <span key={id} className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
                         {cat?.name}
-                        <button onClick={() => toggleCategory(id)} className="ml-1 hover:text-rose-500">
-                          <X size={10} />
-                        </button>
+                        <button onClick={() => toggleCategory(id)} className="ml-1 hover:text-rose-500"><X size={10} /></button>
                       </span>
                     );
                   })}

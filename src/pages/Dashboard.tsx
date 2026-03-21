@@ -13,6 +13,7 @@ import { formatCurrency, cn, parseAmount } from '../lib/utils';
 import { Transaction } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { MonthPicker } from '../components/shared/MonthPicker';
 
 export const Dashboard: React.FC = () => {
   const { canEdit, profile } = useAuth();
@@ -133,24 +134,13 @@ export const Dashboard: React.FC = () => {
               <Plus className="h-5 w-5" /> Novo Lançamento
             </motion.button>
           )}
-          <motion.div variants={itemVariants} className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm border border-zinc-100">
-            <Calendar className="h-4 w-4 text-emerald-600" />
-            <select 
-              value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer"
-            >
-              {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((m, i) => (
-                <option key={m} value={i}>{m}</option>
-              ))}
-            </select>
-            <select 
-              value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer border-l border-zinc-100 pl-2"
-            >
-              {[2024, 2025, 2026, 2027].map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+          <motion.div variants={itemVariants}>
+            <MonthPicker 
+              selectedMonth={selectedMonth} 
+              selectedYear={selectedYear} 
+              onMonthChange={setSelectedMonth} 
+              onYearChange={setSelectedYear} 
+            />
           </motion.div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { cn } from '../lib/utils';
 import { TransactionSummaryCards } from '../components/transactions/TransactionSummaryCards';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import { TransactionFormModal, TransactionFormValues } from '../components/transactions/TransactionFormModal';
+import { MonthPicker } from '../components/shared/MonthPicker';
 
 export const Transactions: React.FC = () => {
   const { profile, canEdit } = useAuth();
@@ -32,6 +33,10 @@ export const Transactions: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   
+  // Date Filters
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -50,7 +55,7 @@ export const Transactions: React.FC = () => {
   });
 
   const { mutate: toggleStatus } = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => apiService.updateTransaction(id, { status }),
+    mutationFn: ({ id, status }: { id: string; status: 'pending' | 'conciliated' | 'pending_approval' }) => apiService.updateTransaction(id, { status }),
     onSuccess: (_, variables) => {
       toast.success(`Status atualizado para ${variables.status === 'conciliated' ? 'Conciliado' : 'Pendente'}`);
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -104,10 +109,17 @@ export const Transactions: React.FC = () => {
   // Processing Data
   const filteredTransactions = transactions
     .filter(t => {
+      let matchesDate = true;
+      if (t.date) {
+        const [tYear, tMonth] = t.date.split('-');
+        matchesDate = parseInt(tYear, 10) === selectedYear && (parseInt(tMonth, 10) - 1) === selectedMonth;
+      }
+
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchesAccount = t.account === activeAccountTab;
-      return matchesSearch && matchesStatus && matchesAccount;
+      
+      return matchesDate && matchesSearch && matchesStatus && matchesAccount;
     })
     .sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -125,7 +137,13 @@ export const Transactions: React.FC = () => {
           <h2 className="font-display text-4xl font-bold tracking-tight text-zinc-900">Lançamentos</h2>
           <p className="mt-1 text-zinc-500">Gerencie entradas e saídas com precisão.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <MonthPicker 
+            selectedMonth={selectedMonth} 
+            selectedYear={selectedYear} 
+            onMonthChange={setSelectedMonth} 
+            onYearChange={setSelectedYear} 
+          />
           {canEdit && (
             <button 
               onClick={() => setShowModal(true)}
@@ -137,7 +155,7 @@ export const Transactions: React.FC = () => {
         </div>
       </div>
 
-      <TransactionSummaryCards transactions={transactions} activeAccountTab={activeAccountTab} />
+      <TransactionSummaryCards transactions={filteredTransactions} activeAccountTab={activeAccountTab} />
 
       <div className="flex border-b border-zinc-200">
         <button
