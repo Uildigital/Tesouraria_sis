@@ -1,184 +1,161 @@
 import { Transaction, Category } from '../types';
-import { supabase } from '../lib/supabase';
+
+const API_BASE = '/api';
 
 export const apiService = {
   // Transactions
-  async getTransactions(): Promise<Transaction[]> {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, category:categories(*)');
-    
-    if (error) throw new Error(error.message);
-    return data || [];
+  async getTransactions(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/transactions`);
+    if (!res.ok) throw new Error('Erro ao buscar transações');
+    return res.json();
   },
 
-  async createTransaction(data: Partial<Transaction>): Promise<{ success: boolean; id: string }> {
-    const { data: inserted, error } = await supabase
-      .from('transactions')
-      .insert(data)
-      .select('id')
-      .single();
-      
-    if (error) throw new Error(error.message);
-    return { success: true, id: inserted.id };
+  async createTransaction(data: any): Promise<{ success: boolean; id: string }> {
+    const res = await fetch(`${API_BASE}/transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao criar transação');
+    return res.json();
   },
 
-  async updateTransaction(id: string, data: Partial<Transaction>): Promise<{ success: boolean }> {
-    const { error } = await supabase
-      .from('transactions')
-      .update(data)
-      .eq('id', id);
-      
-    if (error) throw new Error(error.message);
-    return { success: true };
+  async updateTransaction(id: string, data: any): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar transação');
+    return res.json();
   },
 
   async deleteTransaction(id: string): Promise<{ success: boolean }> {
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
-      
-    if (error) throw new Error(error.message);
-    return { success: true };
+    const res = await fetch(`${API_BASE}/transactions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Erro ao excluir transação');
+    return res.json();
   },
 
   // Categories
   async getCategories(): Promise<Category[]> {
-    const { data, error } = await supabase.from('categories').select('*');
-    if (error) throw new Error(error.message);
-    return data || [];
+    const res = await fetch(`${API_BASE}/categories`);
+    if (!res.ok) throw new Error('Erro ao buscar categorias');
+    return res.json();
   },
 
-  async createCategory(data: Partial<Category>): Promise<{ success: boolean; id: string }> {
-    if (!data.id) {
-       data.id = 'cat_' + Date.now(); // Supabase id is TEXT in our schema
-    }
-    const { data: inserted, error } = await supabase
-      .from('categories')
-      .insert(data)
-      .select('id')
-      .single();
-      
-    if (error) throw new Error(error.message);
-    return { success: true, id: inserted.id };
+  async createCategory(data: any): Promise<{ success: boolean; id: string }> {
+    const res = await fetch(`${API_BASE}/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao criar categoria');
+    return res.json();
   },
-  
-  async updateCategory(id: string, data: Partial<Category>): Promise<{ success: boolean }> {
-    const { error } = await supabase
-      .from('categories')
-      .update(data)
-      .eq('id', id);
-      
-    if (error) throw new Error(error.message);
-    return { success: true };
+
+  async updateCategory(id: string, data: any): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar categoria');
+    return res.json();
   },
-  
+
   async deleteCategory(id: string): Promise<{ success: boolean }> {
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
-      
-    if (error) throw new Error(error.message);
-    return { success: true };
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Erro ao excluir categoria');
+    return res.json();
   },
 
   async resetCategories(): Promise<{ success: boolean }> {
-    return { success: true };
+    const res = await fetch(`${API_BASE}/reset-categories`, { method: 'POST' });
+    if (!res.ok) throw new Error('Erro ao resetar categorias');
+    return res.json();
   },
 
   async initSheets(): Promise<{ success: boolean }> {
-    return { success: true };
+    const res = await fetch(`${API_BASE}/init-sheets`, { method: 'POST' });
+    if (!res.ok) throw new Error('Erro ao inicializar');
+    return res.json();
   },
 
   // Auth
   async login(credentials: any): Promise<{ success: boolean; user: any }> {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
     });
-    
-    if (error) throw new Error(error.message);
-    
-    if (data.user) {
-      const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-      // Verificando is_active
-      if (profile && profile.is_active === false) {
-        throw new Error("Sua conta está desativada. Entre em contato com o administrador.");
-      }
-      return { success: true, user: profile || data.user };
-    }
-    throw new Error("Erro no login");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro no login');
+    return data;
   },
 
   async signup(data: any): Promise<{ success: boolean; user: any }> {
-    const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
+    const res = await fetch(`${API_BASE}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-    
-    if (error) throw new Error(error.message);
-    
-    if (authData.user) {
-      const profile = {
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role || 'user',
-        is_active: true
-      };
-      await supabase.from('users').upsert(profile);
-      return { success: true, user: profile };
-    }
-    throw new Error("Erro ao criar conta");
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao criar conta');
+    return result;
   },
 
   async getUsers(): Promise<any[]> {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) throw new Error(error.message);
-    return data || [];
+    const res = await fetch(`${API_BASE}/users`);
+    if (!res.ok) throw new Error('Erro ao buscar usuários');
+    return res.json();
   },
 
   async createUser(data: any): Promise<{ success: boolean; id: string }> {
-    throw new Error('Use o formulário de Signup real ou integre o Admin API para criar contas fechadas.');
+    const res = await fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao criar usuário');
+    return res.json();
   },
 
   async deleteUser(id: string): Promise<{ success: boolean }> {
-    const { error } = await supabase.from('users').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-    return { success: true };
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Erro ao excluir usuário');
+    return res.json();
   },
 
   async updateUser(id: string, data: any): Promise<{ success: boolean }> {
-    const { error } = await supabase.from('users').update(data).eq('id', id);
-    if (error) throw new Error(error.message);
-    return { success: true };
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar usuário');
+    return res.json();
   },
 
   // Settings
   async getSettings(): Promise<any> {
-    const { data, error } = await supabase.from('settings').select('*');
-    if (error) throw new Error(error.message);
-    
-    const settings: any = {};
-    if (data) {
-      data.forEach((item: any) => {
-        settings[item.key] = item.value;
-      });
-    }
-    return settings;
+    const res = await fetch(`${API_BASE}/settings`);
+    if (!res.ok) throw new Error('Erro ao buscar configurações');
+    return res.json();
   },
 
   async updateSettings(data: any): Promise<{ success: boolean }> {
-    const upserts = Object.keys(data).map(key => ({
-      key,
-      value: data[key]
-    }));
-    
-    const { error } = await supabase.from('settings').upsert(upserts);
-    if (error) throw new Error(error.message);
-    
-    return { success: true };
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao atualizar configurações');
+    return res.json();
   }
 };

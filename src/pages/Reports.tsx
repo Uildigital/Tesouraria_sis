@@ -5,7 +5,7 @@ import {
   FileCheck, Loader2, ChevronDown, X, Check
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
-import { formatCurrency, formatDate, cn, parseAmount } from '../lib/utils';
+import { formatCurrency, formatDate, cn, parseAmount, getMonthFilterRange } from '../lib/utils';
 import { Category } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -47,12 +47,13 @@ export const Reports: React.FC = () => {
     return ids;
   };
 
+  const { startOfMonthStr, endOfMonthStr } = getMonthFilterRange(selectedYear, selectedMonth);
+
   const filteredTransactions = transactions
     .filter(t => {
-      let matchesDate = true;
+      let matchesDate = false;
       if (t.date) {
-        const [tYear, tMonth] = t.date.split('-');
-        matchesDate = parseInt(tYear, 10) === selectedYear && (parseInt(tMonth, 10) - 1) === selectedMonth;
+        matchesDate = t.date >= startOfMonthStr && t.date <= endOfMonthStr;
       }
 
       const matchesType = filterType === 'all' || t.type === filterType;

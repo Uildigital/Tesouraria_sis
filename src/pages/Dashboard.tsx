@@ -9,7 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
-import { formatCurrency, cn, parseAmount } from '../lib/utils';
+import { formatCurrency, cn, parseAmount, getMonthFilterRange } from '../lib/utils';
 import { Transaction } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -28,9 +28,7 @@ export const Dashboard: React.FC = () => {
   });
 
   const { stats, recentTransactions, chartData } = useMemo(() => {
-    const startOfMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
-    const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0);
-    const endOfMonthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+    const { startOfMonthStr, endOfMonthStr } = getMonthFilterRange(selectedYear, selectedMonth);
 
     const previousBalance = transactions
       .filter(t => t.date && t.date < startOfMonthStr)

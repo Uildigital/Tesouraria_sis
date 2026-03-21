@@ -44,3 +44,10 @@ export function formatDate(date: string) {
   if (!year || !month || !day) return date;
   return `${day}/${month}/${year}`;
 }
+
+export function getMonthFilterRange(year: number, month: number) {
+  const startOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endOfMonth = new Date(year, month + 1, 0);
+  const endOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+  return { startOfMonthStr, endOfMonthStr };
+}
