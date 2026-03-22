@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Login: React.FC = () => {
-  const { session, signIn } = useAuth();
+  const { profile, signIn } = useAuth();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,10 +17,10 @@ export const Login: React.FC = () => {
 
   // Se já estiver logado, redireciona para fora da tela de login
   useEffect(() => {
-    if (!loading && session) {
+    if (!loading && profile) {
       navigate('/');
     }
-  }, [session, loading, navigate]);
+  }, [profile, loading, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

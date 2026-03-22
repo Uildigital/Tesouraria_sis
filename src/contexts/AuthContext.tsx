@@ -10,8 +10,6 @@ interface AuthContextType {
   loading: boolean;
   canEdit: boolean;
   signOut: () => Promise<void>;
-  // signIn is no longer strictly necessary to be exposed if using native Supabase functions, 
-  // but keeping signature for backward compatibility if needed in UI, though usually handled via apiService
   signIn: (userData: any) => void;
 }
 
@@ -29,7 +27,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let mounted = true;
 
-    // Fetch initial session
+    // 1. Load custom session from localStorage (Primary for our bcrypt auth)
+    const savedUser = localStorage.getItem('church_user');
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (mounted) setProfile(parsedUser);
+      } catch (e) {
+        localStorage.removeItem('church_user');
+      }
+    }
+
+    // 2. Initialize Supabase Auth (Secondary/Hybrid)
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -40,8 +49,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (session?.user) {
             await fetchProfile(session.user.id);
-          } else {
+          } else if (!savedUser) {
+            // Only set loading false if we don't have a custom session either
             setProfile(null);
+            setLoading(false);
+          } else {
             setLoading(false);
           }
         }
@@ -53,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes
+    // 3. Listen for Supabase auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!mounted) return;
       
@@ -62,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (newSession?.user) {
         await fetchProfile(newSession.user.id);
-      } else {
+      } else if (!localStorage.getItem('church_user')) {
         setProfile(null);
         setLoading(false);
       }
@@ -84,28 +96,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (!error && data) {
         setProfile(data as Profile);
-      } else {
-        setProfile(null);
       }
     } catch (er) {
       console.error("Erro ao buscar perfil:", er);
-      setProfile(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Deprecated: used for legacy compatibility during migration. Auth is handled by Supabase login.
   const signIn = (userData: any) => {
-    // Relying on native onAuthStateChange now. We only update local profile explicitly if needed immediately.
-    setProfile({
+    const profileData = {
       id: userData.id,
       email: userData.email,
       full_name: userData.full_name,
       role: userData.role,
       is_active: userData.is_active !== undefined ? userData.is_active : true,
-      organization_id: userData.organization_id || '' // From types.ts
-    } as Profile);
+      organization_id: userData.organization_id || ''
+    } as Profile;
+
+    setProfile(profileData);
+    localStorage.setItem('church_user', JSON.stringify(profileData));
   };
 
   const signOut = async () => {
@@ -113,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null);
     setUser(null);
     setProfile(null);
-    localStorage.removeItem('church_user'); // cleanup legacy
+    localStorage.removeItem('church_user');
   };
 
   return (

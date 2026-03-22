@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export const ProtectedRoute: React.FC = () => {
-  const { session, loading } = useAuth();
+  const { profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC = () => {
     );
   }
 
-  if (!session) {
+  if (!profile) {
     return <Navigate to="/login" replace />;
   }
 
