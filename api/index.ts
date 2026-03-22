@@ -359,11 +359,14 @@ app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
 app.get(["/api/closures", "/closures"], async (req, res) => {
   try {
     const { org_id } = req.query;
+    console.log(`[API] Buscando closures para org_id: [${org_id}]`);
+    
     let query = supabase
       .from('monthly_closures')
       .select('*');
     
-    if (org_id) {
+    // Se houver um org_id válido e não for a string 'undefined'
+    if (org_id && org_id !== 'undefined' && org_id !== 'null') {
       query = query.eq('organization_id', org_id);
     }
 
@@ -372,6 +375,7 @@ app.get(["/api/closures", "/closures"], async (req, res) => {
       .order('month', { ascending: false });
     
     if (error) throw error;
+    console.log(`[API] Retornados ${data?.length} registros.`);
     res.json(data);
   } catch (error) {
     sendError(res, error, 'Erro ao buscar fechamentos');

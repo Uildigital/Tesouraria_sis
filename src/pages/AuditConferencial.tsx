@@ -357,7 +357,7 @@ export const AuditConferencial: React.FC = () => {
                     disabled={(disableEntries && !canAudit) || saveMutation.isPending}
                     className="rounded-xl border border-zinc-200 bg-white px-6 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
                   >
-                    Salvar Rascunho
+                    Salvar Lançamento
                   </button>
                   {canAudit && (
                     <button 
@@ -370,7 +370,7 @@ export const AuditConferencial: React.FC = () => {
                           : "bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700"
                       )}
                     >
-                      {currentClosure?.status === 'conferido' ? 'Destravar Período' : 'Confirmar Conferência'}
+                      {currentClosure?.status === 'conferido' ? 'Destravar Período' : 'Aprovar & Bloquear Mês'}
                     </button>
                   )}
                 </div>
