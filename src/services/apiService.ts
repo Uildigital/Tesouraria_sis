@@ -92,7 +92,16 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    const data = await res.json();
+    
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error('Falha ao parsear JSON. Resposta bruta:', text);
+      throw new Error(`Resposta inválida do servidor: ${text.substring(0, 100)}...`);
+    }
+
     if (!res.ok) throw new Error(data.error || 'Erro no login');
     return data;
   },

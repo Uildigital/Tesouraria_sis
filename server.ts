@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { supabase } from './api/lib/supabase';
 
 console.log('Server starting with Supabase backend...');
+console.log('SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'Configurado' : 'Ausente');
+console.log('SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Configurado' : 'Ausente');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
