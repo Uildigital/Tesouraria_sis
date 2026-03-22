@@ -39,7 +39,6 @@ export const Transactions: React.FC = () => {
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
   const [activeAccountTab, setActiveAccountTab] = useState<'Corrente' | 'Poupança'>('Corrente');
@@ -54,14 +53,6 @@ export const Transactions: React.FC = () => {
     onError: (err: any) => toast.error('Erro ao excluir: ' + err.message)
   });
 
-  const { mutate: toggleStatus } = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'pending' | 'conciliated' | 'pending_approval' }) => apiService.updateTransaction(id, { status }),
-    onSuccess: (_, variables) => {
-      toast.success(`Status atualizado para ${variables.status === 'conciliated' ? 'Conciliado' : 'Pendente'}`);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    },
-    onError: (err: any) => toast.error('Erro ao atualizar status: ' + err.message)
-  });
 
   const { mutate: saveTrans, isPending: isSubmitting } = useMutation({
     mutationFn: (data: TransactionFormValues & { user_id: string }) => {
@@ -87,11 +78,6 @@ export const Transactions: React.FC = () => {
     if (window.confirm('Tem certeza que deseja excluir este lançamento?')) deleteTrans(id);
   };
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
-    if (!canEdit) return;
-    const newStatus = currentStatus === 'conciliated' ? 'pending' : 'conciliated';
-    toggleStatus({ id, status: newStatus });
-  };
 
   const handleEdit = (t: Transaction) => {
     setEditingTransaction(t);
@@ -116,10 +102,9 @@ export const Transactions: React.FC = () => {
       }
 
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchesAccount = t.account === activeAccountTab;
       
-      return matchesDate && matchesSearch && matchesStatus && matchesAccount;
+      return matchesDate && matchesSearch && matchesAccount;
     })
     .sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -179,15 +164,6 @@ export const Transactions: React.FC = () => {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-            >
-              <option value="all">Todos os Status</option>
-              <option value="conciliated">Conciliado</option>
-              <option value="pending">Pendente</option>
-              <option value="pending_approval">Aprovação</option>
-            </select>
             <button 
               onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
               className="flex items-center justify-center rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium bg-white text-zinc-600 hover:bg-zinc-50 transition-all"
@@ -206,7 +182,7 @@ export const Transactions: React.FC = () => {
 
       <TransactionTable 
         transactions={filteredTransactions} loading={loading} canEdit={canEdit}
-        onEdit={handleEdit} onDelete={handleDelete} onToggleStatus={handleToggleStatus} onNew={() => setShowModal(true)}
+        onEdit={handleEdit} onDelete={handleDelete} onNew={() => setShowModal(true)}
       />
 
       {showModal && (

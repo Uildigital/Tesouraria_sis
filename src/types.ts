@@ -1,4 +1,3 @@
-export type TransactionStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'conciliated' | 'pending';
 export type TransactionType = 'income' | 'expense';
 
 export interface Organization {
@@ -33,7 +32,6 @@ export interface Transaction {
   description: string;
   amount: number;
   type: TransactionType;
-  status: TransactionStatus;
   category_id: string;
   organization_id: string;
   observation?: string;

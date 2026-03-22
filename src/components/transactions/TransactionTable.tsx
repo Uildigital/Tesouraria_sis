@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Edit2, Trash2, Eye, Loader2, CheckCircle2, Clock, AlertCircle, Plus } from 'lucide-react';
+import { FileText, Edit2, Trash2, Eye, Loader2, Plus } from 'lucide-react';
 import { formatCurrency, formatDate, cn } from '../../lib/utils';
 import { Transaction } from '../../types';
 
@@ -9,7 +9,6 @@ interface Props {
   canEdit: boolean;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
-  onToggleStatus: (id: string, currentStatus: string) => void;
   onNew: () => void;
 }
 
@@ -25,14 +24,13 @@ export const TransactionTable: React.FC<Props> = ({ transactions, loading, canEd
             <th className="px-6 py-4">Conta</th>
             <th className="px-6 py-4">Categoria</th>
             <th className="px-6 py-4">Valor</th>
-            <th className="px-6 py-4">Status</th>
             <th className="px-6 py-4 text-right">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
           {loading ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center">
+              <td colSpan={6} className="px-6 py-12 text-center">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
               </td>
             </tr>
@@ -76,27 +74,6 @@ export const TransactionTable: React.FC<Props> = ({ transactions, loading, canEd
                   {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
                 </span>
               </td>
-              <td className="px-6 py-4">
-                <button 
-                  onClick={() => canEdit && onToggleStatus(t.id, t.status)}
-                  disabled={!canEdit}
-                  className={cn(
-                    "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-                    t.status === 'conciliated' ? "bg-emerald-50 text-emerald-700" : 
-                    t.status === 'pending' ? "bg-amber-50 text-amber-700" :
-                    "bg-blue-50 text-blue-700",
-                    !canEdit && "cursor-default"
-                  )}
-                >
-                  {t.status === 'conciliated' ? (
-                    <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
-                  ) : t.status === 'pending' ? (
-                    <><Clock className="mr-1 h-3 w-3" /> Pendente</>
-                  ) : (
-                    <><AlertCircle className="mr-1 h-3 w-3" /> Aprovação</>
-                  )}
-                </button>
-              </td>
               <td className="px-6 py-4 text-right">
                 <div className="flex items-center justify-end gap-2">
                   {t.attachment_url && (
@@ -134,7 +111,7 @@ export const TransactionTable: React.FC<Props> = ({ transactions, loading, canEd
           ))}
           {transactions.length === 0 && !loading && (
             <tr>
-              <td colSpan={7} className="px-6 py-24 text-center">
+              <td colSpan={6} className="px-6 py-24 text-center">
                 <div className="flex flex-col items-center justify-center">
                   <div className="mb-4 rounded-full bg-zinc-50 p-4">
                     <FileText className="h-10 w-10 text-zinc-300" />

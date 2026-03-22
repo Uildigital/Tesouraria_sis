@@ -146,7 +146,7 @@ export const Reports: React.FC = () => {
 
       const tableData = filteredTransactions.map(t => [
         formatDate(t.date),
-        t.description,
+        t.observation ? `${t.description}\n(Obs: ${t.observation})` : t.description,
         t.account || 'Corrente',
         t.category?.name || '-',
         t.type === 'income' ? 'Entrada' : 'Saída',
@@ -359,7 +359,12 @@ export const Reports: React.FC = () => {
                   filteredTransactions.map((t) => (
                     <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
-                      <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-zinc-900">{t.description}</span>
+                          {t.observation && <span className="text-[10px] text-zinc-400 italic font-normal">{t.observation}</span>}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={cn(
                           "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
