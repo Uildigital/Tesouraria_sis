@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
-import { X, Trash2, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Trash2, Loader2, Plus, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import { apiService } from '../../services/apiService';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -46,6 +48,7 @@ export const TransactionFormModal: React.FC<Props> = ({
       time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
   });
+  const [isUploading, setIsUploading] = useState(false);
 
   const selectedType = watch('type');
 
@@ -64,6 +67,31 @@ export const TransactionFormModal: React.FC<Props> = ({
       setValue('category_id', '');
     }
   }, [editingTransaction, setValue]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const loadingToast = toast.loading('Fazendo upload do comprovante...');
+      const res = await apiService.uploadFile(file);
+      if (res.success) {
+        setValue('attachment_url', res.url);
+        toast.success('Comprovante enviado!', { id: loadingToast });
+      }
+    } catch (error: any) {
+      toast.error('Erro no upload: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Reset category on type change if Not editing
   useEffect(() => {
@@ -161,15 +189,54 @@ export const TransactionFormModal: React.FC<Props> = ({
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-zinc-700">URL do Comprovante</label>
-            <div className="flex gap-2">
-              <input type="text" {...register('attachment_url')} className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm" placeholder="URL do Google Drive ou outro link..." />
-              {watch('attachment_url') && (
-                <button type="button" onClick={() => setValue('attachment_url', '')} className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
-                  <Trash2 className="h-5 w-5" />
-                </button>
+            <label className="mb-2 block text-sm font-medium text-zinc-700">Comprovante (Anexo)</label>
+            <div className="group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 p-6 transition-all hover:border-emerald-500 hover:bg-emerald-50/50">
+              {watch('attachment_url') ? (
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-100 p-2 text-emerald-600">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-zinc-900">Arquivo anexado</span>
+                      <a href={watch('attachment_url')} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline">Visualizar arquivo</a>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setValue('attachment_url', '')}
+                    className="rounded-xl bg-rose-50 p-2 text-rose-600 hover:bg-rose-100"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input 
+                    type="file" 
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                    className="absolute inset-0 cursor-pointer opacity-0" 
+                    accept="image/*,.pdf"
+                  />
+                  {isUploading ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                      <p className="mt-2 text-xs font-bold text-emerald-600">Enviando...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center">
+                      <div className="mb-2 rounded-xl bg-zinc-200 p-2 text-zinc-500 group-hover:bg-emerald-100 group-hover:text-emerald-600">
+                        <Plus className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-bold text-zinc-900">Clique para anexar comprovante</p>
+                      <p className="text-xs text-zinc-400">PDF ou Imagem até 10MB</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
+            <input type="hidden" {...register('attachment_url')} />
           </div>
           
           <div className="sm:col-span-2 mt-4 flex gap-3">

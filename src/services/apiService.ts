@@ -173,5 +173,22 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Erro ao atualizar configurações');
     return res.json();
+  },
+
+  async uploadFile(file: File): Promise<{ success: boolean; url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Erro ao fazer upload do arquivo');
+    }
+
+    return res.json();
   }
 };

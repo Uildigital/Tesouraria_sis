@@ -2,7 +2,13 @@ import 'dotenv/config';
 import express from "express";
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 import { supabase } from './lib/supabase.js';
+
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 const app = express();
 app.use(express.json());
@@ -369,6 +375,38 @@ app.delete(["/api/users/:id", "/users/:id"], async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     sendError(res, error, 'Erro ao deletar usuário');
+  }
+});
+
+// Storage Upload Proxy
+app.post(["/api/upload", "/upload"], upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado" });
+    }
+
+    const { originalname, buffer, mimetype } = req.file;
+    const fileExt = originalname.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = fileName;
+
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .upload(filePath, buffer, {
+        contentType: mimetype,
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    // Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('attachments')
+      .getPublicUrl(filePath);
+
+    res.json({ success: true, url: publicUrl, fileName });
+  } catch (error) {
+    sendError(res, error, 'Erro ao fazer upload do arquivo');
   }
 });
 
