@@ -55,24 +55,28 @@ export const AuditConferencial: React.FC = () => {
     }
   }, [currentClosure, selectedMonth, selectedYear, selectedAccount]);
 
-  // Calculate System Balance for the selection
+  // Calculate System Balances for the selection
   const { startOfMonthStr, endOfMonthStr } = getMonthFilterRange(selectedYear, selectedMonth);
   
-  const filteredTransactions = transactions.filter(t => 
+  const previousBalance = transactions
+    .filter(t => t.date && t.date < startOfMonthStr && t.account === selectedAccount)
+    .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
+
+  const currentMonthTransactions = transactions.filter(t => 
     t.date >= startOfMonthStr && 
     t.date <= endOfMonthStr && 
     t.account === selectedAccount
   );
 
-  const totalIncome = filteredTransactions
+  const totalIncome = currentMonthTransactions
     .filter(t => t.type === 'income')
     .reduce((acc, t) => acc + parseAmount(t.amount), 0);
   
-  const totalExpense = filteredTransactions
+  const totalExpense = currentMonthTransactions
     .filter(t => t.type === 'expense')
     .reduce((acc, t) => acc + parseAmount(t.amount), 0);
   
-  const systemBalance = totalIncome - totalExpense;
+  const systemBalance = previousBalance + totalIncome - totalExpense;
   const currentBankBalanceNum = parseFloat(bankBalance) || 0;
   const difference = systemBalance - currentBankBalanceNum;
 
@@ -208,11 +212,21 @@ export const AuditConferencial: React.FC = () => {
             <div className="p-8">
               <div className="grid gap-8 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo no Sistema</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo no Sistema (Total)</label>
                   <p className="text-2xl font-black text-zinc-900">{formatCurrency(systemBalance)}</p>
-                  <div className="mt-2 flex gap-4 text-[10px] font-bold uppercase">
-                    <span className="text-emerald-600">+{formatCurrency(totalIncome)}</span>
-                    <span className="text-rose-600">-{formatCurrency(totalExpense)}</span>
+                  <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
+                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-zinc-400">Saldo Anterior</span>
+                      <span className="text-zinc-600">{formatCurrency(previousBalance)}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-emerald-600">Entradas no Mês</span>
+                      <span className="text-emerald-600">+{formatCurrency(totalIncome)}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-rose-600">Saídas no Mês</span>
+                      <span className="text-rose-600">-{formatCurrency(totalExpense)}</span>
+                    </div>
                   </div>
                 </div>
 

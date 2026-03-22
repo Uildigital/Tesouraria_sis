@@ -56,8 +56,16 @@ export const Dashboard: React.FC = () => {
       .filter(t => t.account === 'Corrente' || !t.account)
       .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
+    const correntePrevious = transactions
+      .filter(t => t.date && t.date < startOfMonthStr && (t.account === 'Corrente' || !t.account))
+      .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
+
     const poupancaBalance = totalUntilMonth
       .filter(t => t.account === 'Poupança')
+      .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
+
+    const poupancaPrevious = transactions
+      .filter(t => t.date && t.date < startOfMonthStr && t.account === 'Poupança')
       .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
     const sortedTransactions = [...transactions].sort((a, b) => {
@@ -91,7 +99,7 @@ export const Dashboard: React.FC = () => {
     }
 
     return { 
-      stats: { previousBalance, income, expenses, currentBalance, correnteBalance, poupancaBalance },
+      stats: { previousBalance, income, expenses, currentBalance, correnteBalance, poupancaBalance, correntePrevious, poupancaPrevious },
       recentTransactions: recent,
       chartData: monthsData
     };
@@ -168,7 +176,10 @@ export const Dashboard: React.FC = () => {
         <div className="premium-card p-6 border-l-4 border-l-zinc-900">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Conta Corrente</p>
-            <span className="text-xs font-bold text-zinc-900">{formatCurrency(stats.correnteBalance)}</span>
+            <div className="text-right">
+              <span className="text-xs font-bold text-zinc-900 block">{formatCurrency(stats.correnteBalance)}</span>
+              <span className="text-[10px] text-zinc-400">Anterior: {formatCurrency(stats.correntePrevious)}</span>
+            </div>
           </div>
           <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100">
             <div className="h-full rounded-full bg-zinc-900" style={{ width: `${Math.min(100, Math.max(0, (stats.correnteBalance / (stats.currentBalance || 1)) * 100))}%` }} />
@@ -177,7 +188,10 @@ export const Dashboard: React.FC = () => {
         <div className="premium-card p-6 border-l-4 border-l-indigo-600">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Poupança</p>
-            <span className="text-xs font-bold text-indigo-600">{formatCurrency(stats.poupancaBalance)}</span>
+            <div className="text-right">
+              <span className="text-xs font-bold text-indigo-600 block">{formatCurrency(stats.poupancaBalance)}</span>
+              <span className="text-[10px] text-zinc-400">Anterior: {formatCurrency(stats.poupancaPrevious)}</span>
+            </div>
           </div>
           <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100">
             <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(100, Math.max(0, (stats.poupancaBalance / (stats.currentBalance || 1)) * 100))}%` }} />
