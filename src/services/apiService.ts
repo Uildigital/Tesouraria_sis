@@ -142,6 +142,13 @@ export const apiService = {
     return res.json();
   },
 
+  // Audit Logs
+  async getAuditLogs(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/audit-logs`);
+    if (!res.ok) throw new Error('Erro ao buscar logs de auditoria');
+    return res.json();
+  },
+
   // Settings
   async getSettings(): Promise<any> {
     const res = await fetch(`${API_BASE}/settings`);

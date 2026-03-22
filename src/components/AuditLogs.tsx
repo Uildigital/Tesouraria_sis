@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, cn } from '../lib/utils';
+import { apiService } from '../services/apiService';
 import { History, User, Activity, Loader2 } from 'lucide-react';
 
 export const AuditLogs: React.FC = () => {
@@ -14,12 +15,8 @@ export const AuditLogs: React.FC = () => {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // Mock logs for now as we don't have an audit_logs sheet yet
-      setLogs([
-        { id: 1, user_email: 'tesoureiro@igreja.org', action: 'Criou Lançamento', details: 'Oferta de Domingo - R$ 1.200,00', created_at: new Date().toISOString() },
-        { id: 2, user_email: 'pastor@igreja.org', action: 'Visualizou Relatório', details: 'Balancete de Janeiro', created_at: new Date(Date.now() - 3600000).toISOString() },
-        { id: 3, user_email: 'admin@igreja.org', action: 'Alterou Configuração', details: 'Nome da Organização', created_at: new Date(Date.now() - 86400000).toISOString() },
-      ]);
+      const data = await apiService.getAuditLogs();
+      setLogs(data);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {

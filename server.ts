@@ -275,6 +275,22 @@ app.get(["/api/users", "/users"], async (req, res) => {
   }
 });
 
+// Audit Logs
+app.get(["/api/audit-logs", "/audit-logs"], async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    sendError(res, error, 'Erro ao buscar logs');
+  }
+});
+
 app.post(["/api/users", "/users"], async (req, res) => {
   try {
     const { email, full_name, password, role, organization_id } = req.body;
