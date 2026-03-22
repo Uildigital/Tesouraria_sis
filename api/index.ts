@@ -281,7 +281,12 @@ app.get(["/api/categories", "/categories"], async (req, res) => {
 
 app.post(["/api/categories", "/categories"], async (req, res) => {
   try {
-    const payload = req.body;
+    const payload = { ...req.body };
+    console.log('[API] Criando categoria. Payload recebido:', payload);
+    
+    // Convert empty strings to null for DB safety
+    if (payload.parent_id === "") payload.parent_id = null;
+    if (payload.organization_id === "") payload.organization_id = null;
     
     // Ensure ID exists (slug or uuid)
     if (!payload.id) {
@@ -294,7 +299,12 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Supabase Error] Falha ao inserir categoria:', error);
+      throw error;
+    }
+    
+    console.log('[API] Categoria criada com sucesso:', data.id);
     res.json({ success: true, id: data.id });
   } catch (error) {
     sendError(res, error, 'Erro ao criar categoria');
