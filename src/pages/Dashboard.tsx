@@ -46,14 +46,17 @@ export const Dashboard: React.FC = () => {
       .filter(t => t.type === 'expense' && !isTransfer(t))
       .reduce((acc, t) => acc + parseAmount(t.amount), 0);
     
-    const currentBalance = transactions
+    // Balance AT THE END of the filtered month
+    const totalUntilMonth = transactions.filter(t => t.date && t.date <= endOfMonthStr);
+
+    const currentBalance = totalUntilMonth
       .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
-    const correnteBalance = transactions
+    const correnteBalance = totalUntilMonth
       .filter(t => t.account === 'Corrente' || !t.account)
       .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
-    const poupancaBalance = transactions
+    const poupancaBalance = totalUntilMonth
       .filter(t => t.account === 'Poupança')
       .reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
