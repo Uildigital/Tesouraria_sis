@@ -7,7 +7,23 @@ import { supabase } from './lib/supabase';
 const app = express();
 app.use(express.json());
 
-// --- AUXILIARY FUNCTIONS ---
+// --- DEBUG INFO ---
+console.log('Environment Debug:', {
+  has_url: !!process.env.VITE_SUPABASE_URL,
+  has_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  node_env: process.env.NODE_ENV
+});
+
+// Middleware to check if supabase is initialized
+app.use((req, res, next) => {
+  if (!supabase) {
+    return res.status(500).json({ 
+      error: "Servidor não configurado corretamente.", 
+      details: "As variáveis de ambiente do Supabase estão ausentes no servidor (Vercel)." 
+    });
+  }
+  next();
+});
 const sendError = (res: any, error: any, message = 'Erro interno no servidor') => {
   console.error(`[API Error]:`, error);
   res.status(500).json({ 
@@ -89,7 +105,7 @@ app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
       // Auto-migrate to hash if it was plain text and valid
       if (isValid) {
         const hash = await bcrypt.hash(password, 10);
-        await supabase.from('profiles').update({ password_hash: hash }).eq('id', user.id);
+        await supabase.from('users').update({ password_hash: hash }).eq('id', user.id);
       }
     }
 
