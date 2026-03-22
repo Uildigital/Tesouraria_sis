@@ -8,7 +8,8 @@ import {
   LogOut,
   Church,
   X,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -27,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: 'Dashboard', href: `/dashboard`, icon: LayoutDashboard },
     { name: 'Lançamentos', href: `/lancamentos`, icon: ArrowLeftRight },
     { name: 'Relatórios', href: `/relatorios`, icon: FileText },
+    { name: 'Conferência', href: `/conferencia`, icon: Shield },
     ...(profile?.role === 'admin' ? [
       { name: 'Equipe', href: `/equipe`, icon: UsersIcon },
       { name: 'Configurações', href: `/configuracoes`, icon: Settings },

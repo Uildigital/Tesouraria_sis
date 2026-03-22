@@ -10,10 +10,24 @@ export interface Organization {
 export interface Profile {
   id: string;
   organization_id: string;
-  role: 'admin' | 'treasurer' | 'viewer';
+  role: 'admin' | 'treasurer' | 'auditor' | 'viewer';
   full_name: string;
   email?: string;
   is_active: boolean;
+}
+
+export interface MonthlyClosure {
+  id: string;
+  year: number;
+  month: number;
+  account: 'Corrente' | 'Poupança';
+  bank_balance: number;
+  statement_url?: string;
+  status: 'pending' | 'conferido';
+  reviewed_by?: string;
+  notes?: string;
+  organization_id: string;
+  created_at: string;
 }
 
 export interface Category {

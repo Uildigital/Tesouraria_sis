@@ -355,6 +355,43 @@ app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
   }
 });
 
+// Monthly Closures / Reconciliation
+app.get(["/api/closures", "/closures"], async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('monthly_closures')
+      .select('*')
+      .order('year', { ascending: false })
+      .order('month', { ascending: false });
+    
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    sendError(res, error, 'Erro ao buscar fechamentos');
+  }
+});
+
+app.post(["/api/closures", "/closures"], async (req, res) => {
+  try {
+    const payload = req.body;
+    const { year, month, account, organization_id } = payload;
+
+    // Use upsert to handle updates to the same month/year/account
+    const { data, error } = await supabase
+      .from('monthly_closures')
+      .upsert([payload], { 
+        onConflict: 'year,month,account,organization_id' 
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, id: data.id });
+  } catch (error) {
+    sendError(res, error, 'Erro ao salvar fechamento');
+  }
+});
+
 // Users Management
 app.get(["/api/users", "/users"], async (req, res) => {
   try {

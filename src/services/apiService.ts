@@ -202,5 +202,22 @@ export const apiService = {
     const res = await fetch(`${API_BASE}/clear-transactions`, { method: 'POST' });
     if (!res.ok) throw new Error('Erro ao limpar transações');
     return res.json();
+  },
+
+  // Monthly Closures
+  async getMonthlyClosures(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/closures`);
+    if (!res.ok) throw new Error('Erro ao buscar fechamentos');
+    return res.json();
+  },
+
+  async saveMonthlyClosure(data: any): Promise<{ success: boolean; id: string }> {
+    const res = await fetch(`${API_BASE}/closures`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Erro ao salvar fechamento');
+    return res.json();
   }
 };
