@@ -42,7 +42,7 @@ export const Users: React.FC = () => {
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'treasurer' | 'viewer'>('viewer');
+  const [role, setRole] = useState<'admin' | 'treasurer' | 'auditor' | 'viewer'>('viewer');
 
   if (!isAdmin) {
     return (
@@ -61,7 +61,7 @@ export const Users: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getUsers();
+      const data = await apiService.getUsers(profile?.organization_id);
       setUsers(data);
       setInvitations([]);
     } catch (error: any) {
@@ -79,7 +79,8 @@ export const Users: React.FC = () => {
         email,
         full_name: fullName,
         password,
-        role
+        role,
+        organization_id: profile?.organization_id
       });
       toast.success('Membro convidado com sucesso!');
       setShowModal(false);
@@ -419,7 +420,8 @@ export const Users: React.FC = () => {
                     onChange={(e) => setRole(e.target.value as any)}
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
                   >
-                    <option value="viewer">Conferente (Apenas Leitura)</option>
+                    <option value="viewer">Visitante (Apenas Leitura)</option>
+                    <option value="auditor">Conferente / Auditor</option>
                     <option value="treasurer">Tesoureiro (Lançamentos)</option>
                     <option value="admin">Administrador (Acesso Total)</option>
                   </select>

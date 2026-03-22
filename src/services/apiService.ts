@@ -117,8 +117,8 @@ export const apiService = {
     return result;
   },
 
-  async getUsers(): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/users`);
+  async getUsers(orgId?: string): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/users${orgId ? `?org_id=${orgId}` : ''}`);
     if (!res.ok) throw new Error('Erro ao buscar usuários');
     return res.json();
   },
@@ -205,8 +205,8 @@ export const apiService = {
   },
 
   // Monthly Closures
-  async getMonthlyClosures(): Promise<any[]> {
-    const res = await fetch(`${API_BASE}/closures`);
+  async getMonthlyClosures(orgId?: string): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/closures${orgId ? `?org_id=${orgId}` : ''}`);
     if (!res.ok) throw new Error('Erro ao buscar fechamentos');
     return res.json();
   },

@@ -26,8 +26,8 @@ export const AuditConferencial: React.FC = () => {
 
   // Queries
   const { data: closures = [], isLoading: isLoadingClosures } = useQuery({
-    queryKey: ['closures'],
-    queryFn: apiService.getMonthlyClosures,
+    queryKey: ['closures', profile?.organization_id],
+    queryFn: () => apiService.getMonthlyClosures(profile?.organization_id),
   });
 
   const { data: transactions = [], isLoading: isLoadingTrans } = useQuery({
@@ -122,8 +122,13 @@ export const AuditConferencial: React.FC = () => {
     });
   };
 
-  const canApprove = profile?.role === 'admin' || profile?.role === 'auditor';
-  const isLocked = currentClosure?.status === 'conferido' && profile?.role !== 'admin';
+  const isLocked = currentClosure?.status === 'conferido';
+  const canEditEntries = (profile?.role === 'admin' || profile?.role === 'treasurer') && (!isLocked || profile?.role === 'admin');
+  const canAudit = profile?.role === 'admin' || profile?.role === 'auditor';
+  
+  // Specific check to separate entry-launching from auditing
+  const isAuditorOnly = profile?.role === 'auditor' && profile?.role !== 'admin';
+  const disableEntries = isLocked || isAuditorOnly;
 
   if (isLoadingClosures || isLoadingTrans) {
     return (
@@ -221,7 +226,7 @@ export const AuditConferencial: React.FC = () => {
                       placeholder="0,00"
                       value={bankBalance}
                       onChange={(e) => setBankBalance(e.target.value)}
-                      disabled={isLocked}
+                      disabled={disableEntries}
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-3 text-xl font-bold text-zinc-900 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                   </div>
@@ -272,7 +277,8 @@ export const AuditConferencial: React.FC = () => {
                         {!isLocked && (
                           <button 
                             onClick={() => setStatementUrl('')}
-                            className="rounded-lg bg-white p-2 text-rose-600 shadow-sm hover:bg-rose-50"
+                            disabled={disableEntries}
+                            className="rounded-lg bg-white p-2 text-rose-600 shadow-sm hover:bg-rose-50 disabled:opacity-30"
                           >
                             <RefreshCw className="h-4 w-4" />
                           </button>
@@ -282,13 +288,13 @@ export const AuditConferencial: React.FC = () => {
                   ) : (
                     <label className={cn(
                       "flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 p-8 transition-all hover:bg-zinc-50",
-                      isLocked && "opacity-50 cursor-not-allowed"
+                      disableEntries && "opacity-50 cursor-not-allowed"
                     )}>
                       <input 
                         type="file" 
                         className="hidden" 
                         onChange={handleFileUpload} 
-                        disabled={isLocked || isUploading}
+                        disabled={disableEntries || isUploading}
                         accept="application/pdf,image/*"
                       />
                       {isUploading ? (
@@ -348,12 +354,12 @@ export const AuditConferencial: React.FC = () => {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => handleSave('pending')}
-                    disabled={isLocked || saveMutation.isPending}
+                    disabled={(disableEntries && !canAudit) || saveMutation.isPending}
                     className="rounded-xl border border-zinc-200 bg-white px-6 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
                   >
                     Salvar Rascunho
                   </button>
-                  {canApprove && (
+                  {canAudit && (
                     <button 
                       onClick={() => handleSave(currentClosure?.status === 'conferido' ? 'pending' : 'conferido')}
                       disabled={saveMutation.isPending}

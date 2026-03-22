@@ -358,9 +358,16 @@ app.delete(["/api/categories/:id", "/categories/:id"], async (req, res) => {
 // Monthly Closures / Reconciliation
 app.get(["/api/closures", "/closures"], async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { org_id } = req.query;
+    let query = supabase
       .from('monthly_closures')
-      .select('*')
+      .select('*');
+    
+    if (org_id) {
+      query = query.eq('organization_id', org_id);
+    }
+
+    const { data, error } = await query
       .order('year', { ascending: false })
       .order('month', { ascending: false });
     
@@ -395,10 +402,16 @@ app.post(["/api/closures", "/closures"], async (req, res) => {
 // Users Management
 app.get(["/api/users", "/users"], async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { org_id } = req.query;
+    let query = supabase
       .from('users')
       .select('id, email, full_name, role, is_active, created_at, organization_id');
     
+    if (org_id) {
+      query = query.eq('organization_id', org_id);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     res.json(data);
   } catch (error) {
