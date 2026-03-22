@@ -194,7 +194,7 @@ export const Dashboard: React.FC = () => {
               <div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-rose-500" /><span className="text-xs font-medium text-zinc-500">Despesas</span></div>
             </div>
           </div>
-          <div className="h-[350px] w-full min-h-[350px]">
+          <div className="h-[350px] w-full min-h-[350px] min-w-0">
             {chartData.length > 0 && (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>

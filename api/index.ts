@@ -301,7 +301,7 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
   }
 });
 
-app.put(["/api/categories/:id", "/api/categories/:id"], async (req, res) => {
+app.put(["/api/categories/:id", "/categories/:id"], async (req, res) => {
   try {
     const { id } = req.params;
     const { id: _, ...updates } = req.body;
