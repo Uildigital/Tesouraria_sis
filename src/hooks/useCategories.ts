@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
 import { Category, TransactionType } from '../types';
 import { toast } from 'sonner';
 
 export const useCategories = () => {
+  const { profile } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,9 +37,9 @@ export const useCategories = () => {
     try {
       let result;
       if (data.id) {
-        result = await apiService.updateCategory(data.id, data);
+        result = await apiService.updateCategory(data.id, { ...data, organization_id: profile?.organization_id });
       } else {
-        result = await apiService.createCategory(data);
+        result = await apiService.createCategory({ ...data, organization_id: profile?.organization_id });
       }
       
       if (!result.success) throw new Error('Erro ao salvar');
@@ -95,7 +97,8 @@ export const useCategories = () => {
           const res = await apiService.createCategory({ 
             name, 
             type: itemType, 
-            parent_id: parentId 
+            parent_id: parentId,
+            organization_id: profile?.organization_id
           });
           
           if (res.success && typeof item === 'object' && item.sub && item.sub.length > 0) {

@@ -219,7 +219,53 @@ app.delete(["/api/transactions/:id", "/transactions/:id"], async (req, res) => {
   }
 });
 
-// Categories
+// Cleanup & Reset Routes
+app.post(["/api/reset-categories", "/reset-categories"], async (req, res) => {
+  try {
+    // 1. Delete all transactions (to avoid foreign key issues)
+    await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000' as any);
+    
+    // 2. Delete all categories
+    await supabase.from('categories').delete().neq('id', 'root');
+
+    // 3. Insert defaults
+    const defaults = [
+      { id: 'inc_1', name: '1. ARRECADAÇÃO DIRETA', type: 'income', parent_id: null },
+      { id: 'inc_1_1', name: '1.1. Ofertas', type: 'income', parent_id: 'inc_1' },
+      { id: 'inc_1_1_1', name: '1.1.1. Gasofilácio (Dinheiro/Espécie)', type: 'income', parent_id: 'inc_1_1' },
+      { id: 'inc_1_1_2', name: '1.1.2. PIX / Transferência', type: 'income', parent_id: 'inc_1_1' },
+      { id: 'inc_1_2', name: '1.2. Dízimos', type: 'income', parent_id: 'inc_1' },
+      { id: 'inc_2', name: '2. DOAÇÕES E OUTROS', type: 'income', parent_id: null },
+      { id: 'exp_4', name: '4. MANUTENÇÃO E INFRAESTRUTURA', type: 'expense', parent_id: null },
+      { id: 'exp_5', name: '5. PESSOAL E ENCARGOS', type: 'expense', parent_id: null }
+    ];
+
+    await supabase.from('categories').insert(defaults);
+    res.json({ success: true });
+  } catch (error) {
+    sendError(res, error, 'Erro ao resetar categorias');
+  }
+});
+
+app.post(["/api/clear-audit-logs", "/clear-audit-logs"], async (req, res) => {
+  try {
+    const { error } = await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000' as any);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    sendError(res, error, 'Erro ao limpar logs');
+  }
+});
+
+app.post(["/api/clear-transactions", "/clear-transactions"], async (req, res) => {
+  try {
+    const { error } = await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000' as any);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    sendError(res, error, 'Erro ao limpar transações');
+  }
+});
 app.get(["/api/categories", "/categories"], async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -236,6 +282,12 @@ app.get(["/api/categories", "/categories"], async (req, res) => {
 app.post(["/api/categories", "/categories"], async (req, res) => {
   try {
     const payload = req.body;
+    
+    // Ensure ID exists (slug or uuid)
+    if (!payload.id) {
+      payload.id = `cat_${uuidv4().substring(0, 8)}`;
+    }
+
     const { data, error } = await supabase
       .from('categories')
       .insert([payload])
@@ -249,10 +301,10 @@ app.post(["/api/categories", "/categories"], async (req, res) => {
   }
 });
 
-app.put(["/api/categories/:id", "/categories/:id"], async (req, res) => {
+app.put(["/api/categories/:id", "/api/categories/:id"], async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { id: _, ...updates } = req.body;
     
     const { error } = await supabase
       .from('categories')

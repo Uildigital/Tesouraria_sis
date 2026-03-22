@@ -190,5 +190,17 @@ export const apiService = {
     }
 
     return res.json();
+  },
+
+  async clearAuditLogs(): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/clear-audit-logs`, { method: 'POST' });
+    if (!res.ok) throw new Error('Erro ao limpar logs');
+    return res.json();
+  },
+
+  async clearTransactions(): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/clear-transactions`, { method: 'POST' });
+    if (!res.ok) throw new Error('Erro ao limpar transações');
+    return res.json();
   }
 };

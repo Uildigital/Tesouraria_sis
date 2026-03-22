@@ -126,6 +126,32 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleClearLogs = async () => {
+    if (!window.confirm('Deseja apagar todos os logs de auditoria? Esta ação é irreversível.')) return;
+    setIsSaving(true);
+    try {
+      await apiService.clearAuditLogs();
+      toast.success('Logs de auditoria removidos!');
+    } catch (error: any) {
+      toast.error('Erro ao limpar logs: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClearTransactions = async () => {
+    if (!window.confirm('PERIGO: Isso apagará TODOS os lançamentos financeiros do sistema. Deseja continuar?')) return;
+    setIsSaving(true);
+    try {
+      await apiService.clearTransactions();
+      toast.success('Todos os lançamentos foram removidos!');
+    } catch (error: any) {
+      toast.error('Erro ao limpar lançamentos: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderHeader = (title: string) => (
     <div className="mb-10 flex items-center gap-4">
       <button 
@@ -308,6 +334,36 @@ export const Settings: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-bold text-zinc-900">Integrações</h3>
                   <p className="mt-2 text-zinc-500">Conecte seu sistema com ferramentas externas.</p>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-100 p-6 bg-zinc-50/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-white shadow-sm border border-zinc-100 flex items-center justify-center shrink-0">
+                        <History className="h-6 w-6 text-zinc-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-zinc-900">Limpeza de Dados</h4>
+                        <p className="text-xs text-zinc-500">Remova registros de teste para iniciar o uso real.</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={handleClearLogs}
+                        disabled={isSaving}
+                        className="flex-1 sm:flex-none rounded-xl bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                      >
+                        Limpar Logs
+                      </button>
+                      <button 
+                        onClick={handleClearTransactions}
+                        disabled={isSaving}
+                        className="flex-1 sm:flex-none rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                      >
+                        Limpar Todos Lançamentos
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-100 p-6 bg-zinc-50/50">

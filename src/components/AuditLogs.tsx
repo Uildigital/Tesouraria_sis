@@ -31,12 +31,32 @@ export const AuditLogs: React.FC = () => {
           <History className="mr-2 h-6 w-6 text-indigo-600" />
           Logs de Auditoria
         </h3>
-        <button 
-          onClick={fetchLogs}
-          className="text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-700"
-        >
-          Atualizar
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={fetchLogs}
+            className="text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-700"
+          >
+            Atualizar
+          </button>
+          <button 
+            onClick={async () => {
+              if (confirm('Deseja limpar todos os registros de auditoria?')) {
+                setLoading(true);
+                try {
+                  await apiService.clearAuditLogs();
+                  setLogs([]);
+                } catch (error) {
+                  console.error(error);
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="text-xs font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
+          >
+            Limpar Logs
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-white">
