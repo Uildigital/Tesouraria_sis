@@ -12,7 +12,9 @@ import {
   History,
   Globe,
   Church,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Upload,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -30,6 +32,7 @@ export const Settings: React.FC = () => {
   const { settings, updateSettings: saveGlobalSettings } = useSettings();
   const [activeView, setActiveView] = useState<SettingsView>('menu');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [churchName, setChurchName] = useState(settings.app_name);
   const [logoUrl, setLogoUrl] = useState(settings.app_logo);
@@ -55,6 +58,22 @@ export const Settings: React.FC = () => {
     { id: 'audit', title: 'Logs de Auditoria', description: 'Histórico de ações e segurança', icon: History, color: 'text-rose-600', bg: 'bg-rose-50' },
     { id: 'integrations', title: 'Integrações', description: 'Conectar com n8n e bancos', icon: Globe, color: 'text-violet-600', bg: 'bg-violet-50' },
   ];
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { url } = await apiService.uploadFile(file);
+      setLogoUrl(url);
+      toast.success('Logo carregada com sucesso!');
+    } catch (error: any) {
+      toast.error('Erro ao subir imagem: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
@@ -256,34 +275,45 @@ export const Settings: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-zinc-700">URL da Logo</label>
-                  <div className="relative">
-                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                    <input 
-                      type="text"
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                      placeholder="https://exemplo.com/logo.png"
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-12 pr-4 text-zinc-900 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
-                    />
-                  </div>
-                  <p className="text-xs text-zinc-500">Insira o link direto para a imagem da sua logo.</p>
+                  <label className="text-sm font-bold text-zinc-700">Logo da Igreja</label>
+                  {logoUrl ? (
+                    <div className="group relative flex h-40 w-full items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition-all hover:bg-zinc-100">
+                      <img 
+                        src={logoUrl} 
+                        alt="Logo da Igreja" 
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Logo+Invalida';
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 rounded-2xl">
+                        <label className="cursor-pointer rounded-xl bg-white p-3 text-zinc-900 shadow-xl transition-transform hover:scale-110">
+                          <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={isUploading} />
+                          {isUploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <RefreshCw className="h-6 w-6" />}
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={cn(
+                      "flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 p-8 transition-all hover:bg-zinc-100",
+                      isUploading && "opacity-50 cursor-not-allowed"
+                    )}>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleLogoUpload} 
+                        disabled={isUploading} 
+                      />
+                      <div className="rounded-2xl bg-white p-4 shadow-sm border border-zinc-100 mb-4">
+                        {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-emerald-600" /> : <Upload className="h-8 w-8 text-zinc-400" />}
+                      </div>
+                      <p className="text-sm font-bold text-zinc-600">Clique para enviar a logo</p>
+                      <p className="text-xs text-zinc-400">PNG, JPG ou SVG (Máx. 2MB)</p>
+                    </label>
+                  )}
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Identidade Visual</p>
                 </div>
-
-                {logoUrl && (
-                  <div className="mt-4 flex flex-col items-center p-6 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50">
-                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Pré-visualização</p>
-                    <img 
-                      src={logoUrl} 
-                      alt="Logo Preview" 
-                      className="h-24 w-auto object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=Logo+Invalida';
-                        toast.error('URL da logo inválida ou inacessível');
-                      }}
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end pt-4">
