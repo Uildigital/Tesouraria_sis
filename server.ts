@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from "express";
 import bcrypt from 'bcryptjs';
-import { supabase } from './api/lib/supabase';
+import { supabase } from './api/lib/supabase.js';
 
 console.log('Server starting with Supabase backend...');
 console.log('SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'Configurado' : 'Ausente');

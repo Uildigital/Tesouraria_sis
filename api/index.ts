@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from "express";
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
-import { supabase } from './lib/supabase';
+import { supabase } from './lib/supabase.js';
 
 const app = express();
 app.use(express.json());
