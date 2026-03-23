@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  FileCheck, Shield, Upload, Download, AlertCircle, 
+  FileCheck, Shield, ShieldCheck, Upload, Download, AlertCircle, 
   CheckCircle2, Clock, History, FileText, Loader2,
   Calendar, CreditCard, TrendingUp, TrendingDown, RefreshCw
 } from 'lucide-react';
@@ -275,9 +275,11 @@ export const AuditConferencial: React.FC = () => {
                     <div className="group relative flex items-center justify-between rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 p-4 transition-all">
                       <div className="flex items-center gap-3">
                         <div className="rounded-xl bg-emerald-100 p-2 text-emerald-600">
-                          <FileText className="h-5 w-5" />
+                          {isAuditorOnly ? <ShieldCheck className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                         </div>
-                        <span className="text-sm font-bold text-emerald-700">Extrato Carregado</span>
+                        <span className="text-sm font-bold text-emerald-700">
+                          {isAuditorOnly ? 'Extrato para Conferência' : 'Extrato Carregado'}
+                        </span>
                       </div>
                       <div className="flex gap-2">
                         <a 
@@ -288,7 +290,7 @@ export const AuditConferencial: React.FC = () => {
                         >
                           <Download className="h-4 w-4" />
                         </a>
-                        {!isLocked && (
+                        {!isLocked && !isAuditorOnly && (
                           <button 
                             onClick={() => setStatementUrl('')}
                             disabled={disableEntries}
@@ -298,6 +300,17 @@ export const AuditConferencial: React.FC = () => {
                           </button>
                         )}
                       </div>
+                    </div>
+                  ) : isAuditorOnly ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 p-8 text-center">
+                      <div className="mb-3 rounded-full bg-zinc-100 p-3 text-zinc-400">
+                        <Clock className="h-6 w-6" />
+                      </div>
+                      <p className="text-xs font-bold text-zinc-500">Aguardando Lançamento</p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-zinc-400">
+                        O extrato bancário ainda não foi anexado por um tesoureiro.<br />
+                        É necessária a inclusão do documento para a aprovação final.
+                      </p>
                     </div>
                   ) : (
                     <label className={cn(
