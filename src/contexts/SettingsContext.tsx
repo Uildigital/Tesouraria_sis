@@ -15,9 +15,12 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<Settings>({
-    app_name: 'ChurchFinance',
-    app_logo: '',
+  const [settings, setSettings] = useState<Settings>(() => {
+    const saved = localStorage.getItem('church_settings');
+    return saved ? JSON.parse(saved) : {
+      app_name: 'ChurchFinance',
+      app_logo: '',
+    };
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,10 +28,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const data = await apiService.getSettings();
       if (data && Object.keys(data).length > 0) {
-        setSettings({
+        const newSettings = {
           app_name: data.app_name || 'ChurchFinance',
           app_logo: data.app_logo || '',
-        });
+        };
+        setSettings(newSettings);
+        localStorage.setItem('church_settings', JSON.stringify(newSettings));
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -46,6 +51,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const updated = { ...settings, ...newSettings };
       await apiService.updateSettings(newSettings);
       setSettings(updated);
+      localStorage.setItem('church_settings', JSON.stringify(updated));
     } catch (error) {
       console.error('Failed to update settings:', error);
       throw error;

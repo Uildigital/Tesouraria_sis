@@ -127,12 +127,17 @@ export const AuditConferencial: React.FC = () => {
   };
 
   const isLocked = currentClosure?.status === 'conferido';
-  const canEditEntries = (profile?.role === 'admin' || profile?.role === 'treasurer') && (!isLocked || profile?.role === 'admin');
-  const canAudit = profile?.role === 'admin' || profile?.role === 'auditor';
+  const userRole = profile?.role?.toLowerCase();
+  const canEditEntries = (userRole === 'admin' || userRole === 'treasurer') && (!isLocked || userRole === 'admin');
+  const canAudit = userRole === 'admin' || userRole === 'auditor';
   
   // Specific check to separate entry-launching from auditing
-  const isAuditorOnly = profile?.role === 'auditor' && profile?.role !== 'admin';
-  const disableEntries = isLocked || isAuditorOnly;
+  const isAuditorOnly = userRole === 'auditor' && userRole !== 'admin';
+  const disableEntries = isLocked || isAuditorOnly || !profile;
+
+  useEffect(() => {
+    console.log('[Audit] User Profile:', { role: profile?.role, isAuditorOnly, disableEntries });
+  }, [profile, isAuditorOnly, disableEntries]);
 
   if (isLoadingClosures || isLoadingTrans) {
     return (
@@ -301,15 +306,18 @@ export const AuditConferencial: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  ) : isAuditorOnly ? (
+                  ) : (isAuditorOnly || !profile) ? (
                     <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 p-8 text-center">
                       <div className="mb-3 rounded-full bg-zinc-100 p-3 text-zinc-400">
-                        <Clock className="h-6 w-6" />
+                        {!profile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Clock className="h-6 w-6" />}
                       </div>
-                      <p className="text-xs font-bold text-zinc-500">Aguardando Lançamento</p>
+                      <p className="text-xs font-bold text-zinc-500">{!profile ? 'Carregando Perfil...' : 'Aguardando Lançamento'}</p>
                       <p className="mt-1 text-[10px] leading-relaxed text-zinc-400">
-                        O extrato bancário ainda não foi anexado por um tesoureiro.<br />
-                        É necessária a inclusão do documento para a aprovação final.
+                        {isAuditorOnly 
+                          ? 'O extrato bancário ainda não foi anexado por um tesoureiro.' 
+                          : 'Verificando permissões de acesso...'}
+                        <br />
+                        {!profile ? '' : 'É necessária a inclusão do documento para a aprovação final.'}
                       </p>
                     </div>
                   ) : (
