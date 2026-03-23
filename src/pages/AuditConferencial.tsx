@@ -128,16 +128,14 @@ export const AuditConferencial: React.FC = () => {
 
   const isLocked = currentClosure?.status === 'conferido';
   const userRole = profile?.role?.toLowerCase();
-  const canEditEntries = (userRole === 'admin' || userRole === 'treasurer') && (!isLocked || userRole === 'admin');
+  
+  // Whitelist approach: Only admin and treasurer are "staff" who can launch/upload
+  const isStaff = userRole === 'admin' || userRole === 'treasurer';
+  
+  const canEditEntries = isStaff && (!isLocked || userRole === 'admin');
   const canAudit = userRole === 'admin' || userRole === 'auditor';
   
-  // Specific check to separate entry-launching from auditing
-  const isAuditorOnly = userRole === 'auditor' && userRole !== 'admin';
-  const disableEntries = isLocked || isAuditorOnly || !profile;
-
-  useEffect(() => {
-    console.log('[Audit] User Profile:', { role: profile?.role, isAuditorOnly, disableEntries });
-  }, [profile, isAuditorOnly, disableEntries]);
+  const disableEntries = isLocked || !isStaff || !profile;
 
   if (isLoadingClosures || isLoadingTrans) {
     return (
@@ -237,18 +235,22 @@ export const AuditConferencial: React.FC = () => {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo no Extrato</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">R$</span>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      placeholder="0,00"
-                      value={bankBalance}
-                      onChange={(e) => setBankBalance(e.target.value)}
-                      disabled={disableEntries}
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-3 text-xl font-bold text-zinc-900 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
-                  </div>
+                  {isStaff ? (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">R$</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        placeholder="0,00"
+                        value={bankBalance}
+                        onChange={(e) => setBankBalance(e.target.value)}
+                        disabled={disableEntries}
+                        className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-2xl font-black text-zinc-900 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-black text-zinc-900">{formatCurrency(currentBankBalanceNum)}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -280,10 +282,10 @@ export const AuditConferencial: React.FC = () => {
                     <div className="group relative flex items-center justify-between rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 p-4 transition-all">
                       <div className="flex items-center gap-3">
                         <div className="rounded-xl bg-emerald-100 p-2 text-emerald-600">
-                          {isAuditorOnly ? <ShieldCheck className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                        {!isStaff ? <ShieldCheck className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                         </div>
                         <span className="text-sm font-bold text-emerald-700">
-                          {isAuditorOnly ? 'Extrato para Conferência' : 'Extrato Carregado'}
+                          {!isStaff ? 'Extrato para Conferência' : 'Extrato Carregado'}
                         </span>
                       </div>
                       <div className="flex gap-2">
@@ -295,7 +297,7 @@ export const AuditConferencial: React.FC = () => {
                         >
                           <Download className="h-4 w-4" />
                         </a>
-                        {!isLocked && !isAuditorOnly && (
+                        {!isLocked && isStaff && (
                           <button 
                             onClick={() => setStatementUrl('')}
                             disabled={disableEntries}
@@ -306,18 +308,18 @@ export const AuditConferencial: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  ) : (isAuditorOnly || !profile) ? (
+                  ) : (!isStaff || !profile) ? (
                     <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 p-8 text-center">
                       <div className="mb-3 rounded-full bg-zinc-100 p-3 text-zinc-400">
                         {!profile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Clock className="h-6 w-6" />}
                       </div>
                       <p className="text-xs font-bold text-zinc-500">{!profile ? 'Carregando Perfil...' : 'Aguardando Lançamento'}</p>
                       <p className="mt-1 text-[10px] leading-relaxed text-zinc-400">
-                        {isAuditorOnly 
+                        {!isStaff 
                           ? 'O extrato bancário ainda não foi anexado por um tesoureiro.' 
                           : 'Verificando permissões de acesso...'}
                         <br />
-                        {!profile ? '' : 'É necessária a inclusão do documento para a aprovação final.'}
+                        {!profile ? '' : 'O documento é necessário para a validação final.'}
                       </p>
                     </div>
                   ) : (
@@ -347,14 +349,20 @@ export const AuditConferencial: React.FC = () => {
 
                 <div className="space-y-4">
                   <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Observações da Conferência</label>
-                  <textarea 
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    disabled={isLocked}
-                    rows={4}
-                    placeholder="Notas sobre divergências ou avisos para o conselho..."
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                  />
+                  {isStaff ? (
+                    <textarea 
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      disabled={isLocked}
+                      rows={4}
+                      placeholder="Notas sobre divergências ou avisos para o conselho..."
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    />
+                  ) : (
+                    <div className="min-h-[116px] rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 text-sm text-zinc-600 italic leading-relaxed">
+                      {notes || "Nenhuma observação registrada pelo tesoureiro."}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -387,13 +395,15 @@ export const AuditConferencial: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3">
-                  <button 
-                    onClick={() => handleSave('pending')}
-                    disabled={(disableEntries && !canAudit) || saveMutation.isPending}
-                    className="rounded-xl border border-zinc-200 bg-white px-6 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    Salvar Lançamento
-                  </button>
+                  {isStaff && (
+                    <button 
+                      onClick={() => handleSave('pending')}
+                      disabled={(disableEntries && !canAudit) || saveMutation.isPending}
+                      className="rounded-xl border border-zinc-200 bg-white px-6 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                    >
+                      Salvar Lançamento
+                    </button>
+                  )}
                   {canAudit && (
                     <button 
                       onClick={() => handleSave(currentClosure?.status === 'conferido' ? 'pending' : 'conferido')}
