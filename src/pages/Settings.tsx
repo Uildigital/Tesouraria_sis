@@ -76,33 +76,17 @@ export const Settings: React.FC = () => {
     try {
       const res = await fetch('/api/health');
       const data = await res.json();
-      if (data.status === 'ok' && data.sheets?.connected) {
-        toast.success('Conexão com Google Sheets estabelecida!', {
-          description: `Planilha: ${data.sheets.title}`
+      if (data.status === 'ok') {
+        toast.success(`Conexão com ${data.backend || 'Backend'} estabelecida!`, {
+          description: `Projeto: ${data.project}`
         });
       } else {
         toast.error('Falha na conexão', {
-          description: data.sheets?.error || 'Verifique as variáveis de ambiente.'
+          description: 'Verifique as variáveis de ambiente.'
         });
       }
     } catch (error: any) {
       toast.error('Erro ao testar conexão: ' + error.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleInitSheets = async () => {
-    setIsSaving(true);
-    try {
-      const res = await apiService.initSheets();
-      if (res.success) {
-        toast.success('Google Sheets configurado com sucesso!', {
-          description: 'As abas Transactions e Categories foram criadas.'
-        });
-      }
-    } catch (error: any) {
-      toast.error('Erro ao configurar: ' + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -314,34 +298,20 @@ export const Settings: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-xl bg-white shadow-sm border border-zinc-100 flex items-center justify-center shrink-0">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg" alt="Google Sheets" className="h-6 w-6" />
+                        <Church className="h-6 w-6 text-emerald-600" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-zinc-900">Google Sheets</h4>
-                        <p className="text-xs text-zinc-500">Use uma planilha como banco de dados principal.</p>
+                        <h4 className="font-bold text-zinc-900">Banco de Dados</h4>
+                        <p className="text-xs text-zinc-500">O sistema está conectado ao Supabase Cloud.</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button 
                         onClick={handleTestConnection}
                         disabled={isSaving}
-                        className="flex-1 sm:flex-none rounded-xl bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+                        className="flex-1 sm:flex-none rounded-xl bg-zinc-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 disabled:opacity-50"
                       >
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Testar Conexão'}
-                      </button>
-                      <button 
-                        onClick={handleInitSheets}
-                        disabled={isSaving}
-                        className="flex-1 sm:flex-none rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Configurar Planilha'}
-                      </button>
-                      <button 
-                        onClick={handleResetCategories}
-                        disabled={isSaving}
-                        className="flex-1 sm:flex-none rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
-                      >
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resetar Categorias'}
                       </button>
                     </div>
                   </div>

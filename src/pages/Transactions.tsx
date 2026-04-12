@@ -144,7 +144,7 @@ export const Transactions: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    toast.info('Upload de arquivos não disponível para Google Sheets.');
+    toast.info('Upload de arquivos será implementado em breve com Supabase Storage.');
     return '';
   };
 
@@ -164,7 +164,7 @@ export const Transactions: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare data for Google Sheets
+      // Prepare data
       const payload = {
         ...data,
         user_id: profile.id
@@ -193,7 +193,26 @@ export const Transactions: React.FC = () => {
   };
 
   const toggleConciliation = async (id: string, currentStatus: string) => {
-    toast.info('Conciliação não implementada para Google Sheets ainda.');
+    try {
+      let nextStatus: TransactionStatus = 'pending';
+      
+      // Lógica de transição: pending_approval -> pending -> conciliated -> (volta para pending_approval se necessário)
+      if (currentStatus === 'pending_approval') nextStatus = 'pending';
+      else if (currentStatus === 'pending') nextStatus = 'conciliated';
+      else if (currentStatus === 'conciliated') nextStatus = 'pending_approval';
+      else nextStatus = 'pending';
+
+      const res = await apiService.updateTransaction(id, { status: nextStatus });
+      if (res.success) {
+        toast.success(`Status atualizado para: ${
+          nextStatus === 'conciliated' ? 'Conciliado' : 
+          nextStatus === 'pending' ? 'Pendente' : 'Aprovação'
+        }`);
+        fetchData();
+      }
+    } catch (error: any) {
+      toast.error('Erro ao atualizar status: ' + error.message);
+    }
   };
 
   const filteredTransactions = transactions
