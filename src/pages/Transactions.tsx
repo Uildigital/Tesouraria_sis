@@ -528,7 +528,11 @@ export const Transactions: React.FC = () => {
               </tr>
             )}
           </tbody>
-        </ta      {showModal && (
+        </table>
+        </div>
+      </div>
+
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="mb-6 flex items-center justify-between">
@@ -765,10 +769,7 @@ export const Transactions: React.FC = () => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence></form>
-          </div>
-        </div>
-      )}
+      </AnimatePresence>
     </motion.div>
   );
 };
