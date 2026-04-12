@@ -9,6 +9,7 @@ import { Transactions } from './pages/Transactions';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
+import { Reconciliation } from './pages/Reconciliation';
 import { Toaster } from 'sonner';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/lancamentos" element={<Transactions />} />
                 <Route path="/relatorios" element={<Reports />} />
+                <Route path="/conferencia" element={<Reconciliation />} />
                 <Route path="/equipe" element={<Users />} />
                 <Route path="/configuracoes" element={<Settings />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
