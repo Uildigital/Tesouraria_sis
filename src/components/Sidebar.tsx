@@ -16,6 +16,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
+import { motion } from 'framer-motion';
+import { apiService } from '../services/apiService';
 
 interface SidebarProps {
   isOpen: boolean;
