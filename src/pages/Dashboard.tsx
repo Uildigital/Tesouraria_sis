@@ -317,10 +317,11 @@ export const Dashboard: React.FC = () => {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fill: '#a1a1aa', fontSize: 12 }} 
-                    tickFormatter={(v) => `R$ ${v}`}
+                    tickFormatter={(v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
                   />
                   <Tooltip 
                     cursor={{ fill: '#f8fafc' }}
+                    formatter={(value: any) => [formatCurrency(value), ""]}
                     contentStyle={{ 
                       borderRadius: '20px', 
                       border: 'none', 
