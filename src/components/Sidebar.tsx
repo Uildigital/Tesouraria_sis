@@ -18,6 +18,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner';
 
 interface SidebarProps {
   isOpen: boolean;
