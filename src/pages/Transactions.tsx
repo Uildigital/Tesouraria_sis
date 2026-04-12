@@ -58,7 +58,8 @@ export const Transactions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
-  const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [showFilters, setShowFilters] = useState(false);
@@ -214,8 +215,12 @@ export const Transactions: React.FC = () => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchesAccount = t.account === activeAccountTab;
-      const matchesMonth = monthFilter === 'all' || t.date.slice(0, 7) === monthFilter;
-      return matchesSearch && matchesStatus && matchesAccount && matchesMonth;
+      
+      const tDate = new Date(t.date);
+      const matchesMonth = tDate.getMonth() === selectedMonth;
+      const matchesYear = tDate.getFullYear() === selectedYear;
+      
+      return matchesSearch && matchesStatus && matchesAccount && matchesMonth && matchesYear;
     })
     .sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -268,7 +273,10 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'income' && t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => {
+                const d = new Date(t.date);
+                return t.type === 'income' && t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+              }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -279,7 +287,10 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'expense' && t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => {
+                const d = new Date(t.date);
+                return t.type === 'expense' && t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+              }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -291,9 +302,15 @@ export const Transactions: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo ({activeAccountTab})</p>
             <p className={cn(
               "text-base sm:text-xl font-bold",
-              transactions.filter(t => t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+              transactions.filter(t => {
+                const d = new Date(t.date);
+                return t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+              }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
             )}>
-              {formatCurrency(transactions.filter(t => t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
+              {formatCurrency(transactions.filter(t => {
+                const d = new Date(t.date);
+                return t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+              }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
             </p>
           </div>
         </div>
@@ -337,16 +354,31 @@ export const Transactions: React.FC = () => {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input 
-              type="month"
-              value={monthFilter === 'all' ? '' : monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value || 'all')}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-display"
-            />
+            <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+              <Calendar className="h-4 w-4 text-emerald-600" />
+              <select 
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer"
+              >
+                {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, i) => (
+                  <option key={m} value={i}>{m}</option>
+                ))}
+              </select>
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="bg-transparent text-sm font-medium text-zinc-600 focus:outline-none cursor-pointer border-l border-zinc-100 pl-2"
+              >
+                {[2024, 2025, 2026, 2027].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all text-zinc-600"
             >
               <option value="all">Todos os Status</option>
               <option value="completed">Conciliado</option>
