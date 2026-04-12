@@ -201,5 +201,12 @@ export const apiService = {
       throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao atualizar configurações');
     }
     return res.json();
+  },
+
+  // Audit Logs
+  async getAuditLogs(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/audit-logs`);
+    if (!res.ok) throw new Error('Failed to fetch audit logs');
+    return res.json();
   }
 };

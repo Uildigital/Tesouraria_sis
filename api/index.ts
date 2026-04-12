@@ -13,6 +13,21 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// --- HELPERS ---
+async function logAction(user_id: string | null, user_email: string | null, action: string, details: string) {
+  try {
+    await supabase.from('audit_logs').insert([{
+      user_id,
+      user_email: user_email || 'sistema',
+      action,
+      details,
+      created_at: new Date().toISOString()
+    }]);
+  } catch (error) {
+    console.error('Audit log error:', error);
+  }
+}
+
 // --- API ROUTES ---
 
 app.get("/api/health", (req, res) => {
@@ -69,58 +84,85 @@ app.post("/api/transactions", async (req, res) => {
       .insert([req.body])
       .select()
       .single();
-    if (error) throw error;
-    res.json({ success: true, id: data.id });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      if (error) throw error;
+      
+      await logAction(req.body.user_id, 'user', 'Criou Lançamento', `Desc: ${req.body.description}, Valor: ${req.body.amount}`);
+      
+      res.json({ success: true, id: data.id });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
-app.put("/api/transactions/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from('transactions')
-      .update(req.body)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    res.json({ success: true, transaction: data });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  app.put("/api/transactions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(req.body)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      
+      await logAction(null, 'user', 'Atualizou Lançamento', `ID: ${id}, Status: ${req.body.status || 'Alteração de dados'}`);
+      
+      res.json({ success: true, transaction: data });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
-app.patch("/api/transactions/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from('transactions')
-      .update(req.body)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    res.json({ success: true, transaction: data });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  app.patch("/api/transactions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(req.body)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      
+      await logAction(null, 'user', 'Patch Lançamento', `ID: ${id}`);
+      
+      res.json({ success: true, transaction: data });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
-app.delete("/api/transactions/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  app.delete("/api/transactions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      
+      await logAction(null, 'user', 'Excluiu Lançamento', `ID: ${id}`);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/audit-logs", async (req, res) => {
+    try {
+      const { data: logs, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 app.get("/api/categories", async (req, res) => {
   try {
