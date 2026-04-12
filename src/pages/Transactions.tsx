@@ -58,6 +58,7 @@ export const Transactions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const [showFilters, setShowFilters] = useState(false);
@@ -212,7 +213,8 @@ export const Transactions: React.FC = () => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchesAccount = t.account === activeAccountTab;
-      return matchesSearch && matchesStatus && matchesAccount;
+      const matchesMonth = monthFilter === 'all' || t.date.slice(0, 7) === monthFilter;
+      return matchesSearch && matchesStatus && matchesAccount && matchesMonth;
     })
     .sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -265,7 +267,7 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'income' && t.account === activeAccountTab).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'income' && t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -276,7 +278,7 @@ export const Transactions: React.FC = () => {
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
-              {formatCurrency(transactions.filter(t => t.type === 'expense' && t.account === activeAccountTab).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
+              {formatCurrency(transactions.filter(t => t.type === 'expense' && t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
         </div>
@@ -288,9 +290,9 @@ export const Transactions: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saldo ({activeAccountTab})</p>
             <p className={cn(
               "text-base sm:text-xl font-bold",
-              transactions.filter(t => t.account === activeAccountTab).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+              transactions.filter(t => t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
             )}>
-              {formatCurrency(transactions.filter(t => t.account === activeAccountTab).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
+              {formatCurrency(transactions.filter(t => t.account === activeAccountTab && (monthFilter === 'all' || t.date.slice(0, 7) === monthFilter)).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
             </p>
           </div>
         </div>
@@ -334,15 +336,20 @@ export const Transactions: React.FC = () => {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <input 
+              type="month"
+              value={monthFilter === 'all' ? '' : monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value || 'all')}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-display"
+            />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
             >
               <option value="all">Todos os Status</option>
-              <option value="conciliated">Conciliado</option>
+              <option value="completed">Conciliado</option>
               <option value="pending">Pendente</option>
-              <option value="pending_approval">Aprovação</option>
             </select>
             <button 
               onClick={() => setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')}
