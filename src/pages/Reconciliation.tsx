@@ -9,7 +9,9 @@ import {
   ArrowRight,
   Loader2,
   RefreshCw,
-  Search
+  Search,
+  Eye,
+  Link as LinkIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,7 +32,9 @@ export const Reconciliation: React.FC = () => {
 
   const [statementData, setStatementData] = useState({
     correnteValue: '',
-    poupancaValue: ''
+    poupancaValue: '',
+    correnteUrl: '',
+    poupancaUrl: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +70,9 @@ export const Reconciliation: React.FC = () => {
       // Clear previous inputs when changing month
       setStatementData({
         correnteValue: '',
-        poupancaValue: ''
+        poupancaValue: '',
+        correnteUrl: '',
+        poupancaUrl: ''
       });
 
     } catch (error: any) {
@@ -114,6 +120,8 @@ export const Reconciliation: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const diffCorrente = parseFloat(statementData.correnteValue || '0') - systemStats.correnteTotal;
   const diffPoupanca = parseFloat(statementData.poupancaValue || '0') - systemStats.poupancaTotal;
@@ -252,6 +260,62 @@ export const Reconciliation: React.FC = () => {
               )}
             </div>
 
+            <div className="pt-4 border-t border-zinc-100 space-y-4">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-900 border-l-2 border-emerald-500 pl-2">Anexos dos Extratos (PDF/Imagem)</h4>
+              
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato C. Corrente</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                      <input 
+                        type="text"
+                        value={statementData.correnteUrl}
+                        onChange={(e) => setStatementData({...statementData, correnteUrl: e.target.value})}
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-9 pr-3 py-2 text-xs focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                        placeholder="Link do arquivo..."
+                      />
+                    </div>
+                    {statementData.correnteUrl && (
+                      <button 
+                        onClick={() => setPreviewUrl(statementData.correnteUrl)}
+                        className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato Poupança</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                      <input 
+                        type="text"
+                        value={statementData.poupancaUrl}
+                        onChange={(e) => setStatementData({...statementData, poupancaUrl: e.target.value})}
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-9 pr-3 py-2 text-xs focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                        placeholder="Link do arquivo..."
+                      />
+                    </div>
+                    {statementData.poupancaUrl && (
+                      <button 
+                        onClick={() => setPreviewUrl(statementData.poupancaUrl)}
+                        className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button 
               onClick={handleApproveMonth}
               disabled={isSubmitting || loading}
@@ -283,6 +347,54 @@ export const Reconciliation: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Attachment Preview Modal */}
+      {previewUrl && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-md"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div 
+            className="relative max-w-5xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-4 right-4 z-10">
+              <button 
+                onClick={() => setPreviewUrl(null)}
+                className="rounded-full bg-white/90 p-2 text-zinc-900 shadow-lg hover:bg-white transition-all font-bold"
+              >
+                X
+              </button>
+            </div>
+            <div className="p-4 bg-zinc-50 overflow-y-auto max-h-[80vh]">
+              {previewUrl.toLowerCase().endsWith('.pdf') ? (
+                <iframe src={previewUrl} className="w-full h-[75vh] rounded-xl" />
+              ) : (
+                <div className="flex justify-center">
+                  <img src={previewUrl} alt="Extrato" className="max-w-full h-auto rounded-xl shadow-sm" />
+                </div>
+              )}
+            </div>
+            <div className="p-4 flex items-center justify-between border-t border-zinc-100 bg-white">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-zinc-900">Extrato Bancário do Mês</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Documento Comprobatório</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPreviewUrl(null)}
+                className="rounded-xl border border-zinc-200 px-6 py-2 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
