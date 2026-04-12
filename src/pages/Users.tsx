@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Clock,
   UserX,
-  UserCheck
+  UserCheck,
+  Edit2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
@@ -34,6 +35,8 @@ export const Users: React.FC = () => {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
@@ -71,18 +74,20 @@ export const Users: React.FC = () => {
     }
   };
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedUser) return;
     setIsSubmitting(true);
     try {
-      await apiService.createUser({
+      await apiService.updateUser(selectedUser.id, {
         email,
         full_name: fullName,
-        password,
+        password: password || undefined,
         role
       });
-      toast.success('Membro convidado com sucesso!');
-      setShowModal(false);
+      toast.success('Usuário atualizado com sucesso!');
+      setShowEditModal(false);
+      setSelectedUser(null);
       setEmail('');
       setFullName('');
       setPassword('');
@@ -92,6 +97,15 @@ export const Users: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openEditModal = (user: Profile) => {
+    setSelectedUser(user);
+    setFullName(user.full_name);
+    setEmail(user.email);
+    setRole(user.role as any);
+    setPassword('');
+    setShowEditModal(true);
   };
 
   const removeUser = async (userId: string) => {
@@ -233,6 +247,13 @@ export const Users: React.FC = () => {
                         {isAdmin ? (
                           u.id !== profile?.id ? (
                             <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => openEditModal(u)}
+                                className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                title="Editar Usuário / Resetar Senha"
+                              >
+                                <Edit2 size={18} />
+                              </button>
                               <button 
                                 onClick={() => toggleUserStatus(u.id, u.is_active)}
                                 className={cn(
@@ -432,6 +453,94 @@ export const Users: React.FC = () => {
                 >
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enviar Convite'}
                 </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+        {showEditModal && selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl"
+            >
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-zinc-900">Editar Perfil</h3>
+                  <p className="text-xs text-zinc-500">Atualize os dados ou resete a senha.</p>
+                </div>
+                <button onClick={() => setShowEditModal(false)} className="text-zinc-400 hover:text-zinc-600">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEdit} className="space-y-5">
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Nome Completo</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Nova Senha (Reset)</label>
+                    <span className="text-[9px] text-amber-600 font-bold uppercase">Deixe em branco para manter</span>
+                  </div>
+                  <input 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-amber-500/10 transition-all"
+                    placeholder="Digitar nova senha..."
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Cargo</label>
+                  <select 
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as any)}
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  >
+                    <option value="viewer">Conferente</option>
+                    <option value="treasurer">Tesoureiro</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 rounded-2xl border border-zinc-200 py-4 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-[2] flex items-center justify-center rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Salvar Alterações'}
+                  </button>
+                </div>
               </form>
             </motion.div>
           </div>
