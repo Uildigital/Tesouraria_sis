@@ -194,20 +194,12 @@ export const Transactions: React.FC = () => {
 
   const toggleConciliation = async (id: string, currentStatus: string) => {
     try {
-      let nextStatus: TransactionStatus = 'pending';
-      
-      // Lógica de transição: pending_approval -> pending -> completed -> (volta para pending_approval)
-      if (currentStatus === 'pending_approval') nextStatus = 'pending';
-      else if (currentStatus === 'pending') nextStatus = 'completed';
-      else if (currentStatus === 'completed') nextStatus = 'pending_approval';
-      else nextStatus = 'pending';
+      // O banco de dados só aceita 'pending' e 'completed' por enquanto
+      const nextStatus: TransactionStatus = currentStatus === 'completed' ? 'pending' : 'completed';
 
       const res = await apiService.updateTransaction(id, { status: nextStatus });
       if (res.success) {
-        toast.success(`Status atualizado para: ${
-          nextStatus === 'completed' ? 'Conciliado' : 
-          nextStatus === 'pending' ? 'Pendente' : 'Aprovação'
-        }`);
+        toast.success(`Status atualizado para: ${nextStatus === 'completed' ? 'Conciliado' : 'Pendente'}`);
         fetchData();
       }
     } catch (error: any) {
@@ -455,18 +447,14 @@ export const Transactions: React.FC = () => {
                     disabled={!canEdit}
                     className={cn(
                       "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-                      t.status === 'completed' ? "bg-emerald-50 text-emerald-700" : 
-                      t.status === 'pending' ? "bg-amber-50 text-amber-700" :
-                      "bg-blue-50 text-blue-700",
+                      t.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
                       !canEdit && "cursor-default"
                     )}
                   >
                     {t.status === 'completed' ? (
                       <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
-                    ) : t.status === 'pending' ? (
-                      <><Clock className="mr-1 h-3 w-3" /> Pendente</>
                     ) : (
-                      <><AlertCircle className="mr-1 h-3 w-3" /> Aprovação</>
+                      <><Clock className="mr-1 h-3 w-3" /> Pendente</>
                     )}
                   </button>
                 </td>
