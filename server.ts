@@ -75,6 +75,51 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
+app.get("/api/users", async (req, res) => {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, is_active, created_at');
+    if (error) throw error;
+    res.json(users);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/users", async (req, res) => {
+  try {
+    const { full_name, email, password, role, is_active } = req.body;
+    
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert([
+        { 
+          full_name, 
+          email, 
+          password_hash, 
+          role: role || 'user', 
+          is_active: is_active ?? true,
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, user: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`\n🚀 Servidor Supabase Rodando!`);
   console.log(`🔗 Local: http://localhost:${PORT}`);
