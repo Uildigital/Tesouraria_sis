@@ -710,16 +710,20 @@ export const Transactions: React.FC = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-4xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl"
+              className="relative max-w-5xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <button 
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const printWindow = window.open(attachmentPreview, '_blank');
+                    printWindow?.print();
+                  }}
                   className="rounded-full bg-white/90 p-2 text-zinc-900 shadow-lg hover:bg-white transition-all"
                   title="Imprimir"
                 >
-                  <Download className="h-5 w-5" onClick={() => {
+                  <Download className="h-5 w-5" onClick={(e) => {
+                    e.stopPropagation();
                     const link = document.createElement('a');
                     link.href = attachmentPreview;
                     link.download = 'comprovante';
@@ -734,18 +738,20 @@ export const Transactions: React.FC = () => {
                 </button>
               </div>
 
-              <div className="p-2 bg-zinc-50 overflow-auto max-h-[85vh] flex justify-center items-center">
+              <div className="p-4 bg-zinc-50 overflow-y-auto max-h-[80vh]">
                 {attachmentPreview.toLowerCase().endsWith('.pdf') ? (
                   <iframe 
                     src={attachmentPreview} 
-                    className="w-full h-[80vh] rounded-xl"
+                    className="w-full h-[75vh] rounded-xl"
                   />
                 ) : (
-                  <img 
-                    src={attachmentPreview} 
-                    alt="Comprovante" 
-                    className="max-w-full h-auto rounded-xl shadow-sm"
-                  />
+                  <div className="flex justify-center">
+                    <img 
+                      src={attachmentPreview} 
+                      alt="Comprovante" 
+                      className="max-w-full h-auto rounded-xl shadow-sm"
+                    />
+                  </div>
                 )}
               </div>
               
