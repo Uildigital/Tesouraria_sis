@@ -63,6 +63,7 @@ export const Transactions: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeAccountTab, setActiveAccountTab] = useState<'Corrente' | 'Poupança'>('Corrente');
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -421,9 +422,12 @@ export const Transactions: React.FC = () => {
                     <span className="font-semibold text-zinc-900">{t.description}</span>
                     {t.observation && <span className="text-xs text-zinc-400 italic">{t.observation}</span>}
                     {t.attachment_url && (
-                      <a href={t.attachment_url} target="_blank" rel="noreferrer" className="mt-1 flex items-center text-xs text-emerald-600 hover:underline">
+                      <button 
+                        onClick={() => setAttachmentPreview(t.attachment_url!)}
+                        className="mt-1 flex items-center text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                      >
                         <FileText className="mr-1 h-3 w-3" /> Ver comprovante
-                      </a>
+                      </button>
                     )}
                   </div>
                 </td>
@@ -468,15 +472,13 @@ export const Transactions: React.FC = () => {
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     {t.attachment_url && (
-                      <a 
-                        href={t.attachment_url} 
-                        target="_blank" 
-                        rel="noreferrer"
+                      <button 
+                        onClick={() => setAttachmentPreview(t.attachment_url!)}
                         className="rounded-lg p-1 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
                         title="Ver Comprovante"
                       >
                         <Eye className="h-5 w-5" />
-                      </a>
+                      </button>
                     )}
                     {canEdit && (
                       <>
@@ -526,11 +528,7 @@ export const Transactions: React.FC = () => {
               </tr>
             )}
           </tbody>
-        </table>
-        </div>
-      </div>
-
-      {showModal && (
+        </ta      {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="mb-6 flex items-center justify-between">
@@ -636,9 +634,8 @@ export const Transactions: React.FC = () => {
 
               <div className="sm:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Observação</label>
-                <textarea 
+                <input 
                   {...register('observation')}
-                  rows={2}
                   className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
                   placeholder="Detalhes adicionais sobre o lançamento..."
                 />
@@ -691,6 +688,84 @@ export const Transactions: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Preview Modal */}
+      <AnimatePresence>
+        {attachmentPreview && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-md"
+            onClick={() => setAttachmentPreview(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-4xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <button 
+                  onClick={() => window.print()}
+                  className="rounded-full bg-white/90 p-2 text-zinc-900 shadow-lg hover:bg-white transition-all"
+                  title="Imprimir"
+                >
+                  <Download className="h-5 w-5" onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = attachmentPreview;
+                    link.download = 'comprovante';
+                    link.click();
+                  }} />
+                </button>
+                <button 
+                  onClick={() => setAttachmentPreview(null)}
+                  className="rounded-full bg-white/90 p-2 text-zinc-900 shadow-lg hover:bg-white transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-2 bg-zinc-50 overflow-auto max-h-[85vh] flex justify-center items-center">
+                {attachmentPreview.toLowerCase().endsWith('.pdf') ? (
+                  <iframe 
+                    src={attachmentPreview} 
+                    className="w-full h-[80vh] rounded-xl"
+                  />
+                ) : (
+                  <img 
+                    src={attachmentPreview} 
+                    alt="Comprovante" 
+                    className="max-w-full h-auto rounded-xl shadow-sm"
+                  />
+                )}
+              </div>
+              
+              <div className="p-4 flex items-center justify-between border-t border-zinc-100 bg-white">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">Comprovante de Pagamento</p>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Documento Digitalizado</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setAttachmentPreview(null)}
+                  className="rounded-xl border border-zinc-200 px-6 py-2 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence></form>
           </div>
         </div>
       )}
