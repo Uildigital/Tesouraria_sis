@@ -1,4 +1,4 @@
-export type TransactionStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'conciliated' | 'pending';
+export type TransactionStatus = 'pending_approval' | 'completed' | 'pending' | 'draft' | 'approved' | 'rejected';
 export type TransactionType = 'income' | 'expense';
 
 export interface Organization {

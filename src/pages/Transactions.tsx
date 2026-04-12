@@ -196,16 +196,16 @@ export const Transactions: React.FC = () => {
     try {
       let nextStatus: TransactionStatus = 'pending';
       
-      // Lógica de transição: pending_approval -> pending -> conciliated -> (volta para pending_approval se necessário)
+      // Lógica de transição: pending_approval -> pending -> completed -> (volta para pending_approval)
       if (currentStatus === 'pending_approval') nextStatus = 'pending';
-      else if (currentStatus === 'pending') nextStatus = 'conciliated';
-      else if (currentStatus === 'conciliated') nextStatus = 'pending_approval';
+      else if (currentStatus === 'pending') nextStatus = 'completed';
+      else if (currentStatus === 'completed') nextStatus = 'pending_approval';
       else nextStatus = 'pending';
 
       const res = await apiService.updateTransaction(id, { status: nextStatus });
       if (res.success) {
         toast.success(`Status atualizado para: ${
-          nextStatus === 'conciliated' ? 'Conciliado' : 
+          nextStatus === 'completed' ? 'Conciliado' : 
           nextStatus === 'pending' ? 'Pendente' : 'Aprovação'
         }`);
         fetchData();
@@ -455,13 +455,13 @@ export const Transactions: React.FC = () => {
                     disabled={!canEdit}
                     className={cn(
                       "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-                      t.status === 'conciliated' ? "bg-emerald-50 text-emerald-700" : 
+                      t.status === 'completed' ? "bg-emerald-50 text-emerald-700" : 
                       t.status === 'pending' ? "bg-amber-50 text-amber-700" :
                       "bg-blue-50 text-blue-700",
                       !canEdit && "cursor-default"
                     )}
                   >
-                    {t.status === 'conciliated' ? (
+                    {t.status === 'completed' ? (
                       <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
                     ) : t.status === 'pending' ? (
                       <><Clock className="mr-1 h-3 w-3" /> Pendente</>
