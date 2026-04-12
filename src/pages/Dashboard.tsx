@@ -329,7 +329,7 @@ export const Dashboard: React.FC = () => {
                       padding: '12px 16px'
                     }}
                   />
-                  <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
+
                   <Bar 
                     dataKey="receita" 
                     name="Receitas"
