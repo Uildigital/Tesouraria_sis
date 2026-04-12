@@ -9,7 +9,9 @@ import {
   Church,
   X,
   Users as UsersIcon,
-  ShieldCheck
+  ShieldCheck,
+  Lock,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -23,6 +25,40 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { signOut, profile } = useAuth();
   const { settings } = useSettings();
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem!');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres!');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiService.updateUser(profile.id, {
+        password: newPassword
+      });
+      toast.success('Senha atualizada com sucesso!');
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast.error('Erro ao atualizar senha: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const navItems = [
     { name: 'Dashboard', href: `/dashboard`, icon: LayoutDashboard },
@@ -105,6 +141,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
             <button
+              onClick={() => setShowPasswordModal(true)}
+              className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+            >
+              <Lock className="mr-3 h-5 w-5" />
+              Alterar Minha Senha
+            </button>
+            <button
               onClick={() => signOut()}
               className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
             >
@@ -114,6 +157,64 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
       </aside>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl"
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-zinc-900">Alterar Minha Senha</h3>
+              <button 
+                onClick={() => setShowPasswordModal(false)}
+                className="text-zinc-400 hover:text-zinc-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Nova Senha</label>
+                <input 
+                  type="password" 
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Confirmar Nova Senha</label>
+                <input 
+                  type="password" 
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Atualizar Senha'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </>
     </>
   );
 };
