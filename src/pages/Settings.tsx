@@ -110,6 +110,56 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handleExportCSV = async () => {
+    setIsSaving(true);
+    try {
+      const transactions = await apiService.getTransactions();
+      if (!transactions || transactions.length === 0) {
+        toast.error('Não há dados para exportar.');
+        return;
+      }
+
+      // Create CSV header
+      const headers = ['Data', 'Hora', 'Descrição', 'Valor', 'Tipo', 'Conta', 'Categoria', 'Status', 'Observação'];
+      const csvRows = [headers.join(',')];
+
+      // Add transaction rows
+      transactions.forEach(t => {
+        const row = [
+          t.date,
+          t.time || '',
+          `"${t.description.replace(/"/g, '""')}"`,
+          t.amount,
+          t.type,
+          t.account,
+          `"${(t as any).category?.name || ''}"`,
+          t.status,
+          `"${(t.observation || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `tesouraria_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Dados exportados com sucesso!', {
+        description: `${transactions.length} lançamentos processados.`
+      });
+    } catch (error: any) {
+      toast.error('Erro ao exportar: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderHeader = (title: string) => (
     <div className="mb-10 flex items-center gap-4">
       <button 
@@ -306,6 +356,13 @@ export const Settings: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                       <button 
+                        onClick={handleExportCSV}
+                        disabled={isSaving}
+                        className="flex-1 sm:flex-none rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition-all disabled:opacity-50"
+                      >
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Exportar para Excel'}
+                      </button>
                       <button 
                         onClick={handleTestConnection}
                         disabled={isSaving}
