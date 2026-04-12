@@ -1,5 +1,11 @@
 import { Transaction, Category } from '../types';
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const API_BASE = '/api';
 
 export const apiService = {
@@ -208,5 +214,26 @@ export const apiService = {
     const res = await fetch(`${API_BASE}/audit-logs`);
     if (!res.ok) throw new Error('Failed to fetch audit logs');
     return res.json();
+  },
+
+  // Storage / Upload
+  async uploadFile(file: File, path: string): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${path}/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('attachments')
+      .upload(filePath, file, {
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('attachments')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
   }
 };

@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Search,
   Eye,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Upload
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -118,6 +119,16 @@ export const Reconciliation: React.FC = () => {
       toast.error('Erro ao finalizar: ' + error.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      const url = await apiService.uploadFile(file, `reconciliations/${selectedYear}/${selectedMonth + 1}`);
+      return url;
+    } catch (error: any) {
+      toast.error('Erro no upload: ' + error.message);
+      return '';
     }
   };
 
@@ -267,15 +278,27 @@ export const Reconciliation: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato C. Corrente</label>
                   <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                    <div className="flex-1">
                       <input 
-                        type="text"
-                        value={statementData.correnteUrl}
-                        onChange={(e) => setStatementData({...statementData, correnteUrl: e.target.value})}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-9 pr-3 py-2 text-xs focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                        placeholder="Link do arquivo..."
+                        type="file"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = await handleFileUpload(file);
+                            if (url) setStatementData({...statementData, correnteUrl: url});
+                          }
+                        }}
+                        className="hidden"
+                        id="cc-upload"
+                        accept="image/*,application/pdf"
                       />
+                      <label 
+                        htmlFor="cc-upload"
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all shadow-sm"
+                      >
+                        <Upload size={14} />
+                        {statementData.correnteUrl ? 'Trocar Arquivo' : 'Upload Extrato'}
+                      </label>
                     </div>
                     {statementData.correnteUrl && (
                       <button 
@@ -292,15 +315,27 @@ export const Reconciliation: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato Poupança</label>
                   <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                    <div className="flex-1">
                       <input 
-                        type="text"
-                        value={statementData.poupancaUrl}
-                        onChange={(e) => setStatementData({...statementData, poupancaUrl: e.target.value})}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-9 pr-3 py-2 text-xs focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                        placeholder="Link do arquivo..."
+                        type="file"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = await handleFileUpload(file);
+                            if (url) setStatementData({...statementData, poupancaUrl: url});
+                          }
+                        }}
+                        className="hidden"
+                        id="cp-upload"
+                        accept="image/*,application/pdf"
                       />
+                      <label 
+                        htmlFor="cp-upload"
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all shadow-sm"
+                      >
+                        <Upload size={14} />
+                        {statementData.poupancaUrl ? 'Trocar Arquivo' : 'Upload Extrato'}
+                      </label>
                     </div>
                     {statementData.poupancaUrl && (
                       <button 

@@ -147,8 +147,13 @@ export const Transactions: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    toast.info('Upload de arquivos será implementado em breve com Supabase Storage.');
-    return '';
+    try {
+      const url = await apiService.uploadFile(file, 'transactions');
+      return url;
+    } catch (error: any) {
+      toast.error('Erro no upload: ' + error.message);
+      return '';
+    }
   };
 
   const handleAuthError = (error: any) => {
@@ -678,26 +683,55 @@ export const Transactions: React.FC = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-zinc-700">URL do Comprovante</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Comprovante</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    {...register('attachment_url')}
-                    className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
-                    placeholder="https://exemplo.com/comprovante.pdf"
-                  />
-                  {watch('attachment_url') && (
-                    <button
-                      type="button"
-                      onClick={() => setValue('attachment_url', '')}
-                      className="rounded-xl bg-rose-50 p-2.5 text-rose-600 hover:bg-rose-100 transition-colors"
-                      title="Remover comprovante"
+                  <div className="relative flex-1">
+                    <input 
+                      type="file" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const url = await handleFileUpload(file);
+                          if (url) setValue('attachment_url', url);
+                        }
+                      }}
+                      className="hidden"
+                      id="file-upload"
+                      accept="image/*,application/pdf"
+                    />
+                    <label 
+                      htmlFor="file-upload"
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all w-full"
                     >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                      <Download className="h-4 w-4" />
+                      {watch('attachment_url') ? 'Alterar Comprovante' : 'Upload do Comprovante'}
+                    </label>
+                  </div>
+                  {watch('attachment_url') && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentPreview(watch('attachment_url')!)}
+                        className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        title="Visualizar"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setValue('attachment_url', '')}
+                        className="rounded-xl bg-rose-50 p-2.5 text-rose-600 hover:bg-rose-100 transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                   )}
                 </div>
-                <p className="mt-1 text-[10px] text-zinc-400">Insira o link do arquivo (Google Drive, Dropbox, etc.)</p>
+                {watch('attachment_url') && (
+                  <p className="mt-1 text-[10px] text-emerald-600 font-bold truncate">{watch('attachment_url')}</p>
+                )}
+                <p className="mt-1 text-[10px] text-zinc-400">PDF ou Imagem (Máx 50MB)</p>
               </div>
 
               <div className="sm:col-span-2 mt-4 flex gap-3">
