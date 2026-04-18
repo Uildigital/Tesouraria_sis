@@ -225,13 +225,18 @@ app.post("/api/users", async (req, res) => {
 app.put("/api/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_active, role, full_name, email } = req.body;
+    const { is_active, role, full_name, email, password } = req.body;
     
     const updates: any = {};
     if (is_active !== undefined) updates.is_active = is_active;
     if (role !== undefined) updates.role = role;
     if (full_name !== undefined) updates.full_name = full_name;
     if (email !== undefined) updates.email = email;
+    
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updates.password_hash = await bcrypt.hash(password, salt);
+    }
 
     const { data, error } = await supabase
       .from('users')

@@ -99,6 +99,30 @@ export const Users: React.FC = () => {
     }
   };
 
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await apiService.createUser({
+        email,
+        full_name: fullName,
+        password,
+        role,
+        is_active: true
+      });
+      toast.success('Membro convidado com sucesso!');
+      setShowModal(false);
+      setEmail('');
+      setFullName('');
+      setPassword('');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const openEditModal = (user: Profile) => {
     setSelectedUser(user);
     setFullName(user.full_name);
