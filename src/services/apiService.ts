@@ -72,7 +72,10 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create category');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: 'Falha ao criar categoria' }));
+      throw new Error(errorData.details || errorData.error || 'Erro desconhecido ao criar categoria');
+    }
     return res.json();
   },
   
