@@ -213,6 +213,8 @@ app.get("/api/categories", async (req, res) => {
 
 app.post("/api/categories", async (req, res) => {
   try {
+    console.log('Tentando criar categoria com dados:', JSON.stringify(req.body, null, 2));
+    
     const { data, error } = await supabase
       .from('categories')
       .insert([req.body])
@@ -220,12 +222,13 @@ app.post("/api/categories", async (req, res) => {
       .single();
     
     if (error) {
-      console.error('Supabase error creating category:', error);
+      console.error('ERRO SUPABASE CATEGORIES:', error);
       return res.status(500).json({ 
         error: "Erro no Banco de Dados", 
         details: error.message,
         hint: error.hint,
-        code: error.code 
+        code: error.code,
+        sent_data: req.body 
       });
     }
     
@@ -233,8 +236,12 @@ app.post("/api/categories", async (req, res) => {
     
     res.json({ success: true, id: data.id, category: data });
   } catch (error: any) {
-    console.error('Server error creating category:', error);
-    res.status(500).json({ error: error.message });
+    console.error('ERRO SERVIDOR CATEGORIES:', error);
+    res.status(500).json({ 
+      error: "Erro Interno do Servidor", 
+      message: error.message,
+      stack: error.stack
+    });
   }
 });
 
