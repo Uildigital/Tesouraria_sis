@@ -219,12 +219,21 @@ app.post("/api/categories", async (req, res) => {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error creating category:', error);
+      return res.status(500).json({ 
+        error: "Erro no Banco de Dados", 
+        details: error.message,
+        hint: error.hint,
+        code: error.code 
+      });
+    }
     
     await logAction(null, 'user', 'Criou Categoria', `Nome: ${req.body.name}, Tipo: ${req.body.type}`);
     
     res.json({ success: true, id: data.id, category: data });
   } catch (error: any) {
+    console.error('Server error creating category:', error);
     res.status(500).json({ error: error.message });
   }
 });
