@@ -29,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       setProfile({
         id: userData.id,
+        organization_id: userData.organization_id,
         email: userData.email,
         full_name: userData.full_name,
         role: userData.role,
@@ -44,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
     setProfile({
       id: userData.id,
+      organization_id: userData.organization_id,
       email: userData.email,
       full_name: userData.full_name,
       role: userData.role,

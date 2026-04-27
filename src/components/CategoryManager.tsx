@@ -6,7 +6,7 @@ import { CategoryForm } from './categories/CategoryForm';
 import { CategoryList } from './categories/CategoryList';
 
 export const CategoryManager: React.FC = () => {
-  const { organization, canEdit } = useAuth();
+  const { profile, canEdit } = useAuth();
   const { 
     categories, 
     isLoading, 
@@ -25,13 +25,18 @@ export const CategoryManager: React.FC = () => {
   );
 
   const handleSave = useCallback(async (data: any) => {
-    const success = await saveCategory(data);
+    // Injetar organization_id se for uma nova categoria
+    const categoryData = {
+      ...data,
+      organization_id: data.organization_id || profile?.organization_id
+    };
+    
+    const success = await saveCategory(categoryData);
     if (success) {
       setEditingCategory(null);
-      // The saveCategory hook already calls refresh, but we ensure it here
     }
     return success;
-  }, [saveCategory]);
+  }, [saveCategory, profile]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta categoria? Subcategorias também podem ser afetadas.')) return;

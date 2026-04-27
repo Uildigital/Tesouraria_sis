@@ -30,6 +30,7 @@ export const useCategories = () => {
     name: string;
     type: TransactionType;
     parent_id: string | null;
+    organization_id?: string;
   }) => {
     setIsSubmitting(true);
     try {
