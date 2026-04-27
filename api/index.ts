@@ -64,6 +64,41 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { full_name, email, password } = req.body;
+    
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert([
+        { 
+          full_name, 
+          email, 
+          password_hash, 
+          role: 'user', 
+          is_active: true,
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    const { password_hash: _, ...userWithoutPassword } = data;
+    res.json({ success: true, user: userWithoutPassword });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/transactions", async (req, res) => {
   try {
     const { data: transactions, error } = await supabase
@@ -171,6 +206,88 @@ app.get("/api/categories", async (req, res) => {
       .select('*');
     if (error) throw error;
     res.json(categories);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/categories", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([req.body])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Criou Categoria', `Nome: ${req.body.name}, Tipo: ${req.body.type}`);
+    
+    res.json({ success: true, id: data.id, category: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('categories')
+      .update(req.body)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Atualizou Categoria', `ID: ${id}, Nome: ${req.body.name}`);
+    
+    res.json({ success: true, category: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Excluiu Categoria', `ID: ${id}`);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/reset-categories", async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .not('id', 'is', null);
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Resetou Categorias', 'Todas as categorias foram excluídas');
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/init-sheets", async (req, res) => {
+  try {
+    await logAction(null, 'user', 'Inicializou Planilhas', 'Comando de inicialização recebido');
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -310,6 +427,27 @@ app.get("/api/settings", async (req, res) => {
     res.json(settingsObj);
   } catch (error: any) {
     res.json({});
+  }
+});
+
+app.post("/api/settings", async (req, res) => {
+  try {
+    const settings = req.body;
+    const entries = Object.entries(settings).map(([key, value]) => ({
+      key,
+      value,
+      updated_at: new Date().toISOString()
+    }));
+
+    for (const entry of entries) {
+      await supabase
+        .from('settings')
+        .upsert(entry, { onConflict: 'key' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
