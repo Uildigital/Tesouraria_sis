@@ -2,6 +2,7 @@ import express from "express";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -79,6 +80,7 @@ app.post("/api/auth/signup", async (req, res) => {
       .from('users')
       .insert([
         { 
+          id: crypto.randomUUID(),
           full_name, 
           email, 
           password_hash, 
@@ -114,14 +116,19 @@ app.get("/api/transactions", async (req, res) => {
 
 app.post("/api/transactions", async (req, res) => {
   try {
+    const transactionData = { ...req.body };
+    if (!transactionData.id) {
+      transactionData.id = crypto.randomUUID();
+    }
+
     const { data, error } = await supabase
       .from('transactions')
-      .insert([req.body])
+      .insert([transactionData])
       .select()
       .single();
       if (error) throw error;
       
-      await logAction(req.body.user_id, 'user', 'Criou Lançamento', `Desc: ${req.body.description}, Valor: ${req.body.amount}`);
+      await logAction(transactionData.user_id, 'user', 'Criou Lançamento', `Desc: ${transactionData.description}, Valor: ${transactionData.amount}`);
       
       res.json({ success: true, id: data.id });
     } catch (error: any) {
@@ -213,11 +220,16 @@ app.get("/api/categories", async (req, res) => {
 
 app.post("/api/categories", async (req, res) => {
   try {
-    console.log('Tentando criar categoria com dados:', JSON.stringify(req.body, null, 2));
+    const categoryData = { ...req.body };
+    if (!categoryData.id) {
+      categoryData.id = crypto.randomUUID();
+    }
+
+    console.log('Tentando criar categoria com dados:', JSON.stringify(categoryData, null, 2));
     
     const { data, error } = await supabase
       .from('categories')
-      .insert([req.body])
+      .insert([categoryData])
       .select()
       .single();
     
@@ -232,7 +244,7 @@ app.post("/api/categories", async (req, res) => {
       });
     }
     
-    await logAction(null, 'user', 'Criou Categoria', `Nome: ${req.body.name}, Tipo: ${req.body.type}`);
+    await logAction(null, 'user', 'Criou Categoria', `Nome: ${categoryData.name}, Tipo: ${categoryData.type}`);
     
     res.json({ success: true, id: data.id, category: data });
   } catch (error: any) {
@@ -336,6 +348,7 @@ app.post("/api/users", async (req, res) => {
       .from('users')
       .insert([
         { 
+          id: crypto.randomUUID(),
           full_name, 
           email, 
           password_hash, 
