@@ -23,17 +23,3 @@ Este projeto é uma solução completa para a gestão de tesouraria, desenvolvid
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
 ![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
 
----
-
-### 💡 Impacto Real e Valor Profissional
-
-No ecossistema **ServiceNow**, o foco é transformar processos manuais em fluxos de trabalho digitais. O **Tesouraria_sis** é a prova prática da minha capacidade de aplicar conceitos de **GRC (Governance, Risk, and Compliance)** em um cenário real, resolvendo gargalos de transparência e eficiência operacional.
-
----
-
-### ⚙️ Como executar localmente
-
-1. **Instalar dependências:**
-   ```bash
-   npm install
-
