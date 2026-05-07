@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 💰 Tesouraria_sis - Sistema de Gestão e Prestação de Contas
 
-# Run and deploy your AI Studio app
+### Digitalizando a experiência de 19 anos em gestão de ativos e processos.
 
-This contains everything you need to run your app locally.
+Este projeto é uma solução completa para a gestão de tesouraria, desenvolvida para uso prático na **Igreja Presbiteriana**, onde atuo como Tesoureiro. Ele nasceu da necessidade de modernizar a prestação de contas mensal, garantindo transparência, integridade e agilidade no controle financeiro.
 
-View your app in AI Studio: https://ai.studio/apps/e9bd1c39-56e6-421e-81d8-254870951a4e
+---
 
-## Run Locally
+### 🚀 Principais Funcionalidades
 
-**Prerequisites:**  Node.js
+- **Gestão de Fluxo de Caixa:** Controle rigoroso de dízimos, ofertas e despesas com interface intuitiva.
+- **Prestação de Contas (Accountability):** Geração de dados claros para relatórios mensais e auditoria da congregação.
+- **Análise Inteligente:** Integração com **Google Gemini AI** para fornecer insights e assistente virtual sobre os dados financeiros.
+- **Governança e Compliance:** Aplicação de regras de integridade para garantir a segurança dos dados contábeis.
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 🛠️ Stack Tecnológica
+
+![TypeScript](https://img.shields.io/badge/typescript-%23007acc.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
+
+---
+
+### 💡 Impacto Real e Valor Profissional
+
+No ecossistema **ServiceNow**, o foco é transformar processos manuais em fluxos de trabalho digitais. O **Tesouraria_sis** é a prova prática da minha capacidade de aplicar conceitos de **GRC (Governance, Risk, and Compliance)** em um cenário real, resolvendo gargalos de transparência e eficiência operacional.
+
+---
+
+### ⚙️ Como executar localmente
+
+1. **Instalar dependências:**
+   ```bash
+   npm install
+
