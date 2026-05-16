@@ -43,6 +43,16 @@ const transactionSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
+const parseAttachments = (url?: string): string[] => {
+  if (!url) return [];
+  try {
+    const parsed = JSON.parse(url);
+    return Array.isArray(parsed) ? parsed : [url];
+  } catch {
+    return [url];
+  }
+};
+
 export const Transactions: React.FC = () => {
   const { profile, canEdit } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -64,7 +74,7 @@ export const Transactions: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeAccountTab, setActiveAccountTab] = useState<'Corrente' | 'Poupança'>('Corrente');
-  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<{ urls: string[], index: number } | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -175,7 +185,8 @@ export const Transactions: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare data
+      // Se tivermos múltiplos anexos vindos do watch('attachment_url')
+      // eles já devem estar no formato correto se salvarmos como JSON string
       const payload = {
         ...data,
         user_id: profile.id
@@ -469,10 +480,16 @@ export const Transactions: React.FC = () => {
                     {t.observation && <span className="text-xs text-zinc-400 italic">{t.observation}</span>}
                     {t.attachment_url && (
                       <button 
-                        onClick={() => setAttachmentPreview(t.attachment_url!)}
+                        onClick={() => {
+                          const urls = parseAttachments(t.attachment_url);
+                          if (urls.length > 0) setAttachmentPreview({ urls, index: 0 });
+                        }}
                         className="mt-1 flex items-center text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                       >
-                        <FileText className="mr-1 h-3 w-3" /> Ver comprovante
+                        <FileText className="mr-1 h-3 w-3" /> 
+                        {parseAttachments(t.attachment_url).length > 1 
+                          ? `${parseAttachments(t.attachment_url).length} arquivos` 
+                          : 'Ver comprovante'}
                       </button>
                     )}
                   </div>
@@ -519,7 +536,10 @@ export const Transactions: React.FC = () => {
                   <div className="flex items-center justify-end gap-2">
                     {t.attachment_url && (
                       <button 
-                        onClick={() => setAttachmentPreview(t.attachment_url!)}
+                        onClick={() => {
+                          const urls = parseAttachments(t.attachment_url);
+                          setAttachmentPreview({ urls, index: 0 });
+                        }}
                         className="rounded-lg p-1 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
                         title="Ver Comprovante"
                       >
@@ -703,16 +723,64 @@ export const Transactions: React.FC = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Comprovante</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Comprovantes ({parseAttachments(watch('attachment_url')).length})</label>
+                <div className="space-y-3">
+                  {/* Lista de Arquivos já subidos */}
+                  <div className="grid gap-2">
+                    {parseAttachments(watch('attachment_url')).map((url, idx) => (
+                      <div key={idx} className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50 p-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-xs font-medium text-zinc-600 truncate max-w-[200px]">
+                            Anexo {idx + 1}
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const urls = parseAttachments(watch('attachment_url'));
+                              setAttachmentPreview({ urls, index: idx });
+                            }}
+                            className="rounded-lg p-2 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = parseAttachments(watch('attachment_url'));
+                              const updated = current.filter((_, i) => i !== idx);
+                              setValue('attachment_url', updated.length > 0 ? JSON.stringify(updated) : '');
+                            }}
+                            className="rounded-lg p-2 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Botão de Upload */}
+                  <div className="relative">
                     <input 
                       type="file" 
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
+                          setIsSubmitting(true);
                           const url = await handleFileUpload(file);
-                          if (url) setValue('attachment_url', url);
+                          if (url) {
+                            const current = parseAttachments(watch('attachment_url'));
+                            const updated = [...current, url];
+                            setValue('attachment_url', JSON.stringify(updated));
+                          }
+                          setIsSubmitting(false);
+                          // Reset input so same file can be selected again
+                          e.target.value = '';
                         }
                       }}
                       className="hidden"
@@ -721,37 +789,14 @@ export const Transactions: React.FC = () => {
                     />
                     <label 
                       htmlFor="file-upload"
-                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all w-full"
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-4 text-sm font-bold text-zinc-500 hover:border-emerald-500 hover:bg-emerald-50 transition-all w-full"
                     >
-                      <Download className="h-4 w-4" />
-                      {watch('attachment_url') ? 'Alterar Comprovante' : 'Upload do Comprovante'}
+                      <Plus className="h-5 w-5" />
+                      <span>Adicionar Comprovante</span>
                     </label>
                   </div>
-                  {watch('attachment_url') && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAttachmentPreview(watch('attachment_url')!)}
-                        className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 hover:bg-emerald-100 transition-colors"
-                        title="Visualizar"
-                      >
-                        <Eye className="h-5 w-5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setValue('attachment_url', '')}
-                        className="rounded-xl bg-rose-50 p-2.5 text-rose-600 hover:bg-rose-100 transition-colors"
-                        title="Remover"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  )}
+                  <p className="text-[10px] text-zinc-400 text-center">Você pode adicionar vários arquivos (PDF ou Imagem)</p>
                 </div>
-                {watch('attachment_url') && (
-                  <p className="mt-1 text-[10px] text-emerald-600 font-bold truncate">{watch('attachment_url')}</p>
-                )}
-                <p className="mt-1 text-[10px] text-zinc-400">PDF ou Imagem (Máx 50MB)</p>
               </div>
 
               <div className="sm:col-span-2 mt-4 flex gap-3">
@@ -802,7 +847,8 @@ export const Transactions: React.FC = () => {
               <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <button 
                   onClick={() => {
-                    const printWindow = window.open(attachmentPreview, '_blank');
+                    const url = attachmentPreview.urls[attachmentPreview.index];
+                    const printWindow = window.open(url, '_blank');
                     printWindow?.print();
                   }}
                   className="rounded-full bg-white/90 p-2 text-zinc-900 shadow-lg hover:bg-white transition-all"
@@ -810,9 +856,10 @@ export const Transactions: React.FC = () => {
                 >
                   <Download className="h-5 w-5" onClick={(e) => {
                     e.stopPropagation();
+                    const url = attachmentPreview.urls[attachmentPreview.index];
                     const link = document.createElement('a');
-                    link.href = attachmentPreview;
-                    link.download = 'comprovante';
+                    link.href = url;
+                    link.download = `comprovante-${attachmentPreview.index + 1}`;
                     link.click();
                   }} />
                 </button>
@@ -824,21 +871,41 @@ export const Transactions: React.FC = () => {
                 </button>
               </div>
 
-              <div className="p-4 bg-zinc-50 overflow-y-auto max-h-[80vh]">
-                {attachmentPreview.toLowerCase().endsWith('.pdf') ? (
-                  <iframe 
-                    src={attachmentPreview} 
-                    className="w-full h-[75vh] rounded-xl"
-                  />
-                ) : (
-                  <div className="flex justify-center">
-                    <img 
-                      src={attachmentPreview} 
-                      alt="Comprovante" 
-                      className="max-w-full h-auto rounded-xl shadow-sm"
+              <div className="p-4 bg-zinc-50 overflow-y-auto max-h-[80vh] flex flex-col items-center">
+                <div className="w-full relative group">
+                  {attachmentPreview.urls[attachmentPreview.index].toLowerCase().endsWith('.pdf') ? (
+                    <iframe 
+                      src={attachmentPreview.urls[attachmentPreview.index]} 
+                      className="w-full h-[75vh] rounded-xl"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex justify-center">
+                      <img 
+                        src={attachmentPreview.urls[attachmentPreview.index]} 
+                        alt="Comprovante" 
+                        className="max-w-full h-auto rounded-xl shadow-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Navigation Buttons */}
+                  {attachmentPreview.urls.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setAttachmentPreview(prev => prev ? ({ ...prev, index: (prev.index - 1 + prev.urls.length) % prev.urls.length }) : null)}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-3 text-zinc-900 shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-white"
+                      >
+                        <ArrowUpRight className="h-6 w-6 -rotate-135" />
+                      </button>
+                      <button
+                        onClick={() => setAttachmentPreview(prev => prev ? ({ ...prev, index: (prev.index + 1) % prev.urls.length }) : null)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-3 text-zinc-900 shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-white"
+                      >
+                        <ArrowUpRight className="h-6 w-6 rotate-45" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               
               <div className="p-4 flex items-center justify-between border-t border-zinc-100 bg-white">
@@ -847,16 +914,20 @@ export const Transactions: React.FC = () => {
                     <FileText size={18} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">Comprovante de Pagamento</p>
+                    <p className="text-sm font-bold text-zinc-900">
+                      Anexo {attachmentPreview.index + 1} de {attachmentPreview.urls.length}
+                    </p>
                     <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Documento Digitalizado</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setAttachmentPreview(null)}
-                  className="rounded-xl border border-zinc-200 px-6 py-2 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
-                >
-                  Fechar
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setAttachmentPreview(null)}
+                    className="rounded-xl border border-zinc-200 px-6 py-2 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
