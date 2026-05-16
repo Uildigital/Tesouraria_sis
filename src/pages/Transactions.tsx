@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -243,6 +243,12 @@ export const Transactions: React.FC = () => {
       const createB = new Date(b.created_at || 0).getTime();
       return createA - createB;
     });
+  
+  // Get unique descriptions for autocomplete
+  const descriptionSuggestions = useMemo(() => {
+    const descriptions = transactions.map(t => t.description);
+    return Array.from(new Set(descriptions)).sort();
+  }, [transactions]);
 
   return (
     <motion.div 
@@ -597,9 +603,16 @@ export const Transactions: React.FC = () => {
                 <div className="relative">
                   <input 
                     {...register('description')}
+                    list="description-suggestions"
+                    autoComplete="off"
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all" 
                     placeholder="Ex: Oferta Culto de Domingo" 
                   />
+                  <datalist id="description-suggestions">
+                    {descriptionSuggestions.map((desc, index) => (
+                      <option key={`${desc}-${index}`} value={desc} />
+                    ))}
+                  </datalist>
                 </div>
                 {errors.description && <p className="mt-1 text-xs font-bold text-rose-600">{errors.description.message}</p>}
               </div>
