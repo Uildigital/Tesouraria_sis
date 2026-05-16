@@ -116,11 +116,32 @@ export const useCategories = () => {
     }
   }, [fetchCategories]);
 
+  const createCategoryAndGetId = useCallback(async (data: {
+    name: string;
+    type: TransactionType;
+    parent_id: string | null;
+    organization_id?: string;
+  }): Promise<string | null> => {
+    setIsSubmitting(true);
+    try {
+      const result = await apiService.createCategory(data);
+      if (!result.success) throw new Error('Erro ao criar categoria pai');
+      await fetchCategories(true);
+      return result.id;
+    } catch (error: any) {
+      toast.error('Erro ao criar categoria: ' + error.message);
+      return null;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [fetchCategories]);
+
   return {
     categories,
     isLoading,
     isSubmitting,
     saveCategory,
+    createCategoryAndGetId,
     deleteCategory,
     clearAll,
     importPremium,

@@ -1,20 +1,21 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Category } from '../types';
+import { Category, TransactionType } from '../types';
 import { useCategories } from '../hooks/useCategories';
 import { CategoryForm } from './categories/CategoryForm';
 import { CategoryList } from './categories/CategoryList';
 
 export const CategoryManager: React.FC = () => {
   const { profile, canEdit } = useAuth();
-  const { 
-    categories, 
-    isLoading, 
-    isSubmitting, 
-    saveCategory, 
-    deleteCategory, 
-    clearAll, 
-    importPremium 
+  const {
+    categories,
+    isLoading,
+    isSubmitting,
+    saveCategory,
+    createCategoryAndGetId,
+    deleteCategory,
+    clearAll,
+    importPremium
   } = useCategories();
 
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -47,6 +48,15 @@ export const CategoryManager: React.FC = () => {
     if (!confirm('PERIGO: Isso excluirá TODAS as suas categorias atuais. Esta ação não pode ser desfeita. Deseja continuar?')) return;
     await clearAll();
   }, [clearAll]);
+
+  const handleCreateParent = useCallback(async (name: string, type: TransactionType): Promise<string | null> => {
+    return await createCategoryAndGetId({
+      name,
+      type,
+      parent_id: null,
+      organization_id: profile?.organization_id
+    });
+  }, [createCategoryAndGetId, profile]);
 
   const handleImportPremium = useCallback(async () => {
     if (!confirm('ATENÇÃO: Isso criará a estrutura hierárquica solicitada. Deseja continuar?')) return;
@@ -104,7 +114,7 @@ export const CategoryManager: React.FC = () => {
 
   return (
     <div className="space-y-8" translate="no">
-      <CategoryForm 
+      <CategoryForm
         editingCategory={editingCategory}
         parentCategories={parentCategories}
         isSubmitting={isSubmitting}
@@ -113,6 +123,7 @@ export const CategoryManager: React.FC = () => {
         onCancel={() => setEditingCategory(null)}
         onClearAll={handleClearAll}
         onImportPremium={handleImportPremium}
+        onCreateParent={handleCreateParent}
       />
 
       <CategoryList 

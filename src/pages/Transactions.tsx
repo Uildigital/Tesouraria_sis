@@ -25,7 +25,7 @@ import * as z from 'zod';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate, cn, parseAmount } from '../lib/utils';
-import { Transaction, Category } from '../types';
+import { Transaction, Category, TransactionStatus } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
