@@ -104,9 +104,12 @@ export const Transactions: React.FC = () => {
 
   const groupedCategories = categories
     .filter(c => !c.parent_id && c.type === selectedType)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
     .map(parent => ({
       ...parent,
-      children: categories.filter(c => c.parent_id === parent.id)
+      children: categories
+        .filter(c => c.parent_id === parent.id)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
     }));
 
   useEffect(() => {
@@ -663,11 +666,15 @@ export const Transactions: React.FC = () => {
                 >
                   <option value="">Selecione uma subcategoria...</option>
                   {groupedCategories.map(parent => (
-                    <optgroup key={parent.id} label={parent.name}>
-                      {parent.children.map(child => (
-                        <option key={child.id} value={child.id}>{child.name}</option>
-                      ))}
-                    </optgroup>
+                    parent.children.length > 0 ? (
+                      <optgroup key={parent.id} label={parent.name}>
+                        {parent.children.map(child => (
+                          <option key={child.id} value={child.id}>{child.name}</option>
+                        ))}
+                      </optgroup>
+                    ) : (
+                      <option key={parent.id} value={parent.id}>{parent.name}</option>
+                    )
                   ))}
                 </select>
                 {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id.message}</p>}
