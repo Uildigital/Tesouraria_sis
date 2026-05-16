@@ -19,7 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const canEdit = profile?.role === 'admin';
+  const canEdit = profile?.role === 'admin' || profile?.role === 'treasurer';
 
   useEffect(() => {
     const savedUser = localStorage.getItem('church_user');

@@ -18,7 +18,12 @@ export const CategoryList: React.FC<CategoryListProps> = ({
   onDelete,
   onEdit
 }) => {
-  const parentCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories]);
+  const parentCategories = useMemo(() => 
+    categories
+      .filter(c => !c.parent_id)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })), 
+    [categories]
+  );
   
   const getSubcategories = (parentId: string) => categories.filter(c => c.parent_id === parentId);
 

@@ -36,40 +36,44 @@ export const CategoryItem: React.FC<CategoryItemProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            type="button"
-            onClick={(e) => { e.preventDefault(); onEdit(category); }}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50 lg:bg-transparent"
-          >
-            <Edit2 size={level === 0 ? 14 : 12} />
-            <span className="hidden sm:inline">Editar</span>
-          </button>
           {canEdit && (
-            <button 
-              type="button"
-              onClick={(e) => { e.preventDefault(); onDelete(category.id); }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={level === 0 ? 14 : 12} />
-              <span className="hidden sm:inline">Excluir</span>
-            </button>
+            <>
+              <button 
+                type="button"
+                onClick={(e) => { e.preventDefault(); onEdit(category); }}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-amber-600 hover:bg-amber-50 transition-colors bg-amber-50/50"
+              >
+                <Edit2 size={level === 0 ? 14 : 12} />
+                <span className="hidden sm:inline">Editar</span>
+              </button>
+              <button 
+                type="button"
+                onClick={(e) => { e.preventDefault(); onDelete(category.id); }}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={level === 0 ? 14 : 12} />
+                <span className="hidden sm:inline">Excluir</span>
+              </button>
+            </>
           )}
         </div>
       </div>
       
       {hasSubcategories && (
-        <div className="space-y-2">
-          {subcategories.map(sub => (
-            <CategoryItem 
-              key={`sub-${sub.id}`}
-              category={sub}
-              allCategories={allCategories}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              canEdit={canEdit}
-              level={level + 1}
-            />
-          ))}
+        <div className="space-y-1">
+          {subcategories
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+            .map(sub => (
+              <CategoryItem 
+                key={`sub-${sub.id}`}
+                category={sub}
+                allCategories={allCategories}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                canEdit={canEdit}
+                level={level + 1}
+              />
+            ))}
         </div>
       )}
     </div>

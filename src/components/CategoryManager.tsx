@@ -131,7 +131,10 @@ export const CategoryManager: React.FC = () => {
         isLoading={isLoading}
         canEdit={canEdit}
         onDelete={handleDelete}
-        onEdit={setEditingCategory}
+        onEdit={(cat) => {
+          setEditingCategory(cat);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
     </div>
   );

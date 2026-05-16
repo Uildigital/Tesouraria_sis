@@ -165,13 +165,94 @@ app.get("/api/audit-logs", async (req, res) => {
   }
 });
 
+import crypto from 'crypto';
+
 app.get("/api/categories", async (req, res) => {
   try {
     const { data: categories, error } = await supabase
       .from('categories')
-      .select('*');
+      .select('*')
+      .order('name', { ascending: true });
     if (error) throw error;
     res.json(categories);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/categories", async (req, res) => {
+  try {
+    const categoryData = { ...req.body };
+    if (!categoryData.id) {
+      categoryData.id = crypto.randomUUID();
+    }
+
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([categoryData])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Criou Categoria', `Nome: ${categoryData.name}, Tipo: ${categoryData.type}`);
+    
+    res.json({ success: true, id: data.id, category: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/api/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('categories')
+      .update(req.body)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Atualizou Categoria', `ID: ${id}, Nome: ${req.body.name}`);
+    
+    res.json({ success: true, category: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Excluiu Categoria', `ID: ${id}`);
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/reset-categories", async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .not('id', 'is', null);
+    
+    if (error) throw error;
+    
+    await logAction(null, 'user', 'Resetou Categorias', 'Todas as categorias foram excluídas');
+    
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
