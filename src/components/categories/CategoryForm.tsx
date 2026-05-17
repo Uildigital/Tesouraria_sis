@@ -35,6 +35,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setShowDropdown(false);
     if (editingCategory) {
       setName(editingCategory.name || '');
       setType(editingCategory.type || 'income');
