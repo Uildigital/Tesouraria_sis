@@ -90,11 +90,10 @@ export const Reports: React.FC = () => {
 
   const filteredTransactions = transactions.filter(t => {
     const matchesType = filterType === 'all' || t.type === filterType;
-    const matchesAccount = accountFilter === 'all' || t.account === accountFilter;
-    
+    const matchesAccount = accountFilter === 'all' || (t.account || 'Corrente') === accountFilter;
+
     let matchesCategory = true;
     if (selectedCategoryIds.length > 0) {
-      // Get all effective IDs (selected + their descendants)
       const effectiveIds = new Set<string>();
       selectedCategoryIds.forEach(id => {
         effectiveIds.add(id);
@@ -102,8 +101,8 @@ export const Reports: React.FC = () => {
       });
       matchesCategory = effectiveIds.has(t.category_id);
     }
-    
-    return matchesType && matchesCategory;
+
+    return matchesType && matchesAccount && matchesCategory;
   });
 
   const toggleCategory = (id: string) => {
