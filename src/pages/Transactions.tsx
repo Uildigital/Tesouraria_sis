@@ -235,9 +235,9 @@ export const Transactions: React.FC = () => {
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       const matchesAccount = t.account === activeAccountTab;
       
-      const tDate = new Date(t.date);
-      const matchesMonth = tDate.getMonth() === selectedMonth;
-      const matchesYear = tDate.getFullYear() === selectedYear;
+      const [tYear, tMonth] = t.date.split('-').map(Number);
+      const matchesMonth = tMonth - 1 === selectedMonth;
+      const matchesYear = tYear === selectedYear;
       
       return matchesSearch && matchesStatus && matchesAccount && matchesMonth && matchesYear;
     })
@@ -299,8 +299,8 @@ export const Transactions: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Entradas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => {
-                const d = new Date(t.date);
-                return t.type === 'income' && t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                const [y, m] = t.date.split('-').map(Number);
+                return t.type === 'income' && t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
@@ -313,8 +313,8 @@ export const Transactions: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Saídas ({activeAccountTab})</p>
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => {
-                const d = new Date(t.date);
-                return t.type === 'expense' && t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                const [y, m] = t.date.split('-').map(Number);
+                return t.type === 'expense' && t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
@@ -328,13 +328,13 @@ export const Transactions: React.FC = () => {
             <p className={cn(
               "text-base sm:text-xl font-bold",
               transactions.filter(t => {
-                const d = new Date(t.date);
-                return t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                const [y, m] = t.date.split('-').map(Number);
+                return t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
             )}>
               {formatCurrency(transactions.filter(t => {
-                const d = new Date(t.date);
-                return t.account === activeAccountTab && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                const [y, m] = t.date.split('-').map(Number);
+                return t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
             </p>
           </div>
