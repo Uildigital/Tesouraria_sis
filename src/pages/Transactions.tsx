@@ -233,7 +233,7 @@ export const Transactions: React.FC = () => {
     .filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-      const matchesAccount = t.account === activeAccountTab;
+      const matchesAccount = (t.account || 'Corrente') === activeAccountTab;
       
       const [tYear, tMonth] = t.date.split('-').map(Number);
       const matchesMonth = tMonth - 1 === selectedMonth;
@@ -300,7 +300,7 @@ export const Transactions: React.FC = () => {
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => {
                 const [y, m] = t.date.split('-').map(Number);
-                return t.type === 'income' && t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
+                return t.type === 'income' && (t.account || 'Corrente') === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
@@ -314,7 +314,7 @@ export const Transactions: React.FC = () => {
             <p className="text-base sm:text-xl font-bold text-zinc-900 truncate">
               {formatCurrency(transactions.filter(t => {
                 const [y, m] = t.date.split('-').map(Number);
-                return t.type === 'expense' && t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
+                return t.type === 'expense' && (t.account || 'Corrente') === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + parseAmount(t.amount), 0))}
             </p>
           </div>
@@ -329,12 +329,12 @@ export const Transactions: React.FC = () => {
               "text-base sm:text-xl font-bold",
               transactions.filter(t => {
                 const [y, m] = t.date.split('-').map(Number);
-                return t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
+                return (t.account || 'Corrente') === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0) >= 0 ? "text-emerald-600" : "text-rose-600"
             )}>
               {formatCurrency(transactions.filter(t => {
                 const [y, m] = t.date.split('-').map(Number);
-                return t.account === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
+                return (t.account || 'Corrente') === activeAccountTab && m - 1 === selectedMonth && y === selectedYear;
               }).reduce((acc, t) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0))}
             </p>
           </div>
