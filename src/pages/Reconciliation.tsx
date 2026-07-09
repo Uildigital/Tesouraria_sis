@@ -152,6 +152,25 @@ export const Reconciliation: React.FC = () => {
     }
   };
 
+  const saveStatementData = async (newData: any) => {
+    if (!canEdit) return;
+    try {
+      const settings = await apiService.getSettings();
+      const reconDataRaw = settings?.reconciliations_data || '{}';
+      let reconData: any = {};
+      try { reconData = JSON.parse(reconDataRaw); } catch (e) {}
+
+      const key = `${selectedYear}-${selectedMonth}`;
+      reconData[key] = newData;
+
+      await apiService.updateSettings({
+        reconciliations_data: JSON.stringify(reconData)
+      });
+    } catch (e) {
+      console.error("Erro ao salvar automaticamente", e);
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!canEdit) return '';
     try {
@@ -263,6 +282,7 @@ export const Reconciliation: React.FC = () => {
                   type="number" step="0.01"
                   value={statementData.correnteValue}
                   onChange={(e) => setStatementData({ ...statementData, correnteValue: e.target.value })}
+                  onBlur={() => saveStatementData(statementData)}
                   readOnly={!canEdit}
                   className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
                   placeholder="0,00"
@@ -285,6 +305,7 @@ export const Reconciliation: React.FC = () => {
                   type="number" step="0.01"
                   value={statementData.poupancaValue}
                   onChange={(e) => setStatementData({ ...statementData, poupancaValue: e.target.value })}
+                  onBlur={() => saveStatementData(statementData)}
                   readOnly={!canEdit}
                   className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
                   placeholder="0,00"
@@ -310,7 +331,15 @@ export const Reconciliation: React.FC = () => {
                       {canEdit && (
                         <input type="file" onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, correnteUrl: url }); }
+                          if (file) { 
+                            const url = await handleFileUpload(file); 
+                            if (url) {
+                              const newData = { ...statementData, correnteUrl: url };
+                              setStatementData(newData); 
+                              await saveStatementData(newData);
+                              toast.success('Extrato salvo automaticamente!');
+                            } 
+                          }
                         }} className="hidden" id="cc-upload" accept="image/*,application/pdf" />
                       )}
                       <label htmlFor={canEdit ? "cc-upload" : undefined} className={cn("flex items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm", canEdit ? "cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all" : "opacity-60")}>
@@ -333,7 +362,15 @@ export const Reconciliation: React.FC = () => {
                       {canEdit && (
                         <input type="file" onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, poupancaUrl: url }); }
+                          if (file) { 
+                            const url = await handleFileUpload(file); 
+                            if (url) {
+                              const newData = { ...statementData, poupancaUrl: url };
+                              setStatementData(newData); 
+                              await saveStatementData(newData);
+                              toast.success('Extrato salvo automaticamente!');
+                            } 
+                          }
                         }} className="hidden" id="cp-upload" accept="image/*,application/pdf" />
                       )}
                       <label htmlFor={canEdit ? "cp-upload" : undefined} className={cn("flex items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm", canEdit ? "cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all" : "opacity-60")}>
