@@ -32,7 +32,7 @@ const parseAttachments = (url?: string): string[] => {
 };
 
 export const Reconciliation: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, canEdit } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -62,8 +62,20 @@ export const Reconciliation: React.FC = () => {
   const fetchReconciliationData = async () => {
     setLoading(true);
     try {
-      const transactions = await apiService.getTransactions();
+      const [transactions, settings] = await Promise.all([
+        apiService.getTransactions(),
+        apiService.getSettings()
+      ]);
       setAllTransactions(transactions || []);
+
+      const reconDataRaw = settings?.reconciliations_data || '{}';
+      let reconData: any = {};
+      try {
+        reconData = JSON.parse(reconDataRaw);
+      } catch (e) {}
+      
+      const key = `${selectedYear}-${selectedMonth}`;
+      const savedStatement = reconData[key] || { correnteValue: '', poupancaValue: '', correnteUrl: '', poupancaUrl: '' };
 
       const startOfNextMonth = new Date(selectedYear, selectedMonth + 1, 1);
       const limitStr = startOfNextMonth.toISOString().split('T')[0];
@@ -78,7 +90,7 @@ export const Reconciliation: React.FC = () => {
         .reduce((acc: number, t: any) => acc + (t.type === 'income' ? parseAmount(t.amount) : -parseAmount(t.amount)), 0);
 
       setSystemStats({ correnteTotal: correnteBalance, poupancaTotal: poupancaBalance });
-      setStatementData({ correnteValue: '', poupancaValue: '', correnteUrl: '', poupancaUrl: '' });
+      setStatementData(savedStatement);
     } catch (error: any) {
       toast.error('Erro ao buscar dados: ' + error.message);
     } finally {
@@ -104,6 +116,8 @@ export const Reconciliation: React.FC = () => {
   const transactionsWithAttachments = filteredTransactions.filter((t: any) => t.attachment_url);
 
   const handleApproveMonth = async () => {
+    if (!canEdit) return;
+    
     if (!statementData.correnteValue || !statementData.poupancaValue) {
       toast.warning('Por favor, informe os saldos dos extratos para continuar.');
       return;
@@ -115,9 +129,19 @@ export const Reconciliation: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
+      const settings = await apiService.getSettings();
+      const reconDataRaw = settings?.reconciliations_data || '{}';
+      let reconData: any = {};
+      try { reconData = JSON.parse(reconDataRaw); } catch (e) {}
+
+      const key = `${selectedYear}-${selectedMonth}`;
+      reconData[key] = statementData;
+
+      await apiService.updateSettings({
+        reconciliations_data: JSON.stringify(reconData)
+      });
+
       const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-      const details = `Mês: ${monthNames[selectedMonth]}/${selectedYear} - CC Extrato: ${statementData.correnteValue} (Sistema: ${systemStats.correnteTotal}) | Poupança Extrato: ${statementData.poupancaValue} (Sistema: ${systemStats.poupancaTotal})`;
-      console.log('Finalizing reconciliation:', details);
       toast.success(`Mês de ${monthNames[selectedMonth]} conferido com sucesso!`, {
         description: 'O registro de conferência foi salvo no histórico do sistema.'
       });
@@ -129,6 +153,7 @@ export const Reconciliation: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File) => {
+    if (!canEdit) return '';
     try {
       const url = await apiService.uploadFile(file, `reconciliations/${selectedYear}/${selectedMonth + 1}`);
       return url;
@@ -238,7 +263,8 @@ export const Reconciliation: React.FC = () => {
                   type="number" step="0.01"
                   value={statementData.correnteValue}
                   onChange={(e) => setStatementData({ ...statementData, correnteValue: e.target.value })}
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  readOnly={!canEdit}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
                   placeholder="0,00"
                 />
               </div>
@@ -259,7 +285,8 @@ export const Reconciliation: React.FC = () => {
                   type="number" step="0.01"
                   value={statementData.poupancaValue}
                   onChange={(e) => setStatementData({ ...statementData, poupancaValue: e.target.value })}
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  readOnly={!canEdit}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
                   placeholder="0,00"
                 />
               </div>
@@ -280,13 +307,15 @@ export const Reconciliation: React.FC = () => {
                   <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato C. Corrente</label>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <input type="file" onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, correnteUrl: url }); }
-                      }} className="hidden" id="cc-upload" accept="image/*,application/pdf" />
-                      <label htmlFor="cc-upload" className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all shadow-sm">
+                      {canEdit && (
+                        <input type="file" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, correnteUrl: url }); }
+                        }} className="hidden" id="cc-upload" accept="image/*,application/pdf" />
+                      )}
+                      <label htmlFor={canEdit ? "cc-upload" : undefined} className={cn("flex items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm", canEdit ? "cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all" : "opacity-60")}>
                         <Upload size={14} />
-                        {statementData.correnteUrl ? 'Trocar Arquivo' : 'Upload Extrato'}
+                        {statementData.correnteUrl ? 'Trocar Arquivo' : (canEdit ? 'Upload Extrato' : 'Sem Arquivo')}
                       </label>
                     </div>
                     {statementData.correnteUrl && (
@@ -301,13 +330,15 @@ export const Reconciliation: React.FC = () => {
                   <label className="block text-[10px] font-bold text-zinc-400 mb-1">Extrato Poupança</label>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <input type="file" onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, poupancaUrl: url }); }
-                      }} className="hidden" id="cp-upload" accept="image/*,application/pdf" />
-                      <label htmlFor="cp-upload" className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-emerald-500 hover:bg-emerald-50 transition-all shadow-sm">
+                      {canEdit && (
+                        <input type="file" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) { const url = await handleFileUpload(file); if (url) setStatementData({ ...statementData, poupancaUrl: url }); }
+                        }} className="hidden" id="cp-upload" accept="image/*,application/pdf" />
+                      )}
+                      <label htmlFor={canEdit ? "cp-upload" : undefined} className={cn("flex items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-600 shadow-sm", canEdit ? "cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all" : "opacity-60")}>
                         <Upload size={14} />
-                        {statementData.poupancaUrl ? 'Trocar Arquivo' : 'Upload Extrato'}
+                        {statementData.poupancaUrl ? 'Trocar Arquivo' : (canEdit ? 'Upload Extrato' : 'Sem Arquivo')}
                       </label>
                     </div>
                     {statementData.poupancaUrl && (
@@ -320,15 +351,17 @@ export const Reconciliation: React.FC = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleApproveMonth}
-              disabled={isSubmitting || loading}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 disabled:opacity-50"
-            >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                <><CheckCircle2 className="h-5 w-5" />Finalizar Conferência do Mês</>
-              )}
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleApproveMonth}
+                disabled={isSubmitting || loading}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                  <><CheckCircle2 className="h-5 w-5" />Finalizar Conferência do Mês</>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
