@@ -194,8 +194,11 @@ export const apiService = {
 
   // Settings
   async getSettings(): Promise<any> {
-    const res = await fetch(`${API_BASE}/settings`);
-    if (!res.ok) throw new Error('Failed to fetch settings');
+    const res = await fetch(`${API_BASE}/settings?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return {};
     return res.json();
   },
 
