@@ -464,8 +464,7 @@ app.post("/api/settings", async (req, res) => {
     const settings = req.body;
     const entries = Object.entries(settings).map(([key, value]) => ({
       key,
-      value,
-      updated_at: new Date().toISOString()
+      value
     }));
 
     for (const entry of entries) {
