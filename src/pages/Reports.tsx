@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Download, 
@@ -10,7 +10,10 @@ import {
   Loader2,
   ChevronDown,
   X,
-  Check
+  Check,
+  ArrowRight,
+  Wallet,
+  PieChart
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,7 +25,20 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const Reports: React.FC = () => {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const currentYearStr = new Date().getFullYear().toString();
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+
+  const [periodMode, setPeriodMode] = useState<'month' | 'year'>('month');
+  const [month, setMonth] = useState(currentMonthStr);
+  const [selectedYear, setSelectedYear] = useState(currentYearStr);
+  const [availableYears, setAvailableYears] = useState<string[]>([
+    (Number(currentYearStr) + 1).toString(),
+    currentYearStr,
+    (Number(currentYearStr) - 1).toString(),
+    (Number(currentYearStr) - 2).toString(),
+    (Number(currentYearStr) - 3).toString(),
+  ]);
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,24 +52,44 @@ export const Reports: React.FC = () => {
 
   useEffect(() => {
     fetchReportData();
-  }, [month]);
+  }, [month, selectedYear, periodMode]);
 
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      const [year, monthNum] = month.split('-').map(Number);
-      const startOfMonth = `${month}-01`;
-      const lastDay = new Date(year, monthNum, 0).getDate();
-      const endOfMonth = `${month}-${String(lastDay).padStart(2, '0')}`;
+      let startDate = '';
+      let endDate = '';
+
+      if (periodMode === 'year') {
+        startDate = `${selectedYear}-01-01`;
+        endDate = `${selectedYear}-12-31`;
+      } else {
+        const [yearNum, monthNum] = month.split('-').map(Number);
+        startDate = `${month}-01`;
+        const lastDay = new Date(yearNum, monthNum, 0).getDate();
+        endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+      }
 
       const [transData, catData] = await Promise.all([
         apiService.getTransactions(),
         apiService.getCategories()
       ]);
       
+      // Update available years from transactions data
+      if (transData && transData.length > 0) {
+        const yearsSet = new Set<string>(availableYears);
+        transData.forEach(t => {
+          if (t.date && t.date.length >= 4) {
+            const y = t.date.slice(0, 4);
+            if (!isNaN(Number(y))) yearsSet.add(y);
+          }
+        });
+        setAvailableYears(Array.from(yearsSet).sort((a, b) => Number(b) - Number(a)));
+      }
+
       const filtered = transData
         .filter(t => {
-          return t.date >= startOfMonth && t.date <= endOfMonth;
+          return t.date >= startDate && t.date <= endDate;
         })
         .sort((a, b) => {
           const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
@@ -137,14 +173,98 @@ export const Reports: React.FC = () => {
       ));
   };
 
+  const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+  const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+  const balance = income - expenses;
+
+  // Monthly breakdown for annual view
+  const monthlySummary = useMemo(() => {
+    if (periodMode !== 'year') return [];
+
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    return monthNames.map((name, index) => {
+      const monthPrefix = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+      const monthTrans = filteredTransactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+      const mIncome = monthTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      const mExpenses = monthTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      const mBalance = mIncome - mExpenses;
+
+      return {
+        monthIndex: index + 1,
+        monthStr: monthPrefix,
+        name,
+        shortName: name.slice(0, 3),
+        count: monthTrans.length,
+        income: mIncome,
+        expenses: mExpenses,
+        balance: mBalance
+      };
+    });
+  }, [periodMode, selectedYear, filteredTransactions]);
+
+  // Accounts summary
+  const accountSummary = useMemo(() => {
+    const correnteTrans = filteredTransactions.filter(t => (t.account || 'Corrente') === 'Corrente');
+    const poupancaTrans = filteredTransactions.filter(t => t.account === 'Poupança');
+
+    const cIncome = correnteTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+    const cExpenses = correnteTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+
+    const pIncome = poupancaTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+    const pExpenses = poupancaTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+
+    return {
+      corrente: { income: cIncome, expenses: cExpenses, balance: cIncome - cExpenses, count: correnteTrans.length },
+      poupanca: { income: pIncome, expenses: pExpenses, balance: pIncome - pExpenses, count: poupancaTrans.length }
+    };
+  }, [filteredTransactions]);
+
+  // Top categories for annual overview
+  const topCategories = useMemo(() => {
+    const expenseMap = new Map<string, number>();
+    const incomeMap = new Map<string, number>();
+
+    filteredTransactions.forEach(t => {
+      const name = t.category?.name || 'Sem categoria';
+      const val = parseAmount(t.amount);
+      if (t.type === 'expense') {
+        expenseMap.set(name, (expenseMap.get(name) || 0) + val);
+      } else {
+        incomeMap.set(name, (incomeMap.get(name) || 0) + val);
+      }
+    });
+
+    const topExpenses = Array.from(expenseMap.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    const topIncomes = Array.from(incomeMap.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    return { topExpenses, topIncomes };
+  }, [filteredTransactions]);
+
   const generatePDF = () => {
     if (filteredTransactions.length === 0) return;
     setIsExporting(true);
 
     try {
       const doc = new jsPDF();
-      const [year, monthNum] = month.split('-').map(Number);
-      const formattedMonth = format(new Date(year, monthNum - 1, 1), 'MMMM yyyy', { locale: ptBR });
+      let periodLabel = '';
+      if (periodMode === 'year') {
+        periodLabel = `Consolidado Anual - ${selectedYear}`;
+      } else {
+        const [yearNum, monthNum] = month.split('-').map(Number);
+        periodLabel = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: ptBR });
+        periodLabel = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
+      }
 
       // Header
       doc.setFontSize(22);
@@ -153,7 +273,7 @@ export const Reports: React.FC = () => {
       
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Balancete Financeiro - ${formattedMonth}`, 14, 30);
+      doc.text(`Balancete Financeiro - ${periodLabel}`, 14, 30);
       if (accountFilter !== 'all') {
         doc.setFontSize(10);
         doc.text(`Conta: ${accountFilter}`, 14, 36);
@@ -163,16 +283,55 @@ export const Reports: React.FC = () => {
       }
 
       // Summary
-      const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-      const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-      const balance = income - expenses;
-
       doc.setFontSize(10);
       doc.text(`Total de Entradas: ${formatCurrency(income)}`, 14, 45);
       doc.text(`Total de Saídas: ${formatCurrency(expenses)}`, 14, 50);
       doc.setFont('helvetica', 'bold');
       doc.text(`Saldo do Período: ${formatCurrency(balance)}`, 14, 55);
       doc.setFont('helvetica', 'normal');
+
+      let currentY = accountFilter !== 'all' ? 68 : 64;
+
+      // Se for modo Anual, adiciona resumo mês a mês no PDF
+      if (periodMode === 'year') {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 34, 56);
+        doc.text('Resumo Mensal do Ano', 14, currentY);
+        doc.setFont('helvetica', 'normal');
+
+        const monthlyRows = monthlySummary.map(m => [
+          m.name,
+          m.count.toString(),
+          formatCurrency(m.income),
+          formatCurrency(m.expenses),
+          formatCurrency(m.balance)
+        ]);
+
+        autoTable(doc, {
+          startY: currentY + 3,
+          head: [['Mês', 'Lançamentos', 'Entradas', 'Saídas', 'Saldo']],
+          body: monthlyRows,
+          headStyles: { fillColor: [38, 48, 68], textColor: [255, 255, 255] },
+          alternateRowStyles: { fillColor: [248, 249, 250] },
+          margin: { top: 20 },
+          styles: { fontSize: 8 }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 12;
+
+        if (currentY > 230) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 34, 56);
+        doc.text(`Lançamentos Detalhados (${filteredTransactions.length})`, 14, currentY);
+        doc.setFont('helvetica', 'normal');
+        currentY += 4;
+      }
 
       // Table
       const tableData = filteredTransactions.map(t => [
@@ -185,12 +344,13 @@ export const Reports: React.FC = () => {
       ]);
 
       autoTable(doc, {
-        startY: accountFilter !== 'all' ? 70 : 65,
+        startY: currentY,
         head: [['Data', 'Descrição', 'Conta', 'Categoria', 'Tipo', 'Valor']],
         body: tableData,
         headStyles: { fillColor: [26, 34, 56], textColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: [248, 249, 250] },
-        margin: { top: 65 },
+        margin: { top: 20 },
+        styles: { fontSize: 8 }
       });
 
       // Footer
@@ -198,11 +358,15 @@ export const Reports: React.FC = () => {
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
         doc.text(`Gerado por ChurchFinance em ${new Date().toLocaleString()}`, 14, 285);
         doc.text(`Página ${i} de ${pageCount}`, 180, 285);
       }
 
-      doc.save(`Balancete_${month}.pdf`);
+      const fileName = periodMode === 'year'
+        ? `Balancete_Anual_${selectedYear}.pdf`
+        : `Balancete_${month}.pdf`;
+      doc.save(fileName);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Erro ao gerar PDF. Tente novamente.');
@@ -210,9 +374,6 @@ export const Reports: React.FC = () => {
       setIsExporting(false);
     }
   };
-
-  const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-  const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
 
   return (
     <div className="space-y-10 pb-12">
@@ -224,7 +385,7 @@ export const Reports: React.FC = () => {
         <div className="flex gap-3">
           <button 
             onClick={() => window.print()}
-            className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all"
+            className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all cursor-pointer"
           >
             <Printer className="mr-2 h-5 w-5" />
             <span className="hidden sm:inline">Imprimir</span>
@@ -232,7 +393,7 @@ export const Reports: React.FC = () => {
           <button 
             onClick={generatePDF}
             disabled={isExporting || filteredTransactions.length === 0}
-            className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50"
+            className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isExporting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
             <span className="hidden sm:inline">Exportar PDF</span>
@@ -242,28 +403,77 @@ export const Reports: React.FC = () => {
       </div>
 
       <div className="premium-card p-8">
-        <div className="mb-10 flex flex-col gap-8 border-b border-zinc-100 pb-8">
-          <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col gap-8 border-b border-zinc-100 pb-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
               <div className="rounded-2xl bg-indigo-50 p-4">
                 <FileText className="h-8 w-8 text-indigo-600" />
               </div>
               <div>
-                <h3 className="font-display text-2xl font-bold text-zinc-900">Balancete Mensal</h3>
-                <p className="text-sm text-zinc-500">Relatório consolidado de movimentações.</p>
+                <h3 className="font-display text-2xl font-bold text-zinc-900">
+                  {periodMode === 'year' ? `Balancete Anual (${selectedYear})` : 'Balancete Mensal'}
+                </h3>
+                <p className="text-sm text-zinc-500">
+                  {periodMode === 'year'
+                    ? `Visão e relatórios consolidados de todo o ano de ${selectedYear}.`
+                    : 'Relatório consolidado de movimentações do mês.'}
+                </p>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">Mês de Referência</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                <input 
-                  type="month" 
-                  value={month}
-                  onChange={(e) => setMonth(e.target.value)}
-                  className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
-                />
+
+            {/* Controle de Seleção do Período: Mensal vs Ano Todo */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="inline-flex rounded-xl bg-zinc-100 p-1 border border-zinc-200">
+                <button
+                  type="button"
+                  onClick={() => setPeriodMode('month')}
+                  className={cn(
+                    "px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    periodMode === 'month'
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-900"
+                  )}
+                >
+                  Mensal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPeriodMode('year')}
+                  className={cn(
+                    "px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    periodMode === 'year'
+                      ? "bg-white text-zinc-900 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-900"
+                  )}
+                >
+                  Ano Todo
+                </button>
               </div>
+
+              {periodMode === 'month' ? (
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <input 
+                    type="month" 
+                    value={month}
+                    onChange={(e) => setMonth(e.target.value)}
+                    className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
+                  />
+                </div>
+              ) : (
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-8 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {availableYears.map(y => (
+                      <option key={y} value={y}>Ano {y}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 
@@ -273,7 +483,7 @@ export const Reports: React.FC = () => {
               <select 
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
               >
                 <option value="all">Todos os Tipos</option>
                 <option value="income">Entradas</option>
@@ -285,7 +495,7 @@ export const Reports: React.FC = () => {
               <select 
                 value={accountFilter}
                 onChange={(e) => setAccountFilter(e.target.value as any)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
               >
                 <option value="all">Todas as Contas</option>
                 <option value="Corrente">Conta Corrente</option>
@@ -296,8 +506,9 @@ export const Reports: React.FC = () => {
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Categorias (Pai/Filho)</label>
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)}
-                  className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                  className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
                 >
                   <span className="truncate">
                     {selectedCategoryIds.length === 0 
@@ -318,8 +529,9 @@ export const Reports: React.FC = () => {
                         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Categorias</span>
                         {selectedCategoryIds.length > 0 && (
                           <button 
+                            type="button"
                             onClick={() => setSelectedCategoryIds([])}
-                            className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600"
+                            className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600 cursor-pointer"
                           >
                             Limpar
                           </button>
@@ -337,7 +549,7 @@ export const Reports: React.FC = () => {
                     return (
                       <span key={id} className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
                         {cat?.name}
-                        <button onClick={() => toggleCategory(id)} className="ml-1 hover:text-rose-500">
+                        <button type="button" onClick={() => toggleCategory(id)} className="ml-1 hover:text-rose-500 cursor-pointer">
                           <X size={10} />
                         </button>
                       </span>
@@ -349,84 +561,298 @@ export const Reports: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3 mb-10">
+        {/* Resumo Financeiro / Indicadores */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="rounded-2xl bg-emerald-50/50 p-4 sm:p-6 border border-emerald-100">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Entradas</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                  {periodMode === 'year' ? 'Entradas do Ano' : 'Entradas'}
+                </span>
+              </div>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-emerald-700 truncate">{formatCurrency(income)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-700 truncate">{formatCurrency(income)}</p>
+            {periodMode === 'year' && (
+              <p className="mt-1 text-[11px] text-emerald-600 font-medium">
+                Média mensal: {formatCurrency(income / 12)}
+              </p>
+            )}
           </div>
+
           <div className="rounded-2xl bg-rose-50/50 p-4 sm:p-6 border border-rose-100">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="h-4 w-4 text-rose-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Saídas</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-rose-600" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">
+                  {periodMode === 'year' ? 'Saídas do Ano' : 'Saídas'}
+                </span>
+              </div>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-rose-700 truncate">{formatCurrency(expenses)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-rose-700 truncate">{formatCurrency(expenses)}</p>
+            {periodMode === 'year' && (
+              <p className="mt-1 text-[11px] text-rose-600 font-medium">
+                Média mensal: {formatCurrency(expenses / 12)}
+              </p>
+            )}
           </div>
-          <div className="rounded-2xl bg-indigo-50/50 p-4 sm:p-6 border border-indigo-100 col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2 mb-2">
-              <FileCheck className="h-4 w-4 text-indigo-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Saldo</span>
+
+          <div className="rounded-2xl bg-indigo-50/50 p-4 sm:p-6 border border-indigo-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-indigo-600" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
+                  {periodMode === 'year' ? 'Saldo Anual' : 'Saldo'}
+                </span>
+              </div>
             </div>
-            <p className="text-lg sm:text-2xl font-bold text-indigo-700 truncate">{formatCurrency(income - expenses)}</p>
+            <p className={cn(
+              "text-xl sm:text-2xl font-bold truncate",
+              balance >= 0 ? "text-indigo-700" : "text-rose-600"
+            )}>
+              {formatCurrency(balance)}
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500 font-medium">
+              {balance >= 0 ? 'Resultado positivo (superávit)' : 'Resultado negativo (déficit)'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-zinc-50 p-4 sm:p-6 border border-zinc-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-zinc-600" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Lançamentos</span>
+              </div>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-zinc-800 truncate">
+              {filteredTransactions.length}
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-500 truncate">
+              Corrente: {accountSummary.corrente.count} | Poupança: {accountSummary.poupanca.count}
+            </p>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-100">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                <tr>
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Descrição</th>
-                  <th className="px-6 py-4">Conta</th>
-                  <th className="px-6 py-4">Categoria</th>
-                  <th className="px-6 py-4 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50">
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
-                    </td>
-                  </tr>
-                ) : filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-medium">
-                      Nenhum lançamento encontrado para os filtros selecionados.
-                    </td>
-                  </tr>
+        {/* Módulo Especial: Visão Anual Consolidada (Mês a Mês e Outros Dados) */}
+        {periodMode === 'year' && (
+          <div className="mb-10 space-y-8 animate-in fade-in duration-300">
+            {/* Grid Mês a Mês */}
+            <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/40 p-5 sm:p-6">
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h4 className="font-display text-lg font-bold text-zinc-900">Resumo Mês a Mês ({selectedYear})</h4>
+                  <p className="text-xs text-zinc-500">Entradas, saídas e resultado consolidado de cada mês do ano.</p>
+                </div>
+                <span className="text-xs font-semibold text-zinc-400">
+                  Total de 12 meses
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {monthlySummary.map(m => {
+                  const hasData = m.count > 0;
+                  return (
+                    <div 
+                      key={m.monthIndex} 
+                      className={cn(
+                        "rounded-xl border p-3.5 transition-all bg-white",
+                        hasData ? "border-zinc-200 shadow-2xs hover:border-indigo-200" : "border-dashed border-zinc-200/70 bg-white/60 opacity-60"
+                      )}
+                    >
+                      <div className="flex items-center justify-between border-b border-zinc-100 pb-2 mb-2.5">
+                        <span className="font-bold text-sm text-zinc-800">{m.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMonth(m.monthStr);
+                            setPeriodMode('month');
+                          }}
+                          className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 cursor-pointer"
+                          title={`Filtrar somente o mês de ${m.name}`}
+                        >
+                          Ver mês <ArrowRight size={10} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-500">Entradas:</span>
+                          <span className="font-semibold text-emerald-600">+{formatCurrency(m.income)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-zinc-500">Saídas:</span>
+                          <span className="font-semibold text-rose-600">-{formatCurrency(m.expenses)}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-zinc-100 font-bold">
+                          <span className="text-zinc-700">Saldo:</span>
+                          <span className={m.balance >= 0 ? "text-indigo-700" : "text-rose-600"}>
+                            {formatCurrency(m.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Outros Dados: Divisão por Contas e Principais Categorias no Ano */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Resumo por Contas */}
+              <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-2xs">
+                <div className="flex items-center gap-2 mb-4">
+                  <Wallet className="h-5 w-5 text-indigo-600" />
+                  <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">Movimentação por Conta ({selectedYear})</h4>
+                </div>
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-zinc-50 p-4 border border-zinc-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-zinc-800 text-sm">Conta Corrente</span>
+                      <span className="text-xs text-zinc-500">{accountSummary.corrente.count} lançamentos</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Entradas</span>
+                        <span className="font-semibold text-emerald-600">+{formatCurrency(accountSummary.corrente.income)}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Saídas</span>
+                        <span className="font-semibold text-rose-600">-{formatCurrency(accountSummary.corrente.expenses)}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Resultado</span>
+                        <span className={cn("font-bold", accountSummary.corrente.balance >= 0 ? "text-indigo-700" : "text-rose-600")}>
+                          {formatCurrency(accountSummary.corrente.balance)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-zinc-50 p-4 border border-zinc-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-zinc-800 text-sm">Conta Poupança</span>
+                      <span className="text-xs text-zinc-500">{accountSummary.poupanca.count} lançamentos</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Entradas</span>
+                        <span className="font-semibold text-emerald-600">+{formatCurrency(accountSummary.poupanca.income)}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Saídas</span>
+                        <span className="font-semibold text-rose-600">-{formatCurrency(accountSummary.poupanca.expenses)}</span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400 block text-[10px] uppercase font-bold">Resultado</span>
+                        <span className={cn("font-bold", accountSummary.poupanca.balance >= 0 ? "text-indigo-700" : "text-rose-600")}>
+                          {formatCurrency(accountSummary.poupanca.balance)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Principais Categorias no Ano */}
+              <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-2xs">
+                <div className="flex items-center gap-2 mb-4">
+                  <PieChart className="h-5 w-5 text-indigo-600" />
+                  <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">Principais Despesas no Ano</h4>
+                </div>
+
+                {topCategories.topExpenses.length === 0 ? (
+                  <p className="text-xs text-zinc-400 py-6 text-center">Nenhuma saída registrada no período.</p>
                 ) : (
-                  filteredTransactions.map((t) => (
-                    <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
-                      <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
-                      <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
-                      <td className="px-6 py-4">
-                        <span className={cn(
-                          "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
-                          t.account === 'Poupança' ? "bg-indigo-50 text-indigo-700" : "bg-zinc-100 text-zinc-700"
-                        )}>
-                          {t.account || 'Corrente'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
-                          {t.category?.name}
-                        </span>
-                      </td>
-                      <td className={cn(
-                        "px-6 py-4 text-right font-bold",
-                        t.type === 'income' ? "text-emerald-600" : "text-rose-600"
-                      )}>
-                        {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                  <div className="space-y-3">
+                    {topCategories.topExpenses.map((cat, idx) => {
+                      const percentage = expenses > 0 ? (cat.total / expenses) * 100 : 0;
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-medium text-zinc-700 truncate">{cat.name}</span>
+                            <span className="font-bold text-zinc-900">{formatCurrency(cat.total)} ({percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+                            <div 
+                              className="h-full bg-rose-500 rounded-full" 
+                              style={{ width: `${Math.min(percentage, 100)}%` }} 
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tabela de Lançamentos */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-sm text-zinc-800 uppercase tracking-wider">
+              {periodMode === 'year' 
+                ? `Todos os Lançamentos do Ano (${filteredTransactions.length})` 
+                : `Lançamentos do Mês (${filteredTransactions.length})`}
+            </h4>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-zinc-100">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  <tr>
+                    <th className="px-6 py-4">Data</th>
+                    <th className="px-6 py-4">Descrição</th>
+                    <th className="px-6 py-4">Conta</th>
+                    <th className="px-6 py-4">Categoria</th>
+                    <th className="px-6 py-4 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-medium">
+                        Nenhum lançamento encontrado para os filtros selecionados.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTransactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="px-6 py-4 text-zinc-600 font-medium">{formatDate(t.date)}</td>
+                        <td className="px-6 py-4 font-bold text-zinc-900">{t.description}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                            t.account === 'Poupança' ? "bg-indigo-50 text-indigo-700" : "bg-zinc-100 text-zinc-700"
+                          )}>
+                            {t.account || 'Corrente'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-600">
+                            {t.category?.name || '-'}
+                          </span>
+                        </td>
+                        <td className={cn(
+                          "px-6 py-4 text-right font-bold",
+                          t.type === 'income' ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

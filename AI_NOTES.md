@@ -24,3 +24,15 @@ Este documento registra as implementações recentes para que as próximas sess�
 ### 5. Correção de Cache Agressivo (Vercel / Navegador)
 - **Problema:** Mesmo com os dados salvos no banco, o Conferente não conseguia visualizar porque a requisição de busca ficava travada em cache.
 - **Solução:** Foram inseridas instruções anti-cache (`cache: 'no-store'` e adição de Timestamp `?t=${Date.now()}`) no `apiService.ts` (`getSettings`), e foi adicionado um header de `Cache-Control` explícito no `api/index.ts` do backend para garantir que as buscas do Supabase sejam sempre em tempo real.
+
+## Modificações no Módulo de Relatórios (Reports.tsx)
+
+### Filtro de Ano Todo e Balancete Anual
+- **Funcionalidade:** Adicionado seletor de período para alternar entre "Mensal" e "Ano Todo".
+- **Visão Anual:**
+  - Exibição de totais anuais de entradas, saídas e saldo, com cálculo de média mensal.
+  - Grade com resumo consolidado mês a mês (12 meses) com atalho para abrir o mês diretamente.
+  - Detalhamento de movimentação por conta (Corrente e Poupança) no ano.
+  - Gráfico visual das principais despesas do ano por categoria.
+  - Tabela completa de lançamentos filtrados para o ano selecionado.
+  - Exportação em PDF atualizada para gerar o Balancete Financeiro Anual consolidado.
