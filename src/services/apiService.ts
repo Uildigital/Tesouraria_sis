@@ -8,6 +8,20 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const API_BASE = '/api';
 
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('church_user') : null;
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u.email) headers['x-user-email'] = u.email;
+      if (u.id) headers['x-user-id'] = u.id;
+      if (u.full_name) headers['x-user-name'] = encodeURIComponent(u.full_name);
+    }
+  } catch (e) {}
+  return headers;
+}
+
 export const apiService = {
   // Transactions
   async getTransactions(): Promise<Transaction[]> {
@@ -22,7 +36,7 @@ export const apiService = {
   async createTransaction(data: Partial<Transaction>): Promise<{ success: boolean; id: string }> {
     const res = await fetch(`${API_BASE}/transactions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) {
@@ -35,7 +49,7 @@ export const apiService = {
   async updateTransaction(id: string, data: Partial<Transaction>): Promise<{ success: boolean }> {
     const res = await fetch(`${API_BASE}/transactions/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) {
@@ -48,6 +62,7 @@ export const apiService = {
   async deleteTransaction(id: string): Promise<{ success: boolean }> {
     const res = await fetch(`${API_BASE}/transactions/${id}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: 'Falha ao excluir transação' }));
@@ -147,6 +162,39 @@ export const apiService = {
       throw new Error(error.error || 'Erro ao criar conta');
     }
     return res.json();
+  },
+
+  async logout(userData?: any): Promise<{ success: boolean }> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(userData || {}),
+      });
+      return res.json();
+    } catch (e) {
+      return { success: false };
+    }
+  },
+
+  async logAccess(action: string, details: string): Promise<{ success: boolean }> {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('church_user') : null;
+      const u = raw ? JSON.parse(raw) : {};
+      const res = await fetch(`${API_BASE}/audit-logs`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          user_id: u.id || null,
+          user_email: u.email || 'sistema',
+          action,
+          details
+        }),
+      });
+      return res.json();
+    } catch (e) {
+      return { success: false };
+    }
   },
 
   async getUsers(): Promise<any[]> {

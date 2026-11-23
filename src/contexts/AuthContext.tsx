@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Profile } from '../types';
+import { apiService } from '../services/apiService';
 
 interface AuthContextType {
   session: any | null;
@@ -54,6 +55,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    try {
+      if (user) {
+        await apiService.logout({
+          user_id: user.id,
+          user_email: user.email,
+          full_name: user.full_name
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao registrar log de saída:', e);
+    }
     localStorage.removeItem('church_user');
     setSession(null);
     setUser(null);
