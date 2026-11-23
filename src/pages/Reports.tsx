@@ -1460,157 +1460,492 @@ export const Reports: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* KPI Cards Comparativos */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Entradas Comparadas */}
-              <div className="rounded-2xl bg-emerald-50/50 p-5 sm:p-6 border border-emerald-100">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-emerald-600" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-                      Entradas do Exercício
-                    </span>
+              {/* 1. ENTRADAS COMPARADAS */}
+              <div className="flex flex-col justify-between rounded-2xl border border-emerald-200/70 bg-gradient-to-b from-white to-emerald-50/20 p-5 shadow-2xs hover:shadow-xs transition-all">
+                <div>
+                  {/* Topo do Card: Título e Diferença Principal */}
+                  <div className="flex items-start justify-between gap-2 pb-3 mb-3 border-b border-emerald-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shadow-2xs">
+                        <TrendingUp className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                          Entradas do Exercício
+                        </h4>
+                        <span className="text-[10px] text-zinc-500 font-medium">
+                          {selectedYear} vs {compareYear}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold shadow-2xs",
+                          comparativeData.hasAnyDeductions
+                            ? (comparativeData.consolidatedIncomeGrowth === null ? "bg-zinc-100 text-zinc-600" : comparativeData.consolidatedIncomeGrowth >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                            : (comparativeData.totalIncomeGrowth === null ? "bg-zinc-100 text-zinc-600" : comparativeData.totalIncomeGrowth >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                        )}>
+                          {comparativeData.hasAnyDeductions ? (
+                            <>
+                              {comparativeData.consolidatedIncomeGrowth !== null && (
+                                comparativeData.consolidatedIncomeGrowth >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />
+                              )}
+                              {comparativeData.consolidatedIncomeGrowth === null ? '-' : `${comparativeData.consolidatedIncomeGrowth >= 0 ? '+' : ''}${comparativeData.consolidatedIncomeGrowth.toFixed(1)}%`}
+                            </>
+                          ) : (
+                            <>
+                              {comparativeData.totalIncomeGrowth !== null && (
+                                comparativeData.totalIncomeGrowth >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />
+                              )}
+                              {comparativeData.totalIncomeGrowth === null ? '-' : `${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%`}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <span className="mt-1 text-[10px] font-bold text-zinc-600">
+                        Dif: {comparativeData.hasAnyDeductions
+                          ? `${comparativeData.consolidatedIncomeDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.consolidatedIncomeDiff)}`
+                          : `${comparativeData.totalIncomeDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.totalIncomeDiff)}`
+                        }
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={cn(
-                      "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold",
-                      comparativeData.totalIncomeDiff >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                    )}>
+
+                  {/* Comparativo dos Dois Anos em Sub-Cards Balanceados */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Exercício Atual (Y1) */}
+                    <div className="rounded-xl bg-white p-3 border border-emerald-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-emerald-950 uppercase tracking-wide">
+                          {selectedYear}
+                        </span>
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800 uppercase">
+                          Atual
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 block">
+                              Líquido Igreja
+                            </span>
+                            <p className="text-base sm:text-lg font-black text-emerald-700 leading-tight truncate">
+                              {formatCurrency(comparativeData.consolidatedY1Income)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-100 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className="font-semibold text-zinc-700">{formatCurrency(comparativeData.totalY1Income)}</span>
+                            </div>
+                            {comparativeData.y1DeductionIncome > 0 && (
+                              <div className="flex justify-between text-amber-700 truncate">
+                                <span>Dedução:</span>
+                                <span className="font-semibold">-{formatCurrency(comparativeData.y1DeductionIncome)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Total Entradas
+                          </span>
+                          <p className="text-base sm:text-lg font-black text-emerald-700 leading-tight truncate">
+                            {formatCurrency(comparativeData.totalY1Income)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Exercício Anterior (Y2) */}
+                    <div className="rounded-xl bg-zinc-50/80 p-3 border border-zinc-200/80">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">
+                          {compareYear}
+                        </span>
+                        <span className="rounded bg-zinc-200/80 px-1.5 py-0.2 text-[9px] font-bold text-zinc-600 uppercase">
+                          Anterior
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">
+                              Líquido Igreja
+                            </span>
+                            <p className="text-base sm:text-lg font-bold text-zinc-700 leading-tight truncate">
+                              {formatCurrency(comparativeData.consolidatedY2Income)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-200/60 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className="font-semibold text-zinc-600">{formatCurrency(comparativeData.totalY2Income)}</span>
+                            </div>
+                            {comparativeData.y2DeductionIncome > 0 && (
+                              <div className="flex justify-between text-amber-700 truncate">
+                                <span>Dedução:</span>
+                                <span className="font-semibold">-{formatCurrency(comparativeData.y2DeductionIncome)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Total Entradas
+                          </span>
+                          <p className="text-base sm:text-lg font-bold text-zinc-600 leading-tight truncate">
+                            {formatCurrency(comparativeData.totalY2Income)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé: Movimentação Geral (Bruta) */}
+                {comparativeData.hasAnyDeductions && (
+                  <div className="mt-3 pt-2.5 border-t border-emerald-100 flex items-center justify-between text-[10px] text-zinc-500">
+                    <span className="font-medium">Movimentação Bruta:</span>
+                    <span className="font-bold text-zinc-700">
                       Dif: {comparativeData.totalIncomeDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalIncomeDiff)}
-                    </span>
-                    <span className={cn(
-                      "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
-                      comparativeData.totalIncomeGrowth === null
-                        ? "bg-zinc-100 text-zinc-600"
-                        : comparativeData.totalIncomeGrowth >= 0
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-rose-100 text-rose-800"
-                    )}>
-                      {comparativeData.totalIncomeGrowth !== null && (
-                        comparativeData.totalIncomeGrowth >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />
-                      )}
-                      {comparativeData.totalIncomeGrowth === null ? '-' : `${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%`}
+                      {comparativeData.totalIncomeGrowth !== null && ` (${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%)`}
                     </span>
                   </div>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
-                    <p className="text-xl sm:text-2xl font-bold text-emerald-700">{formatCurrency(comparativeData.totalY1Income)}</p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                        Líq: {formatCurrency(comparativeData.consolidatedY1Income)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
-                    <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Income)}</p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
-                        Líq: {formatCurrency(comparativeData.consolidatedY2Income)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Saídas Comparadas */}
-              <div className="rounded-2xl bg-rose-50/50 p-5 sm:p-6 border border-rose-100">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4 text-rose-600" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">
-                      Saídas do Exercício
-                    </span>
+              {/* 2. SAÍDAS COMPARADAS */}
+              <div className="flex flex-col justify-between rounded-2xl border border-rose-200/70 bg-gradient-to-b from-white to-rose-50/20 p-5 shadow-2xs hover:shadow-xs transition-all">
+                <div>
+                  {/* Topo do Card */}
+                  <div className="flex items-start justify-between gap-2 pb-3 mb-3 border-b border-rose-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 shadow-2xs">
+                        <TrendingDown className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-rose-950">
+                          Saídas do Exercício
+                        </h4>
+                        <span className="text-[10px] text-zinc-500 font-medium">
+                          {selectedYear} vs {compareYear}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold shadow-2xs",
+                          comparativeData.hasAnyDeductions
+                            ? (comparativeData.consolidatedExpenseGrowth === null ? "bg-zinc-100 text-zinc-600" : comparativeData.consolidatedExpenseGrowth <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                            : (comparativeData.totalExpenseGrowth === null ? "bg-zinc-100 text-zinc-600" : comparativeData.totalExpenseGrowth <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                        )}>
+                          {comparativeData.hasAnyDeductions ? (
+                            <>
+                              {comparativeData.consolidatedExpenseGrowth !== null && (
+                                comparativeData.consolidatedExpenseGrowth <= 0 ? <ArrowDownRight size={13} /> : <ArrowUpRight size={13} />
+                              )}
+                              {comparativeData.consolidatedExpenseGrowth === null ? '-' : `${comparativeData.consolidatedExpenseGrowth >= 0 ? '+' : ''}${comparativeData.consolidatedExpenseGrowth.toFixed(1)}%`}
+                            </>
+                          ) : (
+                            <>
+                              {comparativeData.totalExpenseGrowth !== null && (
+                                comparativeData.totalExpenseGrowth <= 0 ? <ArrowDownRight size={13} /> : <ArrowUpRight size={13} />
+                              )}
+                              {comparativeData.totalExpenseGrowth === null ? '-' : `${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%`}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <span className="mt-1 text-[10px] font-bold text-zinc-600">
+                        Dif: {comparativeData.hasAnyDeductions
+                          ? `${comparativeData.consolidatedExpenseDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.consolidatedExpenseDiff)}`
+                          : `${comparativeData.totalExpenseDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.totalExpenseDiff)}`
+                        }
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={cn(
-                      "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold",
-                      comparativeData.totalExpenseDiff <= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                    )}>
+
+                  {/* Comparativo dos Dois Anos */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Exercício Atual (Y1) */}
+                    <div className="rounded-xl bg-white p-3 border border-rose-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-rose-950 uppercase tracking-wide">
+                          {selectedYear}
+                        </span>
+                        <span className="rounded bg-rose-100 px-1.5 py-0.2 text-[9px] font-bold text-rose-800 uppercase">
+                          Atual
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 block">
+                              Líquido Igreja
+                            </span>
+                            <p className="text-base sm:text-lg font-black text-rose-700 leading-tight truncate">
+                              {formatCurrency(comparativeData.consolidatedY1Expense)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-100 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className="font-semibold text-zinc-700">{formatCurrency(comparativeData.totalY1Expense)}</span>
+                            </div>
+                            {comparativeData.y1DeductionExpense > 0 && (
+                              <div className="flex justify-between text-amber-700 truncate">
+                                <span>Dedução:</span>
+                                <span className="font-semibold">-{formatCurrency(comparativeData.y1DeductionExpense)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Total Saídas
+                          </span>
+                          <p className="text-base sm:text-lg font-black text-rose-700 leading-tight truncate">
+                            {formatCurrency(comparativeData.totalY1Expense)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Exercício Anterior (Y2) */}
+                    <div className="rounded-xl bg-zinc-50/80 p-3 border border-zinc-200/80">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">
+                          {compareYear}
+                        </span>
+                        <span className="rounded bg-zinc-200/80 px-1.5 py-0.2 text-[9px] font-bold text-zinc-600 uppercase">
+                          Anterior
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">
+                              Líquido Igreja
+                            </span>
+                            <p className="text-base sm:text-lg font-bold text-zinc-700 leading-tight truncate">
+                              {formatCurrency(comparativeData.consolidatedY2Expense)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-200/60 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className="font-semibold text-zinc-600">{formatCurrency(comparativeData.totalY2Expense)}</span>
+                            </div>
+                            {comparativeData.y2DeductionExpense > 0 && (
+                              <div className="flex justify-between text-amber-700 truncate">
+                                <span>Dedução:</span>
+                                <span className="font-semibold">-{formatCurrency(comparativeData.y2DeductionExpense)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Total Saídas
+                          </span>
+                          <p className="text-base sm:text-lg font-bold text-zinc-600 leading-tight truncate">
+                            {formatCurrency(comparativeData.totalY2Expense)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé */}
+                {comparativeData.hasAnyDeductions && (
+                  <div className="mt-3 pt-2.5 border-t border-rose-100 flex items-center justify-between text-[10px] text-zinc-500">
+                    <span className="font-medium">Movimentação Bruta:</span>
+                    <span className="font-bold text-zinc-700">
                       Dif: {comparativeData.totalExpenseDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalExpenseDiff)}
-                    </span>
-                    <span className={cn(
-                      "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
-                      comparativeData.totalExpenseGrowth === null
-                        ? "bg-zinc-100 text-zinc-600"
-                        : comparativeData.totalExpenseGrowth <= 0
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-rose-100 text-rose-800"
-                    )}
-                      title={comparativeData.totalExpenseGrowth === null ? "Base comparativa incompleta no ano anterior (faltam meses)" : undefined}
-                    >
-                      {comparativeData.totalExpenseGrowth !== null && (
-                        comparativeData.totalExpenseGrowth <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />
-                      )}
-                      {comparativeData.totalExpenseGrowth === null ? '-' : `${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%`}
+                      {comparativeData.totalExpenseGrowth !== null && ` (${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%)`}
                     </span>
                   </div>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
-                    <p className="text-xl sm:text-2xl font-bold text-rose-700">{formatCurrency(comparativeData.totalY1Expense)}</p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-semibold text-rose-800 bg-rose-100/70 px-1.5 py-0.5 rounded">
-                        Líq: {formatCurrency(comparativeData.consolidatedY1Expense)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
-                    <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Expense)}</p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
-                        Líq: {formatCurrency(comparativeData.consolidatedY2Expense)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Saldo Comparado */}
-              <div className="rounded-2xl bg-indigo-50/50 p-5 sm:p-6 border border-indigo-100 sm:col-span-2 lg:col-span-1">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileCheck className="h-4 w-4 text-indigo-600" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
-                      Saldo do Exercício
+              {/* 3. SALDO COMPARADO */}
+              <div className="flex flex-col justify-between rounded-2xl border border-indigo-200/70 bg-gradient-to-b from-white to-indigo-50/20 p-5 shadow-2xs hover:shadow-xs transition-all sm:col-span-2 lg:col-span-1">
+                <div>
+                  {/* Topo do Card */}
+                  <div className="flex items-start justify-between gap-2 pb-3 mb-3 border-b border-indigo-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 shadow-2xs">
+                        <FileCheck className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-950">
+                          Saldo do Exercício
+                        </h4>
+                        <span className="text-[10px] text-zinc-500 font-medium">
+                          {selectedYear} vs {compareYear}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <span className={cn(
+                        "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold shadow-2xs",
+                        comparativeData.hasAnyDeductions
+                          ? (comparativeData.consolidatedBalanceDiff >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                          : (comparativeData.totalBalanceDiff >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")
+                      )}>
+                        Dif: {comparativeData.hasAnyDeductions
+                          ? `${comparativeData.consolidatedBalanceDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.consolidatedBalanceDiff)}`
+                          : `${comparativeData.totalBalanceDiff >= 0 ? '+' : ''}${formatCurrency(comparativeData.totalBalanceDiff)}`
+                        }
+                      </span>
+                      <span className="mt-1 text-[10px] font-medium text-zinc-500">
+                        {comparativeData.hasAnyDeductions ? "Diferença Líquida" : "Diferença Acumulada"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comparativo dos Dois Anos */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Exercício Atual (Y1) */}
+                    <div className="rounded-xl bg-white p-3 border border-indigo-200/80 shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-indigo-950 uppercase tracking-wide">
+                          {selectedYear}
+                        </span>
+                        <span className="rounded bg-indigo-100 px-1.5 py-0.2 text-[9px] font-bold text-indigo-800 uppercase">
+                          Atual
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-700 block">
+                              Líquido Igreja
+                            </span>
+                            <p className={cn(
+                              "text-base sm:text-lg font-black leading-tight truncate",
+                              comparativeData.consolidatedY1Balance >= 0 ? "text-indigo-700" : "text-rose-600"
+                            )}>
+                              {formatCurrency(comparativeData.consolidatedY1Balance)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-100 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className={cn(
+                                "font-semibold",
+                                comparativeData.totalY1Balance >= 0 ? "text-zinc-700" : "text-rose-600"
+                              )}>
+                                {formatCurrency(comparativeData.totalY1Balance)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-amber-700 truncate">
+                              <span>Saldo Repasses:</span>
+                              <span className="font-semibold">
+                                {comparativeData.y1DeductionBalance >= 0 ? '+' : ''}{formatCurrency(comparativeData.y1DeductionBalance)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Saldo Acumulado
+                          </span>
+                          <p className={cn(
+                            "text-base sm:text-lg font-black leading-tight truncate",
+                            comparativeData.totalY1Balance >= 0 ? "text-indigo-700" : "text-rose-600"
+                          )}>
+                            {formatCurrency(comparativeData.totalY1Balance)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Exercício Anterior (Y2) */}
+                    <div className="rounded-xl bg-zinc-50/80 p-3 border border-zinc-200/80">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-extrabold text-zinc-700 uppercase tracking-wide">
+                          {compareYear}
+                        </span>
+                        <span className="rounded bg-zinc-200/80 px-1.5 py-0.2 text-[9px] font-bold text-zinc-600 uppercase">
+                          Anterior
+                        </span>
+                      </div>
+
+                      {comparativeData.hasAnyDeductions ? (
+                        <div className="space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">
+                              Líquido Igreja
+                            </span>
+                            <p className={cn(
+                              "text-base sm:text-lg font-bold leading-tight truncate",
+                              comparativeData.consolidatedY2Balance >= 0 ? "text-zinc-700" : "text-rose-600"
+                            )}>
+                              {formatCurrency(comparativeData.consolidatedY2Balance)}
+                            </p>
+                          </div>
+                          <div className="pt-1.5 border-t border-zinc-200/60 text-[10px] space-y-0.5 text-zinc-500">
+                            <div className="flex justify-between truncate">
+                              <span>Bruto:</span>
+                              <span className={cn(
+                                "font-semibold",
+                                comparativeData.totalY2Balance >= 0 ? "text-zinc-600" : "text-rose-600"
+                              )}>
+                                {formatCurrency(comparativeData.totalY2Balance)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-amber-700 truncate">
+                              <span>Saldo Repasses:</span>
+                              <span className="font-semibold">
+                                {comparativeData.y2DeductionBalance >= 0 ? '+' : ''}{formatCurrency(comparativeData.y2DeductionBalance)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            Saldo Acumulado
+                          </span>
+                          <p className={cn(
+                            "text-base sm:text-lg font-bold leading-tight truncate",
+                            comparativeData.totalY2Balance >= 0 ? "text-zinc-600" : "text-rose-600"
+                          )}>
+                            {formatCurrency(comparativeData.totalY2Balance)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé */}
+                {comparativeData.hasAnyDeductions && (
+                  <div className="mt-3 pt-2.5 border-t border-indigo-100 flex items-center justify-between text-[10px] text-zinc-500">
+                    <span className="font-medium">Movimentação Bruta:</span>
+                    <span className="font-bold text-zinc-700">
+                      Dif: {comparativeData.totalBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalBalanceDiff)}
                     </span>
                   </div>
-                  <span className={cn(
-                    "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold",
-                    comparativeData.totalBalanceDiff >= 0
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-rose-100 text-rose-800"
-                  )}>
-                    Dif: {comparativeData.totalBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalBalanceDiff)}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-baseline justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
-                    <p className={cn(
-                      "text-xl sm:text-2xl font-bold",
-                      comparativeData.totalY1Balance >= 0 ? "text-indigo-700" : "text-rose-600"
-                    )}>
-                      {formatCurrency(comparativeData.totalY1Balance)}
-                    </p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-semibold text-indigo-900 bg-indigo-100/70 px-1.5 py-0.5 rounded">
-                        Líq: {formatCurrency(comparativeData.consolidatedY1Balance)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
-                    <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Balance)}</p>
-                    {comparativeData.hasAnyDeductions && (
-                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
-                        Líq: {formatCurrency(comparativeData.consolidatedY2Balance)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
