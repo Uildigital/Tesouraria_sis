@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Save, Loader2, Calendar, HelpCircle, DollarSign, CheckCircle2 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { formatCurrency, parseAmount, cn } from '../lib/utils';
@@ -16,11 +16,6 @@ interface MonthData {
   expense: string | number;
 }
 
-const MONTH_NAMES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
 export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   isOpen,
   onClose,
@@ -28,18 +23,51 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   initialYear = '2025'
 }) => {
   const [selectedYear, setSelectedYear] = useState<string>(initialYear);
+  const [fiscalYearStart, setFiscalYearStart] = useState<string>('12');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [allHistoricalTotals, setAllHistoricalTotals] = useState<Record<string, Record<string, MonthData>>>({});
   
-  // Data for the current selected year: { "1": { income: 0, expense: 0 }, ... }
-  const [monthsData, setMonthsData] = useState<Record<string, MonthData>>(() => {
-    const initial: Record<string, MonthData> = {};
-    for (let i = 1; i <= 12; i++) {
-      initial[i.toString()] = { income: '', expense: '' };
+  // Data for the current selected year: { "12": { income, expense }, "1": ..., "11": ... }
+  const [monthsData, setMonthsData] = useState<Record<string, MonthData>>({});
+
+  const isFiscalDec = fiscalYearStart === '12';
+
+  // Defines the 12 months sequence according to fiscal year
+  const fiscalMonths = useMemo(() => {
+    if (isFiscalDec) {
+      const prevYear = Number(selectedYear) - 1;
+      return [
+        { key: '12', name: `Dezembro/${prevYear}`, label: `Dezembro (${prevYear})` },
+        { key: '1',  name: `Janeiro/${selectedYear}`, label: `Janeiro (${selectedYear})` },
+        { key: '2',  name: `Fevereiro`, label: `Fevereiro` },
+        { key: '3',  name: `Março`, label: `Março` },
+        { key: '4',  name: `Abril`, label: `Abril` },
+        { key: '5',  name: `Maio`, label: `Maio` },
+        { key: '6',  name: `Junho`, label: `Junho` },
+        { key: '7',  name: `Julho`, label: `Julho` },
+        { key: '8',  name: `Agosto`, label: `Agosto` },
+        { key: '9',  name: `Setembro`, label: `Setembro` },
+        { key: '10', name: `Outubro`, label: `Outubro` },
+        { key: '11', name: `Novembro`, label: `Novembro` },
+      ];
     }
-    return initial;
-  });
+    // Default calendar year (Jan..Dez)
+    return [
+      { key: '1', name: 'Janeiro', label: 'Janeiro' },
+      { key: '2', name: 'Fevereiro', label: 'Fevereiro' },
+      { key: '3', name: 'Março', label: 'Março' },
+      { key: '4', name: 'Abril', label: 'Abril' },
+      { key: '5', name: 'Maio', label: 'Maio' },
+      { key: '6', name: 'Junho', label: 'Junho' },
+      { key: '7', name: 'Julho', label: 'Julho' },
+      { key: '8', name: 'Agosto', label: 'Agosto' },
+      { key: '9', name: 'Setembro', label: 'Setembro' },
+      { key: '10', name: 'Outubro', label: 'Outubro' },
+      { key: '11', name: 'Novembro', label: 'Novembro' },
+      { key: '12', name: 'Dezembro', label: 'Dezembro' },
+    ];
+  }, [isFiscalDec, selectedYear]);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,20 +79,21 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
     // When year changes, load that year's data from memory
     const yearTotals = allHistoricalTotals[selectedYear] || {};
     const updated: Record<string, MonthData> = {};
-    for (let i = 1; i <= 12; i++) {
-      const mStr = i.toString();
-      updated[mStr] = {
-        income: yearTotals[mStr]?.income ?? '',
-        expense: yearTotals[mStr]?.expense ?? ''
+    fiscalMonths.forEach(m => {
+      updated[m.key] = {
+        income: yearTotals[m.key]?.income ?? '',
+        expense: yearTotals[m.key]?.expense ?? ''
       };
-    }
+    });
     setMonthsData(updated);
-  }, [selectedYear, allHistoricalTotals]);
+  }, [selectedYear, allHistoricalTotals, fiscalMonths]);
 
   const loadHistoricalData = async () => {
     setLoading(true);
     try {
       const settings = await apiService.getSettings();
+      setFiscalYearStart(settings?.fiscal_year_start || '12');
+
       let parsedTotals: Record<string, Record<string, MonthData>> = {};
       if (settings?.historical_totals) {
         try {
@@ -79,13 +108,12 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
 
       const yearTotals = parsedTotals[selectedYear] || {};
       const updated: Record<string, MonthData> = {};
-      for (let i = 1; i <= 12; i++) {
-        const mStr = i.toString();
-        updated[mStr] = {
-          income: yearTotals[mStr]?.income ?? '',
-          expense: yearTotals[mStr]?.expense ?? ''
+      fiscalMonths.forEach(m => {
+        updated[m.key] = {
+          income: yearTotals[m.key]?.income ?? '',
+          expense: yearTotals[m.key]?.expense ?? ''
         };
-      }
+      });
       setMonthsData(updated);
     } catch (error: any) {
       toast.error('Erro ao carregar dados históricos: ' + error.message);
@@ -94,11 +122,11 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
     }
   };
 
-  const handleInputChange = (monthNum: number, field: 'income' | 'expense', value: string) => {
+  const handleInputChange = (monthKey: string, field: 'income' | 'expense', value: string) => {
     setMonthsData(prev => ({
       ...prev,
-      [monthNum.toString()]: {
-        ...prev[monthNum.toString()],
+      [monthKey]: {
+        ...prev[monthKey],
         [field]: value
       }
     }));
@@ -107,16 +135,14 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Clean up values as numbers
       const cleanedYearData: Record<string, { income: number; expense: number }> = {};
-      for (let i = 1; i <= 12; i++) {
-        const mStr = i.toString();
-        const m = monthsData[mStr] || { income: 0, expense: 0 };
-        cleanedYearData[mStr] = {
-          income: parseAmount(m.income),
-          expense: parseAmount(m.expense)
+      fiscalMonths.forEach(m => {
+        const item = monthsData[m.key] || { income: 0, expense: 0 };
+        cleanedYearData[m.key] = {
+          income: parseAmount(item.income),
+          expense: parseAmount(item.expense)
         };
-      }
+      });
 
       const updatedTotals = {
         ...allHistoricalTotals,
@@ -128,8 +154,10 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
       });
 
       setAllHistoricalTotals(updatedTotals);
-      toast.success(`Totais históricos de ${selectedYear} salvos com sucesso!`, {
-        description: 'Os valores já estão disponíveis para o Comparativo Anual.'
+      toast.success(`Totais históricos do Exercício Fiscal ${selectedYear} salvos com sucesso!`, {
+        description: isFiscalDec 
+          ? `Período: Dezembro/${Number(selectedYear)-1} a Novembro/${selectedYear}` 
+          : 'Valores salvos no sistema.'
       });
       onSaved();
       onClose();
@@ -177,10 +205,12 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
             </div>
             <div>
               <h3 className="font-display text-xl font-bold text-zinc-900">
-                Totais Históricos Anuais
+                Totais do Exercício Fiscal
               </h3>
               <p className="text-xs text-zinc-500">
-                Informe os totais mensais de anos anteriores (ex: 2025) para comparativo com anos atuais.
+                {isFiscalDec 
+                  ? `Ano Fiscal da Igreja: Dezembro/${Number(selectedYear)-1} a Novembro/${selectedYear} (12 meses)`
+                  : `Informe os totais mensais de anos anteriores para comparativos.`}
               </p>
             </div>
           </div>
@@ -198,7 +228,7 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 p-4">
             <div className="flex items-center gap-3">
               <label className="text-xs font-bold uppercase tracking-wider text-indigo-900">
-                Ano de Referência:
+                Exercício Fiscal:
               </label>
               <select
                 value={selectedYear}
@@ -206,13 +236,17 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                 className="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-sm font-bold text-indigo-950 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
               >
                 {yearOptions.map(y => (
-                  <option key={y} value={y}>Ano {y}</option>
+                  <option key={y} value={y}>Exercício {y}</option>
                 ))}
               </select>
             </div>
             <div className="flex items-center gap-2 text-xs text-indigo-700">
               <HelpCircle size={15} />
-              <span>Digite apenas os totais consolidados. O sistema calcula o saldo automaticamente.</span>
+              <span>
+                {isFiscalDec 
+                  ? `Inicia em 01/Dez/${Number(selectedYear)-1} e encerra em 30/Nov/${selectedYear}.`
+                  : 'Informe os totais consolidados de cada mês.'}
+              </span>
             </div>
           </div>
 
@@ -226,24 +260,23 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
               <table className="w-full text-left text-sm">
                 <thead className="bg-zinc-100/70 text-[10px] font-bold uppercase tracking-wider text-zinc-600 border-b border-zinc-200">
                   <tr>
-                    <th className="px-4 py-3">Mês</th>
+                    <th className="px-4 py-3">Mês do Exercício</th>
                     <th className="px-4 py-3">Total Entradas (R$)</th>
                     <th className="px-4 py-3">Total Saídas (R$)</th>
                     <th className="px-4 py-3 text-right">Saldo do Mês</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {MONTH_NAMES.map((monthName, idx) => {
-                    const mNum = idx + 1;
-                    const mData = monthsData[mNum.toString()] || { income: '', expense: '' };
+                  {fiscalMonths.map((m) => {
+                    const mData = monthsData[m.key] || { income: '', expense: '' };
                     const incVal = parseAmount(mData.income);
                     const expVal = parseAmount(mData.expense);
                     const balVal = incVal - expVal;
 
                     return (
-                      <tr key={mNum} className="hover:bg-zinc-50/60 transition-colors">
+                      <tr key={m.key} className="hover:bg-zinc-50/60 transition-colors">
                         <td className="px-4 py-2.5 font-bold text-zinc-800">
-                          {monthName}
+                          {m.name}
                         </td>
                         <td className="px-4 py-2">
                           <div className="relative">
@@ -253,7 +286,7 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                               step="0.01"
                               placeholder="0,00"
                               value={mData.income}
-                              onChange={(e) => handleInputChange(mNum, 'income', e.target.value)}
+                              onChange={(e) => handleInputChange(m.key, 'income', e.target.value)}
                               className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-emerald-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                             />
                           </div>
@@ -266,7 +299,7 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                               step="0.01"
                               placeholder="0,00"
                               value={mData.expense}
-                              onChange={(e) => handleInputChange(mNum, 'expense', e.target.value)}
+                              onChange={(e) => handleInputChange(m.key, 'expense', e.target.value)}
                               className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-rose-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                             />
                           </div>
@@ -283,7 +316,9 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                 </tbody>
                 <tfoot className="bg-zinc-50 font-bold border-t-2 border-zinc-200 text-xs">
                   <tr>
-                    <td className="px-4 py-3 uppercase tracking-wider text-zinc-700">Total Anual ({selectedYear})</td>
+                    <td className="px-4 py-3 uppercase tracking-wider text-zinc-700">
+                      Total Exercício Fiscal ({selectedYear})
+                    </td>
                     <td className="px-4 py-3 text-emerald-700 font-bold text-sm">{formatCurrency(totalIncome)}</td>
                     <td className="px-4 py-3 text-rose-700 font-bold text-sm">{formatCurrency(totalExpense)}</td>
                     <td className={cn(
@@ -304,7 +339,7 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
           <div className="text-xs text-zinc-500">
             {totalIncome > 0 || totalExpense > 0 ? (
               <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                <CheckCircle2 size={14} /> Total anual pronto para salvar
+                <CheckCircle2 size={14} /> Total do ano fiscal pronto para salvar
               </span>
             ) : (
               <span>Preencha os valores mensais e clique em salvar</span>

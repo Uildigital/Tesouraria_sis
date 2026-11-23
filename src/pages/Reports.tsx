@@ -5,22 +5,23 @@ import {
   Printer, 
   TrendingUp, 
   TrendingDown, 
-  Calendar,
-  FileCheck,
-  Loader2,
-  ChevronDown,
-  X,
-  Check,
-  ArrowRight,
-  Wallet,
-  PieChart,
-  Scale,
-  ArrowUpRight,
-  ArrowDownRight,
-  Edit3,
-  BarChart3,
-  CheckCircle2,
-  HelpCircle
+  Calendar, 
+  FileCheck, 
+  Loader2, 
+  ChevronDown, 
+  X, 
+  Check, 
+  ArrowRight, 
+  Wallet, 
+  PieChart, 
+  Scale, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Edit3, 
+  BarChart3, 
+  CheckCircle2, 
+  HelpCircle,
+  Clock
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -29,11 +30,12 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer, 
+  Legend 
 } from 'recharts';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { formatCurrency, formatDate, cn, parseAmount } from '../lib/utils';
 import { Transaction, Category } from '../types';
 import jsPDF from 'jspdf';
@@ -43,6 +45,7 @@ import { ptBR } from 'date-fns/locale';
 import { HistoricalTotalsModal } from '../components/HistoricalTotalsModal';
 
 export const Reports: React.FC = () => {
+  const { settings } = useSettings();
   const currentYearStr = new Date().getFullYear().toString();
   const currentMonthStr = new Date().toISOString().slice(0, 7);
 
@@ -50,7 +53,10 @@ export const Reports: React.FC = () => {
   const [month, setMonth] = useState(currentMonthStr);
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
   const [compareYear, setCompareYear] = useState((Number(currentYearStr) - 1).toString());
-  
+  const [fiscalYearStart, setFiscalYearStart] = useState(settings.fiscal_year_start || '12');
+
+  const isFiscalDec = fiscalYearStart === '12';
+
   const [availableYears, setAvailableYears] = useState<string[]>([
     (Number(currentYearStr) + 1).toString(),
     currentYearStr,
@@ -81,24 +87,35 @@ export const Reports: React.FC = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
+      const [transData, catData, settingsData] = await Promise.all([
+        apiService.getTransactions(),
+        apiService.getCategories(),
+        apiService.getSettings()
+      ]);
+
+      const activeFiscalStart = settingsData?.fiscal_year_start || '12';
+      setFiscalYearStart(activeFiscalStart);
+      const decFiscal = activeFiscalStart === '12';
+
       let startDate = '';
       let endDate = '';
 
       if (periodMode === 'year' || periodMode === 'compare') {
-        startDate = `${selectedYear}-01-01`;
-        endDate = `${selectedYear}-12-31`;
+        if (decFiscal) {
+          // Exercício Fiscal: 01 de Dezembro (ano anterior) até 30 de Novembro (ano atual)
+          startDate = `${Number(selectedYear) - 1}-12-01`;
+          endDate = `${selectedYear}-11-30`;
+        } else {
+          // Ano Civil tradicional
+          startDate = `${selectedYear}-01-01`;
+          endDate = `${selectedYear}-12-31`;
+        }
       } else {
         const [yearNum, monthNum] = month.split('-').map(Number);
         startDate = `${month}-01`;
         const lastDay = new Date(yearNum, monthNum, 0).getDate();
         endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
       }
-
-      const [transData, catData, settingsData] = await Promise.all([
-        apiService.getTransactions(),
-        apiService.getCategories(),
-        apiService.getSettings()
-      ]);
 
       setAllTransactions(transData || []);
       
@@ -215,34 +232,55 @@ export const Reports: React.FC = () => {
   const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
   const balance = income - expenses;
 
-  // Monthly breakdown for annual view
+  // Monthly breakdown for annual view (follows fiscal year)
   const monthlySummary = useMemo(() => {
     if (periodMode !== 'year') return [];
 
-    const monthNames = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
+    let monthsList: Array<{ prefix: string; name: string; shortName: string }> = [];
 
-    return monthNames.map((name, index) => {
-      const monthPrefix = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
-      const monthTrans = filteredTransactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+    if (isFiscalDec) {
+      const prevYear = Number(selectedYear) - 1;
+      monthsList = [
+        { prefix: `${prevYear}-12`, name: `Dezembro/${prevYear}`, shortName: 'Dez' },
+        { prefix: `${selectedYear}-01`, name: `Janeiro/${selectedYear}`, shortName: 'Jan' },
+        { prefix: `${selectedYear}-02`, name: 'Fevereiro', shortName: 'Fev' },
+        { prefix: `${selectedYear}-03`, name: 'Março', shortName: 'Mar' },
+        { prefix: `${selectedYear}-04`, name: 'Abril', shortName: 'Abr' },
+        { prefix: `${selectedYear}-05`, name: 'Maio', shortName: 'Mai' },
+        { prefix: `${selectedYear}-06`, name: 'Junho', shortName: 'Jun' },
+        { prefix: `${selectedYear}-07`, name: 'Julho', shortName: 'Jul' },
+        { prefix: `${selectedYear}-08`, name: 'Agosto', shortName: 'Ago' },
+        { prefix: `${selectedYear}-09`, name: 'Setembro', shortName: 'Set' },
+        { prefix: `${selectedYear}-10`, name: 'Outubro', shortName: 'Out' },
+        { prefix: `${selectedYear}-11`, name: 'Novembro', shortName: 'Nov' },
+      ];
+    } else {
+      const calNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      monthsList = calNames.map((name, i) => ({
+        prefix: `${selectedYear}-${String(i + 1).padStart(2, '0')}`,
+        name,
+        shortName: name.slice(0, 3)
+      }));
+    }
+
+    return monthsList.map((m, index) => {
+      const monthTrans = filteredTransactions.filter(t => t.date && t.date.startsWith(m.prefix));
       const mIncome = monthTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
       const mExpenses = monthTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
       const mBalance = mIncome - mExpenses;
 
       return {
         monthIndex: index + 1,
-        monthStr: monthPrefix,
-        name,
-        shortName: name.slice(0, 3),
+        monthStr: m.prefix,
+        name: m.name,
+        shortName: m.shortName,
         count: monthTrans.length,
         income: mIncome,
         expenses: mExpenses,
         balance: mBalance
       };
     });
-  }, [periodMode, selectedYear, filteredTransactions]);
+  }, [periodMode, selectedYear, filteredTransactions, isFiscalDec]);
 
   // Accounts summary
   const accountSummary = useMemo(() => {
@@ -290,7 +328,7 @@ export const Reports: React.FC = () => {
   }, [filteredTransactions]);
 
   // ==========================================
-  // COMPARATIVO ANUAL (YEAR-OVER-YEAR) DATA
+  // COMPARATIVO ANUAL (YEAR-OVER-YEAR FISCAL)
   // ==========================================
   const comparativeData = useMemo(() => {
     if (periodMode !== 'compare') return null;
@@ -298,14 +336,9 @@ export const Reports: React.FC = () => {
     const y1 = selectedYear; // Base, ex: 2026
     const y2 = compareYear;  // Comparado, ex: 2025
 
-    const monthNames = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
-
-    const getYearMonthTotals = (yearStr: string, monthIdx: number) => {
+    // Helper to get month totals considering fiscal year prefixes
+    const getFiscalTotals = (yearStr: string, histKey: string, monthPrefix: string) => {
       // 1. Procurar nas transações reais
-      const monthPrefix = `${yearStr}-${String(monthIdx).padStart(2, '0')}`;
       const monthTrans = allTransactions.filter(t => t.date && t.date.startsWith(monthPrefix));
       
       const filteredByAccount = monthTrans.filter(t => {
@@ -320,7 +353,7 @@ export const Reports: React.FC = () => {
 
       // 2. Se não houver transações reais, buscar nos Totais Históricos salvos
       const histYear = historicalTotals[yearStr] || {};
-      const histMonth = histYear[monthIdx.toString()] || { income: 0, expense: 0 };
+      const histMonth = histYear[histKey] || { income: 0, expense: 0 };
       const histInc = parseAmount(histMonth.income);
       const histExp = parseAmount(histMonth.expense);
       return {
@@ -331,10 +364,39 @@ export const Reports: React.FC = () => {
       };
     };
 
-    const rows = monthNames.map((name, index) => {
-      const mIdx = index + 1;
-      const dataY1 = getYearMonthTotals(y1, mIdx);
-      const dataY2 = getYearMonthTotals(y2, mIdx);
+    let comparativeMonths: Array<{ name: string; shortName: string; histKey: string; getPrefix: (y: string) => string }> = [];
+
+    if (isFiscalDec) {
+      comparativeMonths = [
+        { name: 'Dezembro (ano anterior)', shortName: 'Dez', histKey: '12', getPrefix: (y) => `${Number(y) - 1}-12` },
+        { name: 'Janeiro', shortName: 'Jan', histKey: '1', getPrefix: (y) => `${y}-01` },
+        { name: 'Fevereiro', shortName: 'Fev', histKey: '2', getPrefix: (y) => `${y}-02` },
+        { name: 'Março', shortName: 'Mar', histKey: '3', getPrefix: (y) => `${y}-03` },
+        { name: 'Abril', shortName: 'Abr', histKey: '4', getPrefix: (y) => `${y}-04` },
+        { name: 'Maio', shortName: 'Mai', histKey: '5', getPrefix: (y) => `${y}-05` },
+        { name: 'Junho', shortName: 'Jun', histKey: '6', getPrefix: (y) => `${y}-06` },
+        { name: 'Julho', shortName: 'Jul', histKey: '7', getPrefix: (y) => `${y}-07` },
+        { name: 'Agosto', shortName: 'Ago', histKey: '8', getPrefix: (y) => `${y}-08` },
+        { name: 'Setembro', shortName: 'Set', histKey: '9', getPrefix: (y) => `${y}-09` },
+        { name: 'Outubro', shortName: 'Out', histKey: '10', getPrefix: (y) => `${y}-10` },
+        { name: 'Novembro', shortName: 'Nov', histKey: '11', getPrefix: (y) => `${y}-11` },
+      ];
+    } else {
+      const calNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      comparativeMonths = calNames.map((name, i) => {
+        const mKey = (i + 1).toString();
+        return {
+          name,
+          shortName: name.slice(0, 3),
+          histKey: mKey,
+          getPrefix: (y) => `${y}-${String(i + 1).padStart(2, '0')}`
+        };
+      });
+    }
+
+    const rows = comparativeMonths.map((m, index) => {
+      const dataY1 = getFiscalTotals(y1, m.histKey, m.getPrefix(y1));
+      const dataY2 = getFiscalTotals(y2, m.histKey, m.getPrefix(y2));
 
       const balY1 = dataY1.income - dataY1.expense;
       const balY2 = dataY2.income - dataY2.expense;
@@ -348,9 +410,9 @@ export const Reports: React.FC = () => {
       const balanceDiff = balY1 - balY2;
 
       return {
-        monthIdx: mIdx,
-        name,
-        shortName: name.slice(0, 3),
+        monthIdx: index + 1,
+        name: m.name,
+        shortName: m.shortName,
         // Ano Base (ex: 2026)
         y1Income: dataY1.income,
         y1Expense: dataY1.expense,
@@ -406,7 +468,7 @@ export const Reports: React.FC = () => {
       totalExpenseGrowth,
       totalBalanceDiff
     };
-  }, [periodMode, selectedYear, compareYear, allTransactions, historicalTotals, accountFilter]);
+  }, [periodMode, selectedYear, compareYear, allTransactions, historicalTotals, accountFilter, isFiscalDec]);
 
   const generatePDF = () => {
     setIsExporting(true);
@@ -422,21 +484,27 @@ export const Reports: React.FC = () => {
 
         doc.setFontSize(12);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Relatório Comparativo Anual - ${selectedYear} vs ${compareYear}`, 14, 30);
-        if (accountFilter !== 'all') {
-          doc.setFontSize(10);
-          doc.text(`Conta: ${accountFilter}`, 14, 36);
-          doc.line(14, 38, 196, 38);
-        } else {
-          doc.line(14, 35, 196, 35);
-        }
+        doc.text(
+          isFiscalDec 
+            ? `Relatório Comparativo de Exercício Fiscal (${selectedYear} vs ${compareYear})`
+            : `Relatório Comparativo Anual - ${selectedYear} vs ${compareYear}`, 
+          14, 30
+        );
+        doc.setFontSize(9);
+        doc.setTextColor(130, 130, 130);
+        doc.text(
+          isFiscalDec ? 'Período de Apuração: 01 de Dezembro a 30 de Novembro (12 meses)' : 'Período de Apuração: 01 de Janeiro a 31 de Dezembro',
+          14, 35
+        );
+        doc.line(14, 38, 196, 38);
 
         // Summary Lines
         doc.setFontSize(9);
-        doc.text(`Total Entradas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Income)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Income)} (${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%)`, 14, 43);
-        doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} (${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%)`, 14, 49);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Total Entradas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Income)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Income)} (${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%)`, 14, 45);
+        doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} (${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%)`, 14, 51);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Saldo Anual: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Balance)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Balance)} (Diferença: ${formatCurrency(comparativeData.totalBalanceDiff)})`, 14, 55);
+        doc.text(`Saldo Acumulado: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Balance)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Balance)} (Diferença: ${formatCurrency(comparativeData.totalBalanceDiff)})`, 14, 57);
         doc.setFont('helvetica', 'normal');
 
         const compRows = comparativeData.rows.map(r => [
@@ -453,7 +521,7 @@ export const Reports: React.FC = () => {
 
         // Add summary row
         compRows.push([
-          'TOTAL ANUAL',
+          'TOTAL DO EXERCÍCIO',
           formatCurrency(comparativeData.totalY2Income),
           formatCurrency(comparativeData.totalY1Income),
           `${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%`,
@@ -465,7 +533,7 @@ export const Reports: React.FC = () => {
         ]);
 
         autoTable(doc, {
-          startY: 63,
+          startY: 65,
           head: [['Mês', `Entr. ${compareYear}`, `Entr. ${selectedYear}`, 'Var. Entr.', `Saíd. ${compareYear}`, `Saíd. ${selectedYear}`, 'Var. Saíd.', `Saldo ${compareYear}`, `Saldo ${selectedYear}`]],
           body: compRows,
           headStyles: { fillColor: [26, 34, 56], textColor: [255, 255, 255] },
@@ -485,7 +553,7 @@ export const Reports: React.FC = () => {
           doc.text(`Página ${i} de ${pageCount}`, 180, 285);
         }
 
-        doc.save(`Comparativo_Anual_${selectedYear}_vs_${compareYear}.pdf`);
+        doc.save(`Comparativo_Fiscal_${selectedYear}_vs_${compareYear}.pdf`);
         return;
       }
 
@@ -494,7 +562,9 @@ export const Reports: React.FC = () => {
 
       let periodLabel = '';
       if (periodMode === 'year') {
-        periodLabel = `Consolidado Anual - ${selectedYear}`;
+        periodLabel = isFiscalDec 
+          ? `Exercício Fiscal de ${selectedYear} (01/12/${Number(selectedYear)-1} a 30/11/${selectedYear})`
+          : `Consolidado Anual - ${selectedYear}`;
       } else {
         const [yearNum, monthNum] = month.split('-').map(Number);
         periodLabel = format(new Date(yearNum, monthNum - 1, 1), 'MMMM yyyy', { locale: ptBR });
@@ -531,7 +601,7 @@ export const Reports: React.FC = () => {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(26, 34, 56);
-        doc.text('Resumo Mensal do Ano', 14, currentY);
+        doc.text(isFiscalDec ? 'Resumo Mês a Mês (Dezembro a Novembro)' : 'Resumo Mês a Mês do Ano', 14, currentY);
         doc.setFont('helvetica', 'normal');
 
         const monthlyRows = monthlySummary.map(m => [
@@ -598,7 +668,7 @@ export const Reports: React.FC = () => {
       }
 
       const fileName = periodMode === 'year'
-        ? `Balancete_Anual_${selectedYear}.pdf`
+        ? (isFiscalDec ? `Balancete_Exercicio_Fiscal_${selectedYear}.pdf` : `Balancete_Anual_${selectedYear}.pdf`)
         : `Balancete_${month}.pdf`;
       doc.save(fileName);
     } catch (error) {
@@ -650,18 +720,29 @@ export const Reports: React.FC = () => {
                 )}
               </div>
               <div>
-                <h3 className="font-display text-2xl font-bold text-zinc-900">
-                  {periodMode === 'compare' 
-                    ? `Comparativo Anual (${selectedYear} vs ${compareYear})`
-                    : periodMode === 'year' 
-                      ? `Balancete Anual (${selectedYear})` 
-                      : 'Balancete Mensal'}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-2xl font-bold text-zinc-900">
+                    {periodMode === 'compare' 
+                      ? `Comparativo Fiscal (${selectedYear} vs ${compareYear})`
+                      : periodMode === 'year' 
+                        ? `Balancete do Exercício (${selectedYear})` 
+                        : 'Balancete Mensal'}
+                  </h3>
+                  {isFiscalDec && (periodMode === 'year' || periodMode === 'compare') && (
+                    <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-800 tracking-wider">
+                      Ano Fiscal da Igreja
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-zinc-500">
                   {periodMode === 'compare'
-                    ? `Acompanhamento e evolução mês a mês comparando o ano de ${selectedYear} com ${compareYear}.`
+                    ? (isFiscalDec 
+                        ? `Comparação entre os exercícios de ${selectedYear} e ${compareYear} (Dezembro a Novembro).`
+                        : `Acompanhamento mês a mês comparando ${selectedYear} com ${compareYear}.`)
                     : periodMode === 'year'
-                      ? `Visão e relatórios consolidados de todo o ano de ${selectedYear}.`
+                      ? (isFiscalDec 
+                          ? `Exercício Fiscal de ${selectedYear}: 01/12/${Number(selectedYear)-1} a 30/11/${selectedYear} (12 meses).`
+                          : `Visão consolidada de todo o ano de ${selectedYear}.`)
                       : 'Relatório consolidado de movimentações do mês.'}
                 </p>
               </div>
@@ -692,7 +773,7 @@ export const Reports: React.FC = () => {
                       : "text-zinc-500 hover:text-zinc-900"
                   )}
                 >
-                  Ano Todo
+                  {isFiscalDec ? 'Exercício Fiscal' : 'Ano Todo'}
                 </button>
                 <button
                   type="button"
@@ -729,7 +810,9 @@ export const Reports: React.FC = () => {
                     className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-8 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
                   >
                     {availableYears.map(y => (
-                      <option key={y} value={y}>Ano {y}</option>
+                      <option key={y} value={y}>
+                        {isFiscalDec ? `Exercício ${y} (Dez/${Number(y)-1} a Nov/${y})` : `Ano ${y}`}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -737,7 +820,7 @@ export const Reports: React.FC = () => {
                 /* Modo Comparativo: Anos A e B + Botão para lançar totais históricos */
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700">
-                    <span>Ano Base:</span>
+                    <span>Base:</span>
                     <select
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(e.target.value)}
@@ -752,7 +835,7 @@ export const Reports: React.FC = () => {
                   <span className="text-xs font-bold text-zinc-400">vs</span>
 
                   <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700">
-                    <span>Comparar com:</span>
+                    <span>Comparar:</span>
                     <select
                       value={compareYear}
                       onChange={(e) => setCompareYear(e.target.value)}
@@ -768,10 +851,10 @@ export const Reports: React.FC = () => {
                     type="button"
                     onClick={() => setIsHistoricalModalOpen(true)}
                     className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all cursor-pointer"
-                    title="Lançar ou editar totais consolidados de anos anteriores (ex: 2025)"
+                    title="Lançar ou editar totais consolidados do ano anterior (ex: 2025)"
                   >
                     <Edit3 size={13} />
-                    <span>Lançar Totais Históricos</span>
+                    <span>Lançar Totais ({compareYear})</span>
                   </button>
                 </div>
               )}
@@ -880,7 +963,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-                      Entradas Totais
+                      Entradas do Exercício
                     </span>
                   </div>
                   <span className={cn(
@@ -895,11 +978,11 @@ export const Reports: React.FC = () => {
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{selectedYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
                     <p className="text-xl sm:text-2xl font-bold text-emerald-700">{formatCurrency(comparativeData.totalY1Income)}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{compareYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Income)}</p>
                   </div>
                 </div>
@@ -911,7 +994,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-rose-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">
-                      Saídas Totais
+                      Saídas do Exercício
                     </span>
                   </div>
                   <span className={cn(
@@ -926,11 +1009,11 @@ export const Reports: React.FC = () => {
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{selectedYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
                     <p className="text-xl sm:text-2xl font-bold text-rose-700">{formatCurrency(comparativeData.totalY1Expense)}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{compareYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Expense)}</p>
                   </div>
                 </div>
@@ -942,7 +1025,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <FileCheck className="h-4 w-4 text-indigo-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
-                      Saldo Acumulado
+                      Saldo do Exercício
                     </span>
                   </div>
                   <span className={cn(
@@ -956,7 +1039,7 @@ export const Reports: React.FC = () => {
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{selectedYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
                     <p className={cn(
                       "text-xl sm:text-2xl font-bold",
                       comparativeData.totalY1Balance >= 0 ? "text-indigo-700" : "text-rose-600"
@@ -965,7 +1048,7 @@ export const Reports: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{compareYear}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Balance)}</p>
                   </div>
                 </div>
@@ -976,8 +1059,12 @@ export const Reports: React.FC = () => {
             <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xs">
               <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <h4 className="font-display text-lg font-bold text-zinc-900">Evolução Mensal Comparativa</h4>
-                  <p className="text-xs text-zinc-500">Comparação gráfica das entradas e saídas mês a mês entre {selectedYear} e {compareYear}.</p>
+                  <h4 className="font-display text-lg font-bold text-zinc-900">Evolução Mensal do Exercício</h4>
+                  <p className="text-xs text-zinc-500">
+                    {isFiscalDec 
+                      ? `Comparativo mês a mês de Dezembro a Novembro entre os exercícios de ${selectedYear} e ${compareYear}.`
+                      : `Comparativo das movimentações entre ${selectedYear} e ${compareYear}.`}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
                   <BarChart3 size={16} />
@@ -1015,9 +1102,15 @@ export const Reports: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">
-                    Detalhamento Mês a Mês ({selectedYear} vs {compareYear})
+                    {isFiscalDec 
+                      ? `Detalhamento do Exercício Fiscal (${selectedYear} vs ${compareYear})` 
+                      : `Detalhamento Mês a Mês (${selectedYear} vs ${compareYear})`}
                   </h4>
-                  <p className="text-xs text-zinc-500">Valores consolidados e taxa de crescimento percentual.</p>
+                  <p className="text-xs text-zinc-500">
+                    {isFiscalDec 
+                      ? `12 meses: de 01/Dez/${Number(selectedYear)-1} a 30/Nov/${selectedYear} vs 01/Dez/${Number(compareYear)-1} a 30/Nov/${compareYear}` 
+                      : 'Valores consolidados e taxa de crescimento percentual.'}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -1096,7 +1189,7 @@ export const Reports: React.FC = () => {
                     </tbody>
                     <tfoot className="bg-zinc-100/90 font-bold border-t-2 border-zinc-200 text-xs">
                       <tr>
-                        <td className="px-4 py-3.5 uppercase tracking-wider text-zinc-800">TOTAL GERAL</td>
+                        <td className="px-4 py-3.5 uppercase tracking-wider text-zinc-800">TOTAL DO EXERCÍCIO</td>
                         <td className="px-3 py-3.5 text-right text-zinc-600 font-bold">{formatCurrency(comparativeData.totalY2Income)}</td>
                         <td className="px-3 py-3.5 text-right text-emerald-800 font-bold text-sm">{formatCurrency(comparativeData.totalY1Income)}</td>
                         <td className="px-3 py-3.5 text-center">
@@ -1134,7 +1227,7 @@ export const Reports: React.FC = () => {
         )}
 
         {/* ========================================================= */}
-        {/* VISÃO 2: MODO MENSAL / ANO TODO TRADICIONAL               */}
+        {/* VISÃO 2: MODO MENSAL / EXERCÍCIO FISCAL REGULAR           */}
         {/* ========================================================= */}
         {periodMode !== 'compare' && (
           <>
@@ -1145,7 +1238,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-                      {periodMode === 'year' ? 'Entradas do Ano' : 'Entradas'}
+                      {periodMode === 'year' ? (isFiscalDec ? 'Entradas do Exercício' : 'Entradas do Ano') : 'Entradas'}
                     </span>
                   </div>
                 </div>
@@ -1162,7 +1255,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-rose-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">
-                      {periodMode === 'year' ? 'Saídas do Ano' : 'Saídas'}
+                      {periodMode === 'year' ? (isFiscalDec ? 'Saídas do Exercício' : 'Saídas do Ano') : 'Saídas'}
                     </span>
                   </div>
                 </div>
@@ -1179,7 +1272,7 @@ export const Reports: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <FileCheck className="h-4 w-4 text-indigo-600" />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
-                      {periodMode === 'year' ? 'Saldo Anual' : 'Saldo'}
+                      {periodMode === 'year' ? (isFiscalDec ? 'Saldo do Exercício' : 'Saldo Anual') : 'Saldo'}
                     </span>
                   </div>
                 </div>
@@ -1217,11 +1310,17 @@ export const Reports: React.FC = () => {
                 <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/40 p-5 sm:p-6">
                   <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                      <h4 className="font-display text-lg font-bold text-zinc-900">Resumo Mês a Mês ({selectedYear})</h4>
-                      <p className="text-xs text-zinc-500">Entradas, saídas e resultado consolidado de cada mês do ano.</p>
+                      <h4 className="font-display text-lg font-bold text-zinc-900">
+                        {isFiscalDec ? `Resumo Mês a Mês (Exercício ${selectedYear})` : `Resumo Mês a Mês (${selectedYear})`}
+                      </h4>
+                      <p className="text-xs text-zinc-500">
+                        {isFiscalDec 
+                          ? `Consolidado de 12 meses: de 01/Dez/${Number(selectedYear)-1} a 30/Nov/${selectedYear}.`
+                          : 'Entradas, saídas e resultado consolidado de cada mês do ano.'}
+                      </p>
                     </div>
                     <span className="text-xs font-semibold text-zinc-400">
-                      Total de 12 meses
+                      12 meses fiscais
                     </span>
                   </div>
 
@@ -1279,7 +1378,9 @@ export const Reports: React.FC = () => {
                   <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-2xs">
                     <div className="flex items-center gap-2 mb-4">
                       <Wallet className="h-5 w-5 text-indigo-600" />
-                      <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">Movimentação por Conta ({selectedYear})</h4>
+                      <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">
+                        {isFiscalDec ? `Movimentação por Conta (Exercício ${selectedYear})` : `Movimentação por Conta (${selectedYear})`}
+                      </h4>
                     </div>
                     <div className="space-y-4">
                       <div className="rounded-xl bg-zinc-50 p-4 border border-zinc-100">
@@ -1334,7 +1435,9 @@ export const Reports: React.FC = () => {
                   <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 sm:p-6 shadow-2xs">
                     <div className="flex items-center gap-2 mb-4">
                       <PieChart className="h-5 w-5 text-indigo-600" />
-                      <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">Principais Despesas no Ano</h4>
+                      <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">
+                        {isFiscalDec ? `Principais Despesas do Exercício` : `Principais Despesas no Ano`}
+                      </h4>
                     </div>
 
                     {topCategories.topExpenses.length === 0 ? (
@@ -1370,7 +1473,9 @@ export const Reports: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-sm text-zinc-800 uppercase tracking-wider">
                   {periodMode === 'year' 
-                    ? `Todos os Lançamentos do Ano (${filteredTransactions.length})` 
+                    ? (isFiscalDec 
+                        ? `Lançamentos do Exercício Fiscal (${filteredTransactions.length})` 
+                        : `Todos os Lançamentos do Ano (${filteredTransactions.length})`)
                     : `Lançamentos do Mês (${filteredTransactions.length})`}
                 </h4>
               </div>

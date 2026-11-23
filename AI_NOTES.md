@@ -57,3 +57,21 @@ Este documento registra as implementações recentes para que as próximas sess�
   - Gráfico comparativo de barras lado a lado (Recharts).
   - Tabela comparativa mês a mês com variações de entradas, saídas e saldos.
   - Exportação em PDF dedicada para o relatório comparativo.
+
+
+## Ajuste do Ano Fiscal da Igreja (Dezembro a Novembro)
+
+### 1. Configuração do Exercício Financeiro (src/contexts/SettingsContext.tsx & src/pages/Settings.tsx)
+- Adicionado campo `fiscal_year_start` com padrão `'12'` (Dezembro a Novembro - 12 meses) em **Configurações > Organização**.
+- Também permite alternar para `'1'` (Ano Civil Padrão) caso necessário.
+
+### 2. Adaptação do Módulo de Relatórios (src/pages/Reports.tsx)
+- No modo **Exercício Fiscal / Ano Todo**:
+  - Para o Exercício de um ano `Y` (ex: 2026), o intervalo de apuração agora é de `01/12/(Y-1)` a `30/11/Y` (ex: `01/12/2025` a `30/11/2026`).
+  - A sequência de meses nos relatórios e nos gráficos inicia em **Dezembro** (do ano anterior) e segue até **Novembro** (do ano do exercício).
+- No modo **Comparativo**:
+  - Compara mês a mês os 12 meses do exercício fiscal (Dezembro a Novembro) entre os dois anos selecionados.
+  - Exportação em PDF atualizada com cabeçalho oficial do Exercício Fiscal (01/Dez a 30/Nov).
+
+### 3. Adaptação do Modal de Totais Históricos (src/components/HistoricalTotalsModal.tsx)
+- A tabela de lançamento de totais anteriores (ex: 2025) lista os meses na ordem fiscal: `Dezembro (ano anterior)`, `Janeiro`, `Fevereiro` ... até `Novembro`.

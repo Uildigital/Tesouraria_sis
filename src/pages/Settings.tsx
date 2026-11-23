@@ -12,6 +12,7 @@ import {
   History,
   Globe,
   Church,
+  Calendar,
   Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,10 +34,12 @@ export const Settings: React.FC = () => {
   
   const [churchName, setChurchName] = useState(settings.app_name);
   const [logoUrl, setLogoUrl] = useState(settings.app_logo);
+  const [fiscalYearStart, setFiscalYearStart] = useState(settings.fiscal_year_start || '12');
 
   useEffect(() => {
     setChurchName(settings.app_name);
     setLogoUrl(settings.app_logo);
+    setFiscalYearStart(settings.fiscal_year_start || '12');
   }, [settings]);
 
   if (!canEdit) {
@@ -61,7 +64,8 @@ export const Settings: React.FC = () => {
     try {
       await saveGlobalSettings({
         app_name: churchName,
-        app_logo: logoUrl
+        app_logo: logoUrl,
+        fiscal_year_start: fiscalYearStart
       });
       toast.success('Configurações salvas!');
     } catch (error: any) {
@@ -276,6 +280,24 @@ export const Settings: React.FC = () => {
                     />
                   </div>
                   <p className="text-xs text-zinc-500">Insira o link direto para a imagem da sua logo.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-zinc-700">Ano Fiscal / Exercício Financeiro</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                    <select
+                      value={fiscalYearStart}
+                      onChange={(e) => setFiscalYearStart(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-12 pr-4 text-zinc-900 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 cursor-pointer"
+                    >
+                      <option value="12">Dezembro a Novembro (Padrão da Igreja - 12 meses)</option>
+                      <option value="1">Janeiro a Dezembro (Ano Civil Padrão)</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Define o período de apuração dos relatórios anuais e comparativos da igreja.
+                  </p>
                 </div>
 
                 {logoUrl && (

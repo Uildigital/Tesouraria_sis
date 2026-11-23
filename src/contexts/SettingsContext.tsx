@@ -4,6 +4,7 @@ import { apiService } from '../services/apiService';
 interface Settings {
   app_name: string;
   app_logo: string;
+  fiscal_year_start?: string; // '12' = Dezembro a Novembro, '1' = Janeiro a Dezembro
 }
 
 interface SettingsContextType {
@@ -18,6 +19,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<Settings>({
     app_name: 'ChurchFinance',
     app_logo: '',
+    fiscal_year_start: '12', // Padrão: Dezembro a Novembro conforme estatuto da igreja
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,6 +30,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSettings({
           app_name: data.app_name || 'ChurchFinance',
           app_logo: data.app_logo || '',
+          fiscal_year_start: data.fiscal_year_start || '12',
         });
       }
     } catch (error) {
