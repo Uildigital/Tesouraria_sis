@@ -281,10 +281,11 @@ export const Reconciliation: React.FC = () => {
                 <input
                   type="number" step="0.01"
                   value={statementData.correnteValue}
-                  onChange={(e) => setStatementData({ ...statementData, correnteValue: e.target.value })}
-                  onBlur={() => saveStatementData(statementData)}
+                  onChange={(e) => canEdit && setStatementData({ ...statementData, correnteValue: e.target.value })}
+                  onBlur={() => canEdit && saveStatementData(statementData)}
                   readOnly={!canEdit}
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
+                  disabled={!canEdit}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed disabled:bg-zinc-100 disabled:opacity-70 disabled:cursor-not-allowed"
                   placeholder="0,00"
                 />
               </div>
@@ -304,10 +305,11 @@ export const Reconciliation: React.FC = () => {
                 <input
                   type="number" step="0.01"
                   value={statementData.poupancaValue}
-                  onChange={(e) => setStatementData({ ...statementData, poupancaValue: e.target.value })}
-                  onBlur={() => saveStatementData(statementData)}
+                  onChange={(e) => canEdit && setStatementData({ ...statementData, poupancaValue: e.target.value })}
+                  onBlur={() => canEdit && saveStatementData(statementData)}
                   readOnly={!canEdit}
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed"
+                  disabled={!canEdit}
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-4 text-xl font-bold focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all read-only:opacity-60 read-only:cursor-not-allowed disabled:bg-zinc-100 disabled:opacity-70 disabled:cursor-not-allowed"
                   placeholder="0,00"
                 />
               </div>

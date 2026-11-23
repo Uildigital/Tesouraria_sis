@@ -46,6 +46,28 @@ function getUserFromReq(req: express.Request) {
   return { user_id, user_email, user_name };
 }
 
+async function checkCanEdit(req: express.Request): Promise<{ allowed: boolean; user_email: string; user_name: string }> {
+  const { user_id, user_email, user_name } = getUserFromReq(req);
+  if (!user_email || user_email === 'sistema') {
+    return { allowed: true, user_email, user_name };
+  }
+  
+  try {
+    const { data: users } = await supabase
+      .from('users')
+      .select('role, full_name')
+      .ilike('email', user_email.trim());
+      
+    const user = users && users.length > 0 ? users[0] : null;
+    if (user && (user.role === 'viewer' || user.role === 'conferente')) {
+      return { allowed: false, user_email, user_name: user.full_name || user_name };
+    }
+    return { allowed: true, user_email, user_name: user?.full_name || user_name };
+  } catch {
+    return { allowed: true, user_email, user_name };
+  }
+}
+
 // --- API ROUTES ---
 
 app.get("/api/health", (req, res) => {
@@ -179,7 +201,18 @@ app.post("/api/audit-logs", async (req, res) => {
 
 app.post("/api/transactions", async (req, res) => {
   try {
-    const { user_id, user_email, user_name } = getUserFromReq(req);
+    const { allowed, user_email, user_name } = await checkCanEdit(req);
+    if (!allowed) {
+      await logAction(
+        null,
+        user_email,
+        'Tentativa de Alteração Bloqueada',
+        `Usuário com perfil conferente "${user_name || user_email}" tentou criar lançamento sem permissão`
+      );
+      return res.status(403).json({ error: "Acesso negado: Perfil conferente possui apenas permissão de visualização." });
+    }
+
+    const { user_id } = getUserFromReq(req);
     const { data, error } = await supabase
       .from('transactions')
       .insert([req.body])
@@ -214,8 +247,19 @@ app.get("/api/transactions", async (req, res) => {
 
 app.put("/api/transactions/:id", async (req, res) => {
   try {
+    const { allowed, user_email, user_name } = await checkCanEdit(req);
+    if (!allowed) {
+      await logAction(
+        null,
+        user_email,
+        'Tentativa de Alteração Bloqueada',
+        `Usuário com perfil conferente "${user_name || user_email}" tentou atualizar lançamento sem permissão`
+      );
+      return res.status(403).json({ error: "Acesso negado: Perfil conferente possui apenas permissão de visualização." });
+    }
+
     const { id } = req.params;
-    const { user_id, user_email, user_name } = getUserFromReq(req);
+    const { user_id } = getUserFromReq(req);
     const { data, error } = await supabase
       .from('transactions')
       .update(req.body)
@@ -239,8 +283,19 @@ app.put("/api/transactions/:id", async (req, res) => {
 
 app.patch("/api/transactions/:id", async (req, res) => {
   try {
+    const { allowed, user_email, user_name } = await checkCanEdit(req);
+    if (!allowed) {
+      await logAction(
+        null,
+        user_email,
+        'Tentativa de Alteração Bloqueada',
+        `Usuário com perfil conferente "${user_name || user_email}" tentou alterar lançamento sem permissão`
+      );
+      return res.status(403).json({ error: "Acesso negado: Perfil conferente possui apenas permissão de visualização." });
+    }
+
     const { id } = req.params;
-    const { user_id, user_email, user_name } = getUserFromReq(req);
+    const { user_id } = getUserFromReq(req);
     const { data, error } = await supabase
       .from('transactions')
       .update(req.body)
@@ -264,8 +319,19 @@ app.patch("/api/transactions/:id", async (req, res) => {
 
 app.delete("/api/transactions/:id", async (req, res) => {
   try {
+    const { allowed, user_email, user_name } = await checkCanEdit(req);
+    if (!allowed) {
+      await logAction(
+        null,
+        user_email,
+        'Tentativa de Alteração Bloqueada',
+        `Usuário com perfil conferente "${user_name || user_email}" tentou excluir lançamento sem permissão`
+      );
+      return res.status(403).json({ error: "Acesso negado: Perfil conferente possui apenas permissão de visualização." });
+    }
+
     const { id } = req.params;
-    const { user_id, user_email, user_name } = getUserFromReq(req);
+    const { user_id } = getUserFromReq(req);
     const { error } = await supabase
       .from('transactions')
       .delete()
@@ -527,8 +593,19 @@ app.get("/api/settings", async (req, res) => {
 
 app.post("/api/settings", async (req, res) => {
   try {
+    const { allowed, user_email, user_name } = await checkCanEdit(req);
+    if (!allowed) {
+      await logAction(
+        null,
+        user_email,
+        'Tentativa de Alteração Bloqueada',
+        `Usuário com perfil conferente "${user_name || user_email}" tentou alterar configurações sem permissão`
+      );
+      return res.status(403).json({ error: "Acesso negado: Perfil conferente possui apenas permissão de visualização." });
+    }
+
     const settings = req.body;
-    const { user_id, user_email, user_name } = getUserFromReq(req);
+    const { user_id } = getUserFromReq(req);
     const entries = Object.entries(settings).map(([key, value]) => ({
       key,
       value

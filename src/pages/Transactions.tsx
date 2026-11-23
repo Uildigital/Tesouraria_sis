@@ -87,6 +87,10 @@ export const Transactions: React.FC = () => {
   });
 
   const handleDelete = async (id: string) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     if (!window.confirm('Tem certeza que deseja excluir este lançamento?')) return;
     
     try {
@@ -145,6 +149,10 @@ export const Transactions: React.FC = () => {
   };
 
   const handleEdit = (transaction: Transaction) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     setEditingTransaction(transaction);
     setValue('description', transaction.description);
     setValue('amount', transaction.amount);
@@ -178,6 +186,10 @@ export const Transactions: React.FC = () => {
   };
 
   const onSubmit = async (data: TransactionFormValues) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     if (!profile) {
       toast.error('Você precisa estar logado para realizar lançamentos.');
       return;
@@ -215,6 +227,10 @@ export const Transactions: React.FC = () => {
   };
 
   const toggleConciliation = async (id: string, currentStatus: string) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     try {
       // O banco de dados só aceita 'pending' e 'completed' por enquanto
       const nextStatus: TransactionStatus = currentStatus === 'completed' ? 'pending' : 'completed';
@@ -516,21 +532,35 @@ export const Transactions: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button 
-                    onClick={() => canEdit && toggleConciliation(t.id, t.status)}
-                    disabled={!canEdit}
-                    className={cn(
-                      "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-                      t.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
-                      !canEdit && "cursor-default"
-                    )}
-                  >
-                    {t.status === 'completed' ? (
-                      <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
-                    ) : (
-                      <><Clock className="mr-1 h-3 w-3" /> Pendente</>
-                    )}
-                  </button>
+                  {canEdit ? (
+                    <button 
+                      onClick={() => toggleConciliation(t.id, t.status)}
+                      className={cn(
+                        "flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-transform active:scale-95",
+                        t.status === 'completed' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      )}
+                      title="Clique para alternar status da conciliação"
+                    >
+                      {t.status === 'completed' ? (
+                        <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
+                      ) : (
+                        <><Clock className="mr-1 h-3 w-3" /> Pendente</>
+                      )}
+                    </button>
+                  ) : (
+                    <span 
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-default select-none",
+                        t.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                      )}
+                    >
+                      {t.status === 'completed' ? (
+                        <><CheckCircle2 className="mr-1 h-3 w-3" /> Conciliado</>
+                      ) : (
+                        <><Clock className="mr-1 h-3 w-3" /> Pendente</>
+                      )}
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">

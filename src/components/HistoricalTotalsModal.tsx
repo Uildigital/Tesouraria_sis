@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Loader2, Calendar, HelpCircle, DollarSign, CheckCircle2 } from 'lucide-react';
+import { X, Save, Loader2, Calendar, HelpCircle, DollarSign, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { apiService } from '../services/apiService';
+import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, parseAmount, cn } from '../lib/utils';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   onSaved,
   initialYear = '2025'
 }) => {
+  const { canEdit } = useAuth();
   const [selectedYear, setSelectedYear] = useState<string>(initialYear);
   const [fiscalYearStart, setFiscalYearStart] = useState<string>('12');
   const [loading, setLoading] = useState(false);
@@ -158,6 +160,10 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   };
 
   const handleSave = async () => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     setSaving(true);
     try {
       const cleanedYearData: Record<string, { income: number; expense: number }> = {};
@@ -318,8 +324,10 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                               inputMode="decimal"
                               placeholder="0,00"
                               value={mData.income}
-                              onChange={(e) => handleInputChange(m.key, 'income', e.target.value)}
-                              className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-emerald-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              readOnly={!canEdit}
+                              disabled={!canEdit}
+                              onChange={(e) => canEdit && handleInputChange(m.key, 'income', e.target.value)}
+                              className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-emerald-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:bg-zinc-50 disabled:cursor-not-allowed"
                             />
                           </div>
                         </td>
@@ -331,8 +339,10 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                               inputMode="decimal"
                               placeholder="0,00"
                               value={mData.expense}
-                              onChange={(e) => handleInputChange(m.key, 'expense', e.target.value)}
-                              className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-rose-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                              readOnly={!canEdit}
+                              disabled={!canEdit}
+                              onChange={(e) => canEdit && handleInputChange(m.key, 'expense', e.target.value)}
+                              className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm font-medium text-rose-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:bg-zinc-50 disabled:cursor-not-allowed"
                             />
                           </div>
                         </td>
@@ -369,7 +379,11 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-zinc-100 px-6 py-4 bg-zinc-50/50">
           <div className="text-xs text-zinc-500">
-            {totalIncome > 0 || totalExpense > 0 ? (
+            {!canEdit ? (
+              <span className="text-zinc-500 font-medium flex items-center gap-1.5 bg-zinc-100 px-2.5 py-1 rounded-lg">
+                <ShieldAlert size={14} className="text-zinc-400" /> Perfil Conferente: Apenas Visualização
+              </span>
+            ) : totalIncome > 0 || totalExpense > 0 ? (
               <span className="text-emerald-600 font-semibold flex items-center gap-1">
                 <CheckCircle2 size={14} /> Total do ano fiscal pronto para salvar
               </span>
@@ -384,17 +398,19 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
               disabled={saving}
               className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-xs font-bold text-zinc-600 hover:bg-zinc-50 transition-all cursor-pointer"
             >
-              Cancelar
+              {canEdit ? 'Cancelar' : 'Fechar'}
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || loading}
-              className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50 cursor-pointer shadow-sm"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Salvar Totais de {selectedYear}
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || loading}
+                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Salvar Totais de {selectedYear}
+              </button>
+            )}
           </div>
         </div>
       </div>

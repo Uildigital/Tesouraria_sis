@@ -58,6 +58,7 @@ export interface DeductionItem {
 }
 
 export const Reports: React.FC = () => {
+  const { canEdit, profile } = useAuth();
   const { settings } = useSettings();
   const currentYearStr = new Date().getFullYear().toString();
   const currentMonthStr = new Date().toISOString().slice(0, 7);
@@ -210,6 +211,10 @@ export const Reports: React.FC = () => {
   // Manipuladores de Adicionar e Excluir Deduções de Terceiros (Repasses Não Operacionais)
   const handleAddDeduction = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     if (!deductionDesc.trim()) {
       toast.error('Informe a descrição ou motivo do repasse');
       return;
@@ -258,6 +263,10 @@ export const Reports: React.FC = () => {
   };
 
   const handleDeleteDeduction = async (year: string, id: string) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     const updatedYearItems = (deductions[year] || []).filter(item => item.id !== id);
     const newDeductions = {
       ...deductions,
@@ -279,6 +288,10 @@ export const Reports: React.FC = () => {
 
   // Importação automática de transações categorizadas como "Ofertas Destino Específico"
   const handleAutoImportDeductions = async (targetYear: string) => {
+    if (!canEdit) {
+      toast.error('Perfil de conferente possui permissão apenas de visualização.');
+      return;
+    }
     setIsSavingDeduction(true);
     try {
       let startDate = '';
@@ -1350,15 +1363,17 @@ export const Reports: React.FC = () => {
                     </select>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsHistoricalModalOpen(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all cursor-pointer"
-                    title="Lançar ou editar totais consolidados do ano anterior (ex: 2025)"
-                  >
-                    <Edit3 size={13} />
-                    <span>Lançar Totais ({compareYear})</span>
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setIsHistoricalModalOpen(true)}
+                      className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all cursor-pointer"
+                      title="Lançar ou editar totais consolidados do ano anterior (ex: 2025)"
+                    >
+                      <Edit3 size={13} />
+                      <span>Lançar Totais ({compareYear})</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -2012,7 +2027,7 @@ export const Reports: React.FC = () => {
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer self-start sm:self-auto"
                 >
                   <Edit3 size={13} />
-                  <span>Editar valores de {compareYear}</span>
+                  <span>{canEdit ? `Editar valores de ${compareYear}` : `Visualizar valores de ${compareYear}`}</span>
                 </button>
               </div>
 
@@ -2324,16 +2339,18 @@ export const Reports: React.FC = () => {
 
                   {/* Ações e Seletor de Exercício */}
                   <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleAutoImportDeductions(activeDeductionYear)}
-                      disabled={isSavingDeduction}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                      title={`Importar automaticamente transações da categoria Ofertas Destino Específico do exercício de ${activeDeductionYear}`}
-                    >
-                      {isSavingDeduction ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                      <span>Puxar Automático ({activeDeductionYear})</span>
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleAutoImportDeductions(activeDeductionYear)}
+                        disabled={isSavingDeduction}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        title={`Importar automaticamente transações da categoria Ofertas Destino Específico do exercício de ${activeDeductionYear}`}
+                      >
+                        {isSavingDeduction ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        <span>Puxar Automático ({activeDeductionYear})</span>
+                      </button>
+                    )}
 
                     <div className="flex items-center rounded-xl bg-zinc-100 p-1">
                       <button
@@ -2371,7 +2388,7 @@ export const Reports: React.FC = () => {
                 </div>
 
                 {/* Banner de Detecção Automática de Ofertas Destino Específico */}
-                {detectedDestinationTransInfo && (
+                {detectedDestinationTransInfo && canEdit && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 p-3.5 border border-amber-200 text-xs text-amber-900">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 text-amber-800">
@@ -2399,61 +2416,63 @@ export const Reports: React.FC = () => {
                 )}
 
                 {/* Formulário de Inserção de Dedução */}
-                <form onSubmit={handleAddDeduction} className="bg-zinc-50/70 p-4 rounded-xl border border-zinc-200/80">
-                  <div className="grid gap-3 sm:grid-cols-12 items-end">
-                    <div className="sm:col-span-5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">
-                        Descrição / Motivo do Repasse
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ex: Oferta recebida para missionário A..."
-                        value={deductionDesc}
-                        onChange={(e) => setDeductionDesc(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                      />
-                    </div>
+                {canEdit && (
+                  <form onSubmit={handleAddDeduction} className="bg-zinc-50/70 p-4 rounded-xl border border-zinc-200/80">
+                    <div className="grid gap-3 sm:grid-cols-12 items-end">
+                      <div className="sm:col-span-5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">
+                          Descrição / Motivo do Repasse
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Oferta recebida para missionário A..."
+                          value={deductionDesc}
+                          onChange={(e) => setDeductionDesc(e.target.value)}
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
 
-                    <div className="sm:col-span-3">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-1">
-                        Entrada a Abater (R$)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0,00"
-                        value={deductionIncome}
-                        onChange={(e) => setDeductionIncome(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
-                      />
-                    </div>
+                      <div className="sm:col-span-3">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-1">
+                          Entrada a Abater (R$)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          value={deductionIncome}
+                          onChange={(e) => setDeductionIncome(e.target.value)}
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
+                        />
+                      </div>
 
-                    <div className="sm:col-span-3">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block mb-1">
-                        Saída a Abater (R$)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0,00"
-                        value={deductionExpense}
-                        onChange={(e) => setDeductionExpense(e.target.value)}
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-right"
-                      />
-                    </div>
+                      <div className="sm:col-span-3">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block mb-1">
+                          Saída a Abater (R$)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          value={deductionExpense}
+                          onChange={(e) => setDeductionExpense(e.target.value)}
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-right"
+                        />
+                      </div>
 
-                    <div className="sm:col-span-1">
-                      <button
-                        type="submit"
-                        disabled={isSavingDeduction}
-                        className="w-full inline-flex items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-700 text-white p-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
-                        title="Adicionar repasse ao exercício selecionado"
-                      >
-                        {isSavingDeduction ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                      </button>
+                      <div className="sm:col-span-1">
+                        <button
+                          type="submit"
+                          disabled={isSavingDeduction}
+                          className="w-full inline-flex items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-700 text-white p-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                          title="Adicionar repasse ao exercício selecionado"
+                        >
+                          {isSavingDeduction ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </form>
+                  </form>
+                )}
 
                 {/* Tabela de Itens Lançados do Ano Ativo */}
                 <div className="overflow-hidden rounded-xl border border-zinc-200">
@@ -2464,13 +2483,13 @@ export const Reports: React.FC = () => {
                         <th className="px-3.5 py-2.5 text-right font-bold text-emerald-800">Entrada Abatida (R$)</th>
                         <th className="px-3.5 py-2.5 text-right font-bold text-rose-800">Saída Abatida (R$)</th>
                         <th className="px-3.5 py-2.5 text-right font-bold text-indigo-800">Diferença (Entr - Saíd)</th>
-                        <th className="px-3 py-2.5 text-center w-14">Ações</th>
+                        {canEdit && <th className="px-3 py-2.5 text-center w-14">Ações</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 bg-white">
                       {(deductions[activeDeductionYear] || []).length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-zinc-400 text-xs">
+                          <td colSpan={canEdit ? 5 : 4} className="px-4 py-6 text-center text-zinc-400 text-xs">
                             Nenhum repasse ou recurso de terceiro lançado para o exercício de {activeDeductionYear}.
                           </td>
                         </tr>
@@ -2492,16 +2511,18 @@ export const Reports: React.FC = () => {
                               )}>
                                 {diff > 0 ? '+' : ''}{formatCurrency(diff)}
                               </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteDeduction(activeDeductionYear, item.id)}
-                                  className="inline-flex items-center justify-center text-zinc-400 hover:text-rose-600 transition-colors p-1 cursor-pointer rounded"
-                                  title="Excluir repasse"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
+                              {canEdit && (
+                                <td className="px-3 py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDeduction(activeDeductionYear, item.id)}
+                                    className="inline-flex items-center justify-center text-zinc-400 hover:text-rose-600 transition-colors p-1 cursor-pointer rounded"
+                                    title="Excluir repasse"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })
