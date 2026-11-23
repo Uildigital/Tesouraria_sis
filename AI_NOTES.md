@@ -102,3 +102,14 @@ Este documento registra as implementações recentes para que as próximas sess�
 - **Melhorias no Modal de Totais Históricos (HistoricalTotalsModal.tsx):**
   - Inputs alterados para `type="text" inputMode="decimal"`, facilitando a digitação de valores monetários com vírgula ou ponto sem bloqueio do navegador.
   - Valores zerados não ficam mais travados com o número `0` dentro do campo, permitindo visualização limpa do placeholder `0,00` e digitação direta.
+
+### 4. Colunas de Diferença Numérica (R$) no Comparativo Anual
+- **Funcionalidade:** Atendendo à solicitação do usuário, além das variações percentuais (`Var. %`), o relatório comparativo agora exibe as diferenças em valores monetários nominais (R$):
+  - **Entradas:** `Dif. Entr.` (`Ano Base - Ano Comparado`, verde para superávit/aumento, vermelho para redução).
+  - **Saídas:** `Dif. Saíd.` (`Ano Base - Ano Comparado`, vermelho para aumento de despesa, verde para economia).
+  - **Saldo:** `Dif. Saldo` (`Saldo Base - Saldo Comparado`).
+- **Locais Atualizados:**
+  - **Cards de Indicadores (KPI):** Exibição da diferença nominal (R$) ao lado do percentual.
+  - **Tabela Mês a Mês:** Colunas dedicadas para `Dif. Entr.`, `Var. %`, `Dif. Saíd.`, `Var. %` e `Dif. Saldo`.
+  - **Rodapé de Totais Gerais:** Consolidação das diferenças monetárias do exercício completo.
+  - **Exportação em PDF:** Tabela gerada em orientação Paisagem (Landscape) para acomodar com clareza todas as colunas nominais e percentuais.
