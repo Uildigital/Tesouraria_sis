@@ -21,8 +21,13 @@ import {
   BarChart3, 
   CheckCircle2, 
   HelpCircle,
-  Clock
+  Clock,
+  Trash2,
+  Plus,
+  Coins,
+  Info
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { 
   BarChart, 
   Bar, 
@@ -43,6 +48,13 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { HistoricalTotalsModal } from '../components/HistoricalTotalsModal';
+
+export interface DeductionItem {
+  id: string;
+  description: string;
+  income: number;
+  expense: number;
+}
 
 export const Reports: React.FC = () => {
   const { settings } = useSettings();
@@ -73,6 +85,14 @@ export const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
+  
+  // Deduções / Recursos de Terceiros e Repasses (Não Operacionais)
+  const [deductions, setDeductions] = useState<Record<string, DeductionItem[]>>({});
+  const [activeDeductionYear, setActiveDeductionYear] = useState<string>(currentYearStr);
+  const [deductionDesc, setDeductionDesc] = useState('');
+  const [deductionIncome, setDeductionIncome] = useState('');
+  const [deductionExpense, setDeductionExpense] = useState('');
+  const [isSavingDeduction, setIsSavingDeduction] = useState(false);
   
   // Filters
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -130,6 +150,18 @@ export const Reports: React.FC = () => {
           console.error('Error parsing historical_totals:', e);
         }
       }
+
+      // Load comparative deductions from settings
+      if (settingsData?.comparative_deductions) {
+        try {
+          const parsed = typeof settingsData.comparative_deductions === 'string'
+            ? JSON.parse(settingsData.comparative_deductions)
+            : settingsData.comparative_deductions;
+          setDeductions(parsed || {});
+        } catch (e) {
+          console.error('Error parsing comparative_deductions:', e);
+        }
+      }
       
       // Update available years from transactions data & historical totals
       if (transData && transData.length > 0) {
@@ -166,6 +198,81 @@ export const Reports: React.FC = () => {
       console.error('Error fetching report data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Mantém o ano ativo da dedução sincronizado com o ano selecionado
+  useEffect(() => {
+    setActiveDeductionYear(selectedYear);
+  }, [selectedYear]);
+
+  // Manipuladores de Adicionar e Excluir Deduções de Terceiros (Repasses Não Operacionais)
+  const handleAddDeduction = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!deductionDesc.trim()) {
+      toast.error('Informe a descrição ou motivo do repasse');
+      return;
+    }
+
+    const incVal = parseAmount(deductionIncome);
+    const expVal = parseAmount(deductionExpense);
+
+    if (incVal === 0 && expVal === 0) {
+      toast.error('Informe ao menos um valor de entrada ou de saída a abater');
+      return;
+    }
+
+    const targetYear = activeDeductionYear || selectedYear;
+    const newItem: DeductionItem = {
+      id: Date.now().toString(),
+      description: deductionDesc.trim(),
+      income: incVal,
+      expense: expVal
+    };
+
+    const currentYearItems = deductions[targetYear] || [];
+    const updatedYearItems = [...currentYearItems, newItem];
+    const newDeductions = {
+      ...deductions,
+      [targetYear]: updatedYearItems
+    };
+
+    setDeductions(newDeductions);
+    setDeductionDesc('');
+    setDeductionIncome('');
+    setDeductionExpense('');
+
+    setIsSavingDeduction(true);
+    try {
+      await apiService.updateSettings({
+        comparative_deductions: JSON.stringify(newDeductions)
+      });
+      toast.success(`Dedução salva com sucesso para o exercício de ${targetYear}!`);
+    } catch (err) {
+      console.error('Erro ao salvar dedução:', err);
+      toast.error('Não foi possível salvar a dedução');
+    } finally {
+      setIsSavingDeduction(false);
+    }
+  };
+
+  const handleDeleteDeduction = async (year: string, id: string) => {
+    const updatedYearItems = (deductions[year] || []).filter(item => item.id !== id);
+    const newDeductions = {
+      ...deductions,
+      [year]: updatedYearItems
+    };
+
+    setDeductions(newDeductions);
+
+    try {
+      await apiService.updateSettings({
+        comparative_deductions: JSON.stringify(newDeductions)
+      });
+      toast.success('Dedução excluída com sucesso!');
+    } catch (err) {
+      console.error('Erro ao excluir dedução:', err);
+      toast.error('Não foi possível excluir a dedução');
     }
   };
 
@@ -535,6 +642,45 @@ export const Reports: React.FC = () => {
     const totalExpenseDiff = totalY1Expense - totalY2Expense;
     const totalBalanceDiff = totalY1Balance - totalY2Balance;
 
+    // Deduções de terceiros / repasses não operacionais (ex: ofertas recebidas do exterior e repassadas a missionários)
+    const y1DeductionList = deductions[y1] || [];
+    const y2DeductionList = deductions[y2] || [];
+
+    const y1DeductionIncome = y1DeductionList.reduce((acc, d) => acc + (d.income || 0), 0);
+    const y1DeductionExpense = y1DeductionList.reduce((acc, d) => acc + (d.expense || 0), 0);
+    const y1DeductionBalance = y1DeductionIncome - y1DeductionExpense;
+
+    const y2DeductionIncome = y2DeductionList.reduce((acc, d) => acc + (d.income || 0), 0);
+    const y2DeductionExpense = y2DeductionList.reduce((acc, d) => acc + (d.expense || 0), 0);
+    const y2DeductionBalance = y2DeductionIncome - y2DeductionExpense;
+
+    const deductionIncomeDiff = y1DeductionIncome - y2DeductionIncome;
+    const deductionExpenseDiff = y1DeductionExpense - y2DeductionExpense;
+    const deductionBalanceDiff = y1DeductionBalance - y2DeductionBalance;
+
+    // Valores Consolidados (Recursos Próprios da Igreja)
+    const consolidatedY1Income = totalY1Income - y1DeductionIncome;
+    const consolidatedY1Expense = totalY1Expense - y1DeductionExpense;
+    const consolidatedY1Balance = consolidatedY1Income - consolidatedY1Expense;
+
+    const consolidatedY2Income = totalY2Income - y2DeductionIncome;
+    const consolidatedY2Expense = totalY2Expense - y2DeductionExpense;
+    const consolidatedY2Balance = consolidatedY2Income - consolidatedY2Expense;
+
+    const consolidatedIncomeDiff = consolidatedY1Income - consolidatedY2Income;
+    const consolidatedExpenseDiff = consolidatedY1Expense - consolidatedY2Expense;
+    const consolidatedBalanceDiff = consolidatedY1Balance - consolidatedY2Balance;
+
+    const consolidatedIncomeGrowth = (!hasIncompleteComparativeIncome && consolidatedY2Income > 0)
+      ? ((consolidatedY1Income - consolidatedY2Income) / consolidatedY2Income) * 100 
+      : (consolidatedY1Income === 0 ? 0 : null);
+
+    const consolidatedExpenseGrowth = (!hasIncompleteComparativeExpense && consolidatedY2Expense > 0)
+      ? ((consolidatedY1Expense - consolidatedY2Expense) / consolidatedY2Expense) * 100 
+      : (consolidatedY1Expense === 0 ? 0 : null);
+
+    const hasAnyDeductions = (y1DeductionIncome > 0 || y1DeductionExpense > 0 || y2DeductionIncome > 0 || y2DeductionExpense > 0);
+
     // Chart dataset
     const chartData = rows.map(r => ({
       name: r.shortName,
@@ -559,9 +705,34 @@ export const Reports: React.FC = () => {
       totalExpenseGrowth,
       totalIncomeDiff,
       totalExpenseDiff,
-      totalBalanceDiff
+      totalBalanceDiff,
+      // Deduções e Repasses
+      y1DeductionList,
+      y2DeductionList,
+      y1DeductionIncome,
+      y1DeductionExpense,
+      y1DeductionBalance,
+      y2DeductionIncome,
+      y2DeductionExpense,
+      y2DeductionBalance,
+      deductionIncomeDiff,
+      deductionExpenseDiff,
+      deductionBalanceDiff,
+      // Totais Líquidos Consolidados
+      consolidatedY1Income,
+      consolidatedY1Expense,
+      consolidatedY1Balance,
+      consolidatedY2Income,
+      consolidatedY2Expense,
+      consolidatedY2Balance,
+      consolidatedIncomeDiff,
+      consolidatedExpenseDiff,
+      consolidatedBalanceDiff,
+      consolidatedIncomeGrowth,
+      consolidatedExpenseGrowth,
+      hasAnyDeductions
     };
-  }, [periodMode, selectedYear, compareYear, allTransactions, historicalTotals, accountFilter, isFiscalDec]);
+  }, [periodMode, selectedYear, compareYear, allTransactions, historicalTotals, deductions, accountFilter, isFiscalDec]);
 
   const generatePDF = () => {
     setIsExporting(true);
@@ -602,6 +773,12 @@ export const Reports: React.FC = () => {
         doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} | Dif: ${fmtDiff(comparativeData.totalExpenseDiff)} (${fmtGrowth(comparativeData.totalExpenseGrowth)})`, 14, 47);
         doc.setFont('helvetica', 'bold');
         doc.text(`Saldo Acumulado: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Balance)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Balance)} | Dif: ${fmtDiff(comparativeData.totalBalanceDiff)}`, 14, 52);
+        
+        if (comparativeData.hasAnyDeductions) {
+          doc.setFontSize(8.5);
+          doc.setTextColor(67, 56, 202);
+          doc.text(`(=) Líquido Consolidado da Igreja: Entradas ${selectedYear}: ${formatCurrency(comparativeData.consolidatedY1Income)} | Saídas ${selectedYear}: ${formatCurrency(comparativeData.consolidatedY1Expense)} | Saldo: ${formatCurrency(comparativeData.consolidatedY1Balance)}`, 14, 57);
+        }
         doc.setFont('helvetica', 'normal');
 
         const compRows = comparativeData.rows.map(r => [
@@ -619,9 +796,9 @@ export const Reports: React.FC = () => {
           fmtDiff(r.balanceDiff)
         ]);
 
-        // Add summary row
+        // Add summary row (Movimentação Geral)
         compRows.push([
-          'TOTAL DO EXERCÍCIO',
+          comparativeData.hasAnyDeductions ? 'TOTAL GERAL (BRUTO)' : 'TOTAL DO EXERCÍCIO',
           formatCurrency(comparativeData.totalY2Income),
           formatCurrency(comparativeData.totalY1Income),
           fmtDiff(comparativeData.totalIncomeDiff),
@@ -635,8 +812,41 @@ export const Reports: React.FC = () => {
           fmtDiff(comparativeData.totalBalanceDiff)
         ]);
 
+        // Se houver deduções / repasses de terceiros, adicionar linhas de dedução e total consolidado
+        if (comparativeData.hasAnyDeductions) {
+          compRows.push([
+            '(-) DEDUÇÕES (TERCEIROS)',
+            comparativeData.y2DeductionIncome > 0 ? `-${formatCurrency(comparativeData.y2DeductionIncome)}` : 'R$ 0,00',
+            comparativeData.y1DeductionIncome > 0 ? `-${formatCurrency(comparativeData.y1DeductionIncome)}` : 'R$ 0,00',
+            fmtDiff(comparativeData.deductionIncomeDiff),
+            '-',
+            comparativeData.y2DeductionExpense > 0 ? `-${formatCurrency(comparativeData.y2DeductionExpense)}` : 'R$ 0,00',
+            comparativeData.y1DeductionExpense > 0 ? `-${formatCurrency(comparativeData.y1DeductionExpense)}` : 'R$ 0,00',
+            fmtDiff(comparativeData.deductionExpenseDiff),
+            '-',
+            formatCurrency(comparativeData.y2DeductionBalance),
+            formatCurrency(comparativeData.y1DeductionBalance),
+            fmtDiff(comparativeData.deductionBalanceDiff)
+          ]);
+
+          compRows.push([
+            '(=) TOTAL CONSOLIDADO (IGREJA)',
+            formatCurrency(comparativeData.consolidatedY2Income),
+            formatCurrency(comparativeData.consolidatedY1Income),
+            fmtDiff(comparativeData.consolidatedIncomeDiff),
+            fmtGrowth(comparativeData.consolidatedIncomeGrowth),
+            formatCurrency(comparativeData.consolidatedY2Expense),
+            formatCurrency(comparativeData.consolidatedY1Expense),
+            fmtDiff(comparativeData.consolidatedExpenseDiff),
+            fmtGrowth(comparativeData.consolidatedExpenseGrowth),
+            formatCurrency(comparativeData.consolidatedY2Balance),
+            formatCurrency(comparativeData.consolidatedY1Balance),
+            fmtDiff(comparativeData.consolidatedBalanceDiff)
+          ]);
+        }
+
         autoTable(doc, {
-          startY: 57,
+          startY: comparativeData.hasAnyDeductions ? 62 : 57,
           head: [[
             'Mês', 
             `Entr. ${compareYear}`, 
@@ -670,6 +880,61 @@ export const Reports: React.FC = () => {
             11: { halign: 'right' }
           }
         });
+
+        // Detalhamento dos Itens de Dedução / Repasses Não Operacionais no PDF
+        if (comparativeData.hasAnyDeductions) {
+          const finalY = (doc as any).lastAutoTable?.finalY || 140;
+          let breakdownY = finalY + 8;
+          if (breakdownY > 155) {
+            doc.addPage();
+            breakdownY = 20;
+          }
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(26, 34, 56);
+          doc.text('Detalhamento de Deduções / Repasses (Recursos de Terceiros Não Operacionais)', 14, breakdownY);
+
+          const deductionTableRows: any[] = [];
+          
+          (comparativeData.y1DeductionList || []).forEach(item => {
+            const diff = item.income - item.expense;
+            deductionTableRows.push([
+              `Exercício ${selectedYear}`,
+              item.description,
+              formatCurrency(item.income),
+              formatCurrency(item.expense),
+              `${diff >= 0 ? '+' : ''}${formatCurrency(diff)}`
+            ]);
+          });
+
+          (comparativeData.y2DeductionList || []).forEach(item => {
+            const diff = item.income - item.expense;
+            deductionTableRows.push([
+              `Exercício ${compareYear}`,
+              item.description,
+              formatCurrency(item.income),
+              formatCurrency(item.expense),
+              `${diff >= 0 ? '+' : ''}${formatCurrency(diff)}`
+            ]);
+          });
+
+          autoTable(doc, {
+            startY: breakdownY + 3,
+            head: [['Exercício', 'Descrição / Motivo do Repasse', 'Entrada Abatida (R$)', 'Saída Abatida (R$)', 'Diferença (Entr - Saíd)']],
+            body: deductionTableRows,
+            headStyles: { fillColor: [67, 56, 202], textColor: [255, 255, 255] },
+            alternateRowStyles: { fillColor: [248, 249, 250] },
+            styles: { fontSize: 7.5 },
+            columnStyles: {
+              0: { halign: 'left', fontStyle: 'bold', cellWidth: 40 },
+              1: { halign: 'left' },
+              2: { halign: 'right', cellWidth: 38 },
+              3: { halign: 'right', cellWidth: 38 },
+              4: { halign: 'right', fontStyle: 'bold', cellWidth: 42 }
+            }
+          });
+        }
 
         const pageCount = (doc as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
@@ -1119,10 +1384,20 @@ export const Reports: React.FC = () => {
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
                     <p className="text-xl sm:text-2xl font-bold text-emerald-700">{formatCurrency(comparativeData.totalY1Income)}</p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                        Líq: {formatCurrency(comparativeData.consolidatedY1Income)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Income)}</p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
+                        Líq: {formatCurrency(comparativeData.consolidatedY2Income)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1164,10 +1439,20 @@ export const Reports: React.FC = () => {
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {selectedYear}</span>
                     <p className="text-xl sm:text-2xl font-bold text-rose-700">{formatCurrency(comparativeData.totalY1Expense)}</p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-semibold text-rose-800 bg-rose-100/70 px-1.5 py-0.5 rounded">
+                        Líq: {formatCurrency(comparativeData.consolidatedY1Expense)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Expense)}</p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
+                        Líq: {formatCurrency(comparativeData.consolidatedY2Expense)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1199,10 +1484,20 @@ export const Reports: React.FC = () => {
                     )}>
                       {formatCurrency(comparativeData.totalY1Balance)}
                     </p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-semibold text-indigo-900 bg-indigo-100/70 px-1.5 py-0.5 rounded">
+                        Líq: {formatCurrency(comparativeData.consolidatedY1Balance)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Exercício {compareYear}</span>
                     <p className="text-sm font-semibold text-zinc-500">{formatCurrency(comparativeData.totalY2Balance)}</p>
+                    {comparativeData.hasAnyDeductions && (
+                      <span className="inline-block mt-1 text-[11px] font-medium text-zinc-500">
+                        Líq: {formatCurrency(comparativeData.consolidatedY2Balance)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1379,8 +1674,11 @@ export const Reports: React.FC = () => {
                       ))}
                     </tbody>
                     <tfoot className="bg-zinc-100/90 font-bold border-t-2 border-zinc-200 text-xs">
+                      {/* Linha 1: Total do Exercício (Movimentação Geral / Bruta) */}
                       <tr>
-                        <td className="px-3 py-3.5 uppercase tracking-wider text-zinc-800 whitespace-nowrap">TOTAL DO EXERCÍCIO</td>
+                        <td className="px-3 py-3.5 uppercase tracking-wider text-zinc-800 whitespace-nowrap">
+                          {comparativeData.hasAnyDeductions ? 'TOTAL DO EXERCÍCIO (MOVIMENTAÇÃO GERAL)' : 'TOTAL DO EXERCÍCIO'}
+                        </td>
                         <td className="px-2.5 py-3.5 text-right text-zinc-600 font-bold whitespace-nowrap">{formatCurrency(comparativeData.totalY2Income)}</td>
                         <td className="px-2.5 py-3.5 text-right text-emerald-800 font-bold text-sm whitespace-nowrap">{formatCurrency(comparativeData.totalY1Income)}</td>
                         <td className={cn(
@@ -1435,8 +1733,324 @@ export const Reports: React.FC = () => {
                           {comparativeData.totalBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalBalanceDiff)}
                         </td>
                       </tr>
+
+                      {/* Linha 2: (-) Deduções / Repasses de Terceiros */}
+                      {comparativeData.hasAnyDeductions && (
+                        <tr className="bg-amber-50/70 text-amber-900 border-t border-amber-200">
+                          <td className="px-3 py-3 font-bold uppercase tracking-wider text-amber-900 whitespace-nowrap">
+                            (-) DEDUÇÕES / REPASSES (TERCEIROS)
+                          </td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-800 whitespace-nowrap">
+                            {comparativeData.y2DeductionIncome > 0 ? `-${formatCurrency(comparativeData.y2DeductionIncome)}` : 'R$ 0,00'}
+                          </td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-900 whitespace-nowrap">
+                            {comparativeData.y1DeductionIncome > 0 ? `-${formatCurrency(comparativeData.y1DeductionIncome)}` : 'R$ 0,00'}
+                          </td>
+                          <td className={cn(
+                            "px-2.5 py-3 text-right font-bold whitespace-nowrap",
+                            comparativeData.deductionIncomeDiff > 0 ? "text-amber-800" : "text-amber-900"
+                          )}>
+                            {comparativeData.deductionIncomeDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.deductionIncomeDiff)}
+                          </td>
+                          <td className="px-2 py-3 text-center text-amber-600 font-bold">-</td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-800 whitespace-nowrap">
+                            {comparativeData.y2DeductionExpense > 0 ? `-${formatCurrency(comparativeData.y2DeductionExpense)}` : 'R$ 0,00'}
+                          </td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-900 whitespace-nowrap">
+                            {comparativeData.y1DeductionExpense > 0 ? `-${formatCurrency(comparativeData.y1DeductionExpense)}` : 'R$ 0,00'}
+                          </td>
+                          <td className={cn(
+                            "px-2.5 py-3 text-right font-bold whitespace-nowrap",
+                            comparativeData.deductionExpenseDiff > 0 ? "text-amber-800" : "text-amber-900"
+                          )}>
+                            {comparativeData.deductionExpenseDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.deductionExpenseDiff)}
+                          </td>
+                          <td className="px-2 py-3 text-center text-amber-600 font-bold">-</td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-800 whitespace-nowrap">
+                            {formatCurrency(comparativeData.y2DeductionBalance)}
+                          </td>
+                          <td className="px-2.5 py-3 text-right font-bold text-amber-900 whitespace-nowrap">
+                            {formatCurrency(comparativeData.y1DeductionBalance)}
+                          </td>
+                          <td className={cn(
+                            "px-3 py-3 text-right font-bold whitespace-nowrap",
+                            comparativeData.deductionBalanceDiff >= 0 ? "text-amber-900" : "text-amber-700"
+                          )}>
+                            {comparativeData.deductionBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.deductionBalanceDiff)}
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* Linha 3: (=) Total Consolidado (Recursos Próprios da Igreja) */}
+                      {comparativeData.hasAnyDeductions && (
+                        <tr className="bg-zinc-900 text-white font-bold border-t-2 border-zinc-950 text-xs sm:text-sm">
+                          <td className="px-3 py-3.5 uppercase tracking-wider text-emerald-400 whitespace-nowrap">
+                            (=) TOTAL CONSOLIDADO (RECURSOS DA IGREJA)
+                          </td>
+                          <td className="px-2.5 py-3.5 text-right text-zinc-300 font-bold whitespace-nowrap">
+                            {formatCurrency(comparativeData.consolidatedY2Income)}
+                          </td>
+                          <td className="px-2.5 py-3.5 text-right text-emerald-400 font-bold text-sm whitespace-nowrap">
+                            {formatCurrency(comparativeData.consolidatedY1Income)}
+                          </td>
+                          <td className={cn(
+                            "px-2.5 py-3.5 text-right font-bold whitespace-nowrap",
+                            comparativeData.consolidatedIncomeDiff >= 0 ? "text-emerald-400" : "text-rose-400"
+                          )}>
+                            {comparativeData.consolidatedIncomeDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.consolidatedIncomeDiff)}
+                          </td>
+                          <td className="px-2 py-3.5 text-center whitespace-nowrap">
+                            {comparativeData.consolidatedIncomeGrowth === null ? (
+                              <span className="text-zinc-400 font-bold">-</span>
+                            ) : (
+                              <span className={cn(
+                                "inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold",
+                                comparativeData.consolidatedIncomeGrowth >= 0 ? "text-emerald-300 bg-emerald-950 border border-emerald-800" : "text-rose-300 bg-rose-950 border border-rose-800"
+                              )}>
+                                {comparativeData.consolidatedIncomeGrowth >= 0 ? '+' : ''}{comparativeData.consolidatedIncomeGrowth.toFixed(1)}%
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-3.5 text-right text-zinc-300 font-bold whitespace-nowrap">
+                            {formatCurrency(comparativeData.consolidatedY2Expense)}
+                          </td>
+                          <td className="px-2.5 py-3.5 text-right text-rose-400 font-bold text-sm whitespace-nowrap">
+                            {formatCurrency(comparativeData.consolidatedY1Expense)}
+                          </td>
+                          <td className={cn(
+                            "px-2.5 py-3.5 text-right font-bold whitespace-nowrap",
+                            comparativeData.consolidatedExpenseDiff <= 0 ? "text-emerald-400" : "text-rose-400"
+                          )}>
+                            {comparativeData.consolidatedExpenseDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.consolidatedExpenseDiff)}
+                          </td>
+                          <td className="px-2 py-3.5 text-center whitespace-nowrap">
+                            {comparativeData.consolidatedExpenseGrowth === null ? (
+                              <span className="text-zinc-400 font-bold">-</span>
+                            ) : (
+                              <span className={cn(
+                                "inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold",
+                                comparativeData.consolidatedExpenseGrowth <= 0 ? "text-emerald-300 bg-emerald-950 border border-emerald-800" : "text-rose-300 bg-rose-950 border border-rose-800"
+                              )}>
+                                {comparativeData.consolidatedExpenseGrowth >= 0 ? '+' : ''}{comparativeData.consolidatedExpenseGrowth.toFixed(1)}%
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-3.5 text-right text-zinc-300 font-bold whitespace-nowrap">
+                            {formatCurrency(comparativeData.consolidatedY2Balance)}
+                          </td>
+                          <td className={cn(
+                            "px-2.5 py-3.5 text-right font-bold text-sm whitespace-nowrap",
+                            comparativeData.consolidatedY1Balance >= 0 ? "text-indigo-300" : "text-rose-400"
+                          )}>
+                            {formatCurrency(comparativeData.consolidatedY1Balance)}
+                          </td>
+                          <td className={cn(
+                            "px-3 py-3.5 text-right font-bold whitespace-nowrap",
+                            comparativeData.consolidatedBalanceDiff >= 0 ? "text-emerald-400" : "text-rose-400"
+                          )}>
+                            {comparativeData.consolidatedBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.consolidatedBalanceDiff)}
+                          </td>
+                        </tr>
+                      )}
                     </tfoot>
                   </table>
+                </div>
+              </div>
+
+              {/* Módulo de Lançamento e Abatimento de Recursos de Terceiros e Repasses */}
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-2xs space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-zinc-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                        <Coins size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-display text-base font-bold text-zinc-900">
+                          Ajustes de Recursos de Terceiros e Repasses Não Operacionais
+                        </h4>
+                        <p className="text-xs text-zinc-500">
+                          Recursos transitados pelo CNPJ da igreja que não pertencem à sua contabilidade (ex: ofertas recebidas para repasse a missionários).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seletor de Exercício */}
+                  <div className="flex items-center rounded-xl bg-zinc-100 p-1 self-start md:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setActiveDeductionYear(selectedYear)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                        activeDeductionYear === selectedYear
+                          ? "bg-white text-zinc-900 shadow-2xs"
+                          : "text-zinc-600 hover:text-zinc-900"
+                      )}
+                    >
+                      <span>Exercício {selectedYear}</span>
+                      <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
+                        {(deductions[selectedYear] || []).length}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDeductionYear(compareYear)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                        activeDeductionYear === compareYear
+                          ? "bg-white text-zinc-900 shadow-2xs"
+                          : "text-zinc-600 hover:text-zinc-900"
+                      )}
+                    >
+                      <span>Exercício {compareYear}</span>
+                      <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
+                        {(deductions[compareYear] || []).length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Formulário de Inserção de Dedução */}
+                <form onSubmit={handleAddDeduction} className="bg-zinc-50/70 p-4 rounded-xl border border-zinc-200/80">
+                  <div className="grid gap-3 sm:grid-cols-12 items-end">
+                    <div className="sm:col-span-5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">
+                        Descrição / Motivo do Repasse
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Oferta recebida para missionário A..."
+                        value={deductionDesc}
+                        onChange={(e) => setDeductionDesc(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-1">
+                        Entrada a Abater (R$)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={deductionIncome}
+                        onChange={(e) => setDeductionIncome(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-right"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block mb-1">
+                        Saída a Abater (R$)
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={deductionExpense}
+                        onChange={(e) => setDeductionExpense(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-zinc-900 font-semibold placeholder:text-zinc-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 text-right"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <button
+                        type="submit"
+                        disabled={isSavingDeduction}
+                        className="w-full inline-flex items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-700 text-white p-2.5 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                        title="Adicionar repasse ao exercício selecionado"
+                      >
+                        {isSavingDeduction ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {/* Tabela de Itens Lançados do Ano Ativo */}
+                <div className="overflow-hidden rounded-xl border border-zinc-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-zinc-100 text-[10px] font-bold uppercase tracking-wider text-zinc-600 border-b border-zinc-200">
+                      <tr>
+                        <th className="px-3.5 py-2.5">Descrição / Motivo ({activeDeductionYear})</th>
+                        <th className="px-3.5 py-2.5 text-right font-bold text-emerald-800">Entrada Abatida (R$)</th>
+                        <th className="px-3.5 py-2.5 text-right font-bold text-rose-800">Saída Abatida (R$)</th>
+                        <th className="px-3.5 py-2.5 text-right font-bold text-indigo-800">Diferença (Entr - Saíd)</th>
+                        <th className="px-3 py-2.5 text-center w-14">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 bg-white">
+                      {(deductions[activeDeductionYear] || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-zinc-400 text-xs">
+                            Nenhum repasse ou recurso de terceiro lançado para o exercício de {activeDeductionYear}.
+                          </td>
+                        </tr>
+                      ) : (
+                        (deductions[activeDeductionYear] || []).map((item) => {
+                          const diff = (item.income || 0) - (item.expense || 0);
+                          return (
+                            <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
+                              <td className="px-3.5 py-2.5 font-medium text-zinc-800">{item.description}</td>
+                              <td className="px-3.5 py-2.5 text-right font-semibold text-emerald-700">
+                                {formatCurrency(item.income || 0)}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-right font-semibold text-rose-700">
+                                {formatCurrency(item.expense || 0)}
+                              </td>
+                              <td className={cn(
+                                "px-3.5 py-2.5 text-right font-bold",
+                                diff > 0 ? "text-emerald-700" : diff < 0 ? "text-rose-700" : "text-zinc-500"
+                              )}>
+                                {diff > 0 ? '+' : ''}{formatCurrency(diff)}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDeduction(activeDeductionYear, item.id)}
+                                  className="inline-flex items-center justify-center text-zinc-400 hover:text-rose-600 transition-colors p-1 cursor-pointer rounded"
+                                  title="Excluir repasse"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                    {(deductions[activeDeductionYear] || []).length > 0 && (
+                      <tfoot className="bg-amber-50/60 font-bold border-t border-amber-200 text-xs">
+                        <tr>
+                          <td className="px-3.5 py-2.5 uppercase tracking-wider text-amber-900">
+                            Total a Abater em {activeDeductionYear}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right text-emerald-800">
+                            {formatCurrency((deductions[activeDeductionYear] || []).reduce((acc, d) => acc + (d.income || 0), 0))}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right text-rose-800">
+                            {formatCurrency((deductions[activeDeductionYear] || []).reduce((acc, d) => acc + (d.expense || 0), 0))}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right text-indigo-900">
+                            {formatCurrency(
+                              (deductions[activeDeductionYear] || []).reduce((acc, d) => acc + (d.income || 0), 0) -
+                              (deductions[activeDeductionYear] || []).reduce((acc, d) => acc + (d.expense || 0), 0)
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5"></td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {/* Informação explicativa adicional */}
+                <div className="flex items-start gap-2 rounded-xl bg-indigo-50/60 p-3 text-xs text-indigo-900 border border-indigo-100">
+                  <Info size={16} className="text-indigo-600 shrink-0 mt-0.5" />
+                  <p>
+                    Os valores cadastrados acima são deduzidos automaticamente das linhas do comparativo anual e dos totais consolidados da igreja. Eles também são apresentados em destaque e discriminados na exportação do relatório em PDF.
+                  </p>
                 </div>
               </div>
             </div>
