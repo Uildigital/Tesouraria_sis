@@ -1,42 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  FileText, 
-  Download, 
-  Printer, 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar, 
-  FileCheck, 
-  Loader2, 
-  ChevronDown, 
-  X, 
-  Check, 
-  ArrowRight, 
-  Wallet, 
-  PieChart, 
-  Scale, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Edit3, 
-  BarChart3, 
-  CheckCircle2, 
+import {
+  FileText,
+  Download,
+  Printer,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  FileCheck,
+  Loader2,
+  ChevronDown,
+  X,
+  Check,
+  ArrowRight,
+  Wallet,
+  PieChart,
+  Scale,
+  ArrowUpRight,
+  ArrowDownRight,
+  Edit3,
+  BarChart3,
+  CheckCircle2,
   HelpCircle,
   Clock,
   Trash2,
   Plus,
   Coins,
-  Info
+  Info,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,7 +86,7 @@ export const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
-  
+
   // Deduções / Recursos de Terceiros e Repasses (Não Operacionais)
   const [deductions, setDeductions] = useState<Record<string, DeductionItem[]>>({});
   const [activeDeductionYear, setActiveDeductionYear] = useState<string>(currentYearStr);
@@ -93,7 +94,7 @@ export const Reports: React.FC = () => {
   const [deductionIncome, setDeductionIncome] = useState('');
   const [deductionExpense, setDeductionExpense] = useState('');
   const [isSavingDeduction, setIsSavingDeduction] = useState(false);
-  
+
   // Filters
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [accountFilter, setAccountFilter] = useState('all');
@@ -138,7 +139,7 @@ export const Reports: React.FC = () => {
       }
 
       setAllTransactions(transData || []);
-      
+
       // Load historical totals from settings
       if (settingsData?.historical_totals) {
         try {
@@ -162,7 +163,7 @@ export const Reports: React.FC = () => {
           console.error('Error parsing comparative_deductions:', e);
         }
       }
-      
+
       // Update available years from transactions data & historical totals
       if (transData && transData.length > 0) {
         const yearsSet = new Set<string>(availableYears);
@@ -182,11 +183,11 @@ export const Reports: React.FC = () => {
         .sort((a, b) => {
           const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
           const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
-          
+
           if (dateA !== dateB) {
             return dateA - dateB;
           }
-          
+
           const createA = new Date(a.created_at || 0).getTime();
           const createB = new Date(b.created_at || 0).getTime();
           return createA - createB;
@@ -276,6 +277,116 @@ export const Reports: React.FC = () => {
     }
   };
 
+  // Importação automática de transações categorizadas como "Ofertas Destino Específico"
+  const handleAutoImportDeductions = async (targetYear: string) => {
+    setIsSavingDeduction(true);
+    try {
+      let startDate = '';
+      let endDate = '';
+      if (isFiscalDec) {
+        startDate = `${Number(targetYear) - 1}-12-01`;
+        endDate = `${targetYear}-11-30`;
+      } else {
+        startDate = `${targetYear}-01-01`;
+        endDate = `${targetYear}-12-31`;
+      }
+
+      const isDestinationCat = (catId?: string) => {
+        if (!catId) return false;
+        const cat = categories.find(c => c.id === catId);
+        if (!cat) return false;
+        const name = (cat.name || '').toLowerCase();
+        return name.includes('destino específico') || name.includes('destino especifico') || name.includes('destino');
+      };
+
+      const matchingTrans = allTransactions.filter(t => {
+        if (!t.date || t.date < startDate || t.date > endDate) return false;
+        return isDestinationCat(t.category_id);
+      });
+
+      if (matchingTrans.length === 0) {
+        toast.info(`Nenhuma transação encontrada na categoria "Ofertas Destino Específico" no exercício de ${targetYear}.`);
+        setIsSavingDeduction(false);
+        return;
+      }
+
+      const groupMap = new Map<string, { income: number; expense: number }>();
+      matchingTrans.forEach(t => {
+        const desc = (t.description || 'Oferta Destino Específico').trim();
+        const current = groupMap.get(desc) || { income: 0, expense: 0 };
+        const val = parseAmount(t.amount);
+        if (t.type === 'income') {
+          current.income += val;
+        } else if (t.type === 'expense') {
+          current.expense += val;
+        }
+        groupMap.set(desc, current);
+      });
+
+      const newItems: DeductionItem[] = Array.from(groupMap.entries()).map(([desc, values], idx) => ({
+        id: `auto-dest-${targetYear}-${idx}-${Date.now()}`,
+        description: desc,
+        income: Number(values.income.toFixed(2)),
+        expense: Number(values.expense.toFixed(2))
+      }));
+
+      const newDeductions = {
+        ...deductions,
+        [targetYear]: newItems
+      };
+
+      setDeductions(newDeductions);
+      await apiService.updateSettings({
+        comparative_deductions: JSON.stringify(newDeductions)
+      });
+
+      const totalInc = newItems.reduce((acc, i) => acc + i.income, 0);
+      const totalExp = newItems.reduce((acc, i) => acc + i.expense, 0);
+      toast.success(
+        `${newItems.length} repasses importados de ${matchingTrans.length} transações no exercício de ${targetYear}! (Entradas: ${formatCurrency(totalInc)} | Saídas: ${formatCurrency(totalExp)})`
+      );
+    } catch (err) {
+      console.error('Erro na importação automática:', err);
+      toast.error('Erro ao importar repasses automaticamente');
+    } finally {
+      setIsSavingDeduction(false);
+    }
+  };
+
+  // Transações de Destino Específico detectadas para o ano ativo
+  const detectedDestinationTransInfo = useMemo(() => {
+    if (periodMode !== 'compare') return null;
+    const year = activeDeductionYear;
+    let startDate = '';
+    let endDate = '';
+    if (isFiscalDec) {
+      startDate = `${Number(year) - 1}-12-01`;
+      endDate = `${year}-11-30`;
+    } else {
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
+
+    const matching = allTransactions.filter(t => {
+      if (!t.date || t.date < startDate || t.date > endDate) return false;
+      const cat = categories.find(c => c.id === t.category_id);
+      if (!cat) return false;
+      const name = (cat.name || '').toLowerCase();
+      return name.includes('destino específico') || name.includes('destino especifico') || name.includes('destino');
+    });
+
+    if (matching.length === 0) return null;
+
+    const totalIncome = matching.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+    const totalExpense = matching.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+
+    return {
+      count: matching.length,
+      income: totalIncome,
+      expense: totalExpense
+    };
+  }, [allTransactions, categories, activeDeductionYear, isFiscalDec, periodMode]);
+
   // Helper to get all descendants of a category
   const getDescendantIds = (catId: string, allCats: Category[]): string[] => {
     const children = allCats.filter(c => c.parent_id === catId);
@@ -304,7 +415,7 @@ export const Reports: React.FC = () => {
   });
 
   const toggleCategory = (id: string) => {
-    setSelectedCategoryIds(prev => 
+    setSelectedCategoryIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -489,7 +600,7 @@ export const Reports: React.FC = () => {
       const monthTrans = allTransactions
         .filter(t => !isOpeningBalance(t))
         .filter(t => t.date && t.date.startsWith(monthPrefix));
-      
+
       const filteredByAccount = monthTrans.filter(t => {
         return accountFilter === 'all' || (t.account || 'Corrente') === accountFilter;
       });
@@ -583,13 +694,13 @@ export const Reports: React.FC = () => {
       const balY2 = dataY2.income - dataY2.expense;
 
       const incomeDiff = dataY1.income - dataY2.income;
-      const incomeGrowth = dataY2.income > 0 
-        ? ((dataY1.income - dataY2.income) / dataY2.income) * 100 
+      const incomeGrowth = dataY2.income > 0
+        ? ((dataY1.income - dataY2.income) / dataY2.income) * 100
         : (dataY1.income === 0 ? 0 : null);
 
       const expenseDiff = dataY1.expense - dataY2.expense;
-      const expenseGrowth = dataY2.expense > 0 
-        ? ((dataY1.expense - dataY2.expense) / dataY2.expense) * 100 
+      const expenseGrowth = dataY2.expense > 0
+        ? ((dataY1.expense - dataY2.expense) / dataY2.expense) * 100
         : (dataY1.expense === 0 ? 0 : null);
 
       const balanceDiff = balY1 - balY2;
@@ -631,11 +742,11 @@ export const Reports: React.FC = () => {
     const hasIncompleteComparativeExpense = rows.some(r => r.y1Expense > 0 && r.y2Expense === 0);
 
     const totalIncomeGrowth = (!hasIncompleteComparativeIncome && totalY2Income > 0)
-      ? ((totalY1Income - totalY2Income) / totalY2Income) * 100 
+      ? ((totalY1Income - totalY2Income) / totalY2Income) * 100
       : (totalY1Income === 0 ? 0 : null);
 
     const totalExpenseGrowth = (!hasIncompleteComparativeExpense && totalY2Expense > 0)
-      ? ((totalY1Expense - totalY2Expense) / totalY2Expense) * 100 
+      ? ((totalY1Expense - totalY2Expense) / totalY2Expense) * 100
       : (totalY1Expense === 0 ? 0 : null);
 
     const totalIncomeDiff = totalY1Income - totalY2Income;
@@ -672,11 +783,11 @@ export const Reports: React.FC = () => {
     const consolidatedBalanceDiff = consolidatedY1Balance - consolidatedY2Balance;
 
     const consolidatedIncomeGrowth = (!hasIncompleteComparativeIncome && consolidatedY2Income > 0)
-      ? ((consolidatedY1Income - consolidatedY2Income) / consolidatedY2Income) * 100 
+      ? ((consolidatedY1Income - consolidatedY2Income) / consolidatedY2Income) * 100
       : (consolidatedY1Income === 0 ? 0 : null);
 
     const consolidatedExpenseGrowth = (!hasIncompleteComparativeExpense && consolidatedY2Expense > 0)
-      ? ((consolidatedY1Expense - consolidatedY2Expense) / consolidatedY2Expense) * 100 
+      ? ((consolidatedY1Expense - consolidatedY2Expense) / consolidatedY2Expense) * 100
       : (consolidatedY1Expense === 0 ? 0 : null);
 
     const hasAnyDeductions = (y1DeductionIncome > 0 || y1DeductionExpense > 0 || y2DeductionIncome > 0 || y2DeductionExpense > 0);
@@ -750,9 +861,9 @@ export const Reports: React.FC = () => {
         doc.setFontSize(12);
         doc.setTextColor(100, 100, 100);
         doc.text(
-          isFiscalDec 
+          isFiscalDec
             ? `Relatório Comparativo de Exercício Fiscal (${selectedYear} vs ${compareYear})`
-            : `Relatório Comparativo Anual - ${selectedYear} vs ${compareYear}`, 
+            : `Relatório Comparativo Anual - ${selectedYear} vs ${compareYear}`,
           14, 27
         );
         doc.setFontSize(9);
@@ -773,7 +884,7 @@ export const Reports: React.FC = () => {
         doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} | Dif: ${fmtDiff(comparativeData.totalExpenseDiff)} (${fmtGrowth(comparativeData.totalExpenseGrowth)})`, 14, 47);
         doc.setFont('helvetica', 'bold');
         doc.text(`Saldo Acumulado: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Balance)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Balance)} | Dif: ${fmtDiff(comparativeData.totalBalanceDiff)}`, 14, 52);
-        
+
         if (comparativeData.hasAnyDeductions) {
           doc.setFontSize(8.5);
           doc.setTextColor(67, 56, 202);
@@ -848,17 +959,17 @@ export const Reports: React.FC = () => {
         autoTable(doc, {
           startY: comparativeData.hasAnyDeductions ? 62 : 57,
           head: [[
-            'Mês', 
-            `Entr. ${compareYear}`, 
-            `Entr. ${selectedYear}`, 
-            'Dif. Entr.', 
-            'Var. %', 
-            `Saíd. ${compareYear}`, 
-            `Saíd. ${selectedYear}`, 
-            'Dif. Saíd.', 
-            'Var. %', 
-            `Saldo ${compareYear}`, 
-            `Saldo ${selectedYear}`, 
+            'Mês',
+            `Entr. ${compareYear}`,
+            `Entr. ${selectedYear}`,
+            'Dif. Entr.',
+            'Var. %',
+            `Saíd. ${compareYear}`,
+            `Saíd. ${selectedYear}`,
+            'Dif. Saíd.',
+            'Var. %',
+            `Saldo ${compareYear}`,
+            `Saldo ${selectedYear}`,
             'Dif. Saldo'
           ]],
           body: compRows,
@@ -896,7 +1007,7 @@ export const Reports: React.FC = () => {
           doc.text('Detalhamento de Deduções / Repasses (Recursos de Terceiros Não Operacionais)', 14, breakdownY);
 
           const deductionTableRows: any[] = [];
-          
+
           (comparativeData.y1DeductionList || []).forEach(item => {
             const diff = item.income - item.expense;
             deductionTableRows.push([
@@ -954,8 +1065,8 @@ export const Reports: React.FC = () => {
 
       let periodLabel = '';
       if (periodMode === 'year') {
-        periodLabel = isFiscalDec 
-          ? `Exercício Fiscal de ${selectedYear} (01/12/${Number(selectedYear)-1} a 30/11/${selectedYear})`
+        periodLabel = isFiscalDec
+          ? `Exercício Fiscal de ${selectedYear} (01/12/${Number(selectedYear) - 1} a 30/11/${selectedYear})`
           : `Consolidado Anual - ${selectedYear}`;
       } else {
         const [yearNum, monthNum] = month.split('-').map(Number);
@@ -967,7 +1078,7 @@ export const Reports: React.FC = () => {
       doc.setFontSize(22);
       doc.setTextColor(26, 34, 56);
       doc.text('Igreja', 14, 22);
-      
+
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
       doc.text(`Balancete Financeiro - ${periodLabel}`, 14, 30);
@@ -1080,14 +1191,14 @@ export const Reports: React.FC = () => {
           <p className="mt-1 text-zinc-500">Análise detalhada, transparência e comparativos financeiros.</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={() => window.print()}
             className="flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all cursor-pointer shadow-2xs"
           >
             <Printer className="mr-2 h-5 w-5" />
             <span className="hidden sm:inline">Imprimir</span>
           </button>
-          <button 
+          <button
             onClick={generatePDF}
             disabled={isExporting || (periodMode !== 'compare' && filteredTransactions.length === 0)}
             className="flex items-center justify-center rounded-2xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
@@ -1114,10 +1225,10 @@ export const Reports: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-2xl font-bold text-zinc-900">
-                    {periodMode === 'compare' 
+                    {periodMode === 'compare'
                       ? `Comparativo Fiscal (${selectedYear} vs ${compareYear})`
-                      : periodMode === 'year' 
-                        ? `Balancete do Exercício (${selectedYear})` 
+                      : periodMode === 'year'
+                        ? `Balancete do Exercício (${selectedYear})`
                         : 'Balancete Mensal'}
                   </h3>
                   {isFiscalDec && (periodMode === 'year' || periodMode === 'compare') && (
@@ -1128,13 +1239,13 @@ export const Reports: React.FC = () => {
                 </div>
                 <p className="text-sm text-zinc-500">
                   {periodMode === 'compare'
-                    ? (isFiscalDec 
-                        ? `Comparação entre os exercícios de ${selectedYear} e ${compareYear} (Dezembro a Novembro).`
-                        : `Acompanhamento mês a mês comparando ${selectedYear} com ${compareYear}.`)
+                    ? (isFiscalDec
+                      ? `Comparação entre os exercícios de ${selectedYear} e ${compareYear} (Dezembro a Novembro).`
+                      : `Acompanhamento mês a mês comparando ${selectedYear} com ${compareYear}.`)
                     : periodMode === 'year'
-                      ? (isFiscalDec 
-                          ? `Exercício Fiscal de ${selectedYear}: 01/12/${Number(selectedYear)-1} a 30/11/${selectedYear} (12 meses).`
-                          : `Visão consolidada de todo o ano de ${selectedYear}.`)
+                      ? (isFiscalDec
+                        ? `Exercício Fiscal de ${selectedYear}: 01/12/${Number(selectedYear) - 1} a 30/11/${selectedYear} (12 meses).`
+                        : `Visão consolidada de todo o ano de ${selectedYear}.`)
                       : 'Relatório consolidado de movimentações do mês.'}
                 </p>
               </div>
@@ -1186,8 +1297,8 @@ export const Reports: React.FC = () => {
               {periodMode === 'month' ? (
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                  <input 
-                    type="month" 
+                  <input
+                    type="month"
                     value={month}
                     onChange={(e) => setMonth(e.target.value)}
                     className="w-full sm:w-auto rounded-xl border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
@@ -1203,7 +1314,7 @@ export const Reports: React.FC = () => {
                   >
                     {availableYears.map(y => (
                       <option key={y} value={y}>
-                        {isFiscalDec ? `Exercício ${y} (Dez/${Number(y)-1} a Nov/${y})` : `Ano ${y}`}
+                        {isFiscalDec ? `Exercício ${y} (Dez/${Number(y) - 1} a Nov/${y})` : `Ano ${y}`}
                       </option>
                     ))}
                   </select>
@@ -1257,7 +1368,7 @@ export const Reports: React.FC = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Tipo</label>
-              <select 
+              <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
                 disabled={periodMode === 'compare'}
@@ -1270,7 +1381,7 @@ export const Reports: React.FC = () => {
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Filtrar por Conta</label>
-              <select 
+              <select
                 value={accountFilter}
                 onChange={(e) => setAccountFilter(e.target.value as any)}
                 className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer"
@@ -1290,10 +1401,10 @@ export const Reports: React.FC = () => {
                   className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <span className="truncate">
-                    {periodMode === 'compare' 
-                      ? "Consolidado Geral (Comparativo)" 
-                      : selectedCategoryIds.length === 0 
-                        ? "Todas as Categorias" 
+                    {periodMode === 'compare'
+                      ? "Consolidado Geral (Comparativo)"
+                      : selectedCategoryIds.length === 0
+                        ? "Todas as Categorias"
                         : `${selectedCategoryIds.length} selecionada(s)`}
                   </span>
                   <ChevronDown className={cn("h-4 w-4 transition-transform", isCategoryMenuOpen && "rotate-180")} />
@@ -1301,15 +1412,15 @@ export const Reports: React.FC = () => {
 
                 {isCategoryMenuOpen && periodMode !== 'compare' && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-10" 
-                      onClick={() => setIsCategoryMenuOpen(false)} 
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsCategoryMenuOpen(false)}
                     />
                     <div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-y-auto rounded-xl border border-zinc-100 bg-white py-2 shadow-xl animate-in fade-in zoom-in duration-200">
                       <div className="sticky top-0 z-10 bg-white px-4 pb-2 border-b border-zinc-50 mb-2 flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Categorias</span>
                         {selectedCategoryIds.length > 0 && (
-                          <button 
+                          <button
                             type="button"
                             onClick={() => setSelectedCategoryIds([])}
                             className="text-[10px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-600 cursor-pointer"
@@ -1369,8 +1480,8 @@ export const Reports: React.FC = () => {
                       "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
                       comparativeData.totalIncomeGrowth === null
                         ? "bg-zinc-100 text-zinc-600"
-                        : comparativeData.totalIncomeGrowth >= 0 
-                          ? "bg-emerald-100 text-emerald-800" 
+                        : comparativeData.totalIncomeGrowth >= 0
+                          ? "bg-emerald-100 text-emerald-800"
                           : "bg-rose-100 text-rose-800"
                     )}>
                       {comparativeData.totalIncomeGrowth !== null && (
@@ -1422,11 +1533,11 @@ export const Reports: React.FC = () => {
                       "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
                       comparativeData.totalExpenseGrowth === null
                         ? "bg-zinc-100 text-zinc-600"
-                        : comparativeData.totalExpenseGrowth <= 0 
-                          ? "bg-emerald-100 text-emerald-800" 
+                        : comparativeData.totalExpenseGrowth <= 0
+                          ? "bg-emerald-100 text-emerald-800"
                           : "bg-rose-100 text-rose-800"
                     )}
-                    title={comparativeData.totalExpenseGrowth === null ? "Base comparativa incompleta no ano anterior (faltam meses)" : undefined}
+                      title={comparativeData.totalExpenseGrowth === null ? "Base comparativa incompleta no ano anterior (faltam meses)" : undefined}
                     >
                       {comparativeData.totalExpenseGrowth !== null && (
                         comparativeData.totalExpenseGrowth <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />
@@ -1468,8 +1579,8 @@ export const Reports: React.FC = () => {
                   </div>
                   <span className={cn(
                     "inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold",
-                    comparativeData.totalBalanceDiff >= 0 
-                      ? "bg-emerald-100 text-emerald-800" 
+                    comparativeData.totalBalanceDiff >= 0
+                      ? "bg-emerald-100 text-emerald-800"
                       : "bg-rose-100 text-rose-800"
                   )}>
                     Dif: {comparativeData.totalBalanceDiff >= 0 ? '+' : ''}{formatCurrency(comparativeData.totalBalanceDiff)}
@@ -1509,7 +1620,7 @@ export const Reports: React.FC = () => {
                 <div>
                   <h4 className="font-display text-lg font-bold text-zinc-900">Evolução Mensal do Exercício</h4>
                   <p className="text-xs text-zinc-500">
-                    {isFiscalDec 
+                    {isFiscalDec
                       ? `Comparativo mês a mês de Dezembro a Novembro entre os exercícios de ${selectedYear} e ${compareYear}.`
                       : `Comparativo das movimentações entre ${selectedYear} e ${compareYear}.`}
                   </p>
@@ -1525,13 +1636,13 @@ export const Reports: React.FC = () => {
                   <BarChart data={comparativeData.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} />
-                    <YAxis 
-                      stroke="#888888" 
-                      fontSize={11} 
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={11}
                       tickLine={false}
-                      tickFormatter={(val) => `R$ ${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`} 
+                      tickFormatter={(val) => `R$ ${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
                     />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [formatCurrency(Number(value)), '']}
                       contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
@@ -1550,13 +1661,13 @@ export const Reports: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h4 className="font-bold text-sm text-zinc-900 uppercase tracking-wider">
-                    {isFiscalDec 
-                      ? `Detalhamento do Exercício Fiscal (${selectedYear} vs ${compareYear})` 
+                    {isFiscalDec
+                      ? `Detalhamento do Exercício Fiscal (${selectedYear} vs ${compareYear})`
                       : `Detalhamento Mês a Mês (${selectedYear} vs ${compareYear})`}
                   </h4>
                   <p className="text-xs text-zinc-500">
-                    {isFiscalDec 
-                      ? `12 meses: de 01/Dez/${Number(selectedYear)-1} a 30/Nov/${selectedYear} vs 01/Dez/${Number(compareYear)-1} a 30/Nov/${compareYear}` 
+                    {isFiscalDec
+                      ? `12 meses: de 01/Dez/${Number(selectedYear) - 1} a 30/Nov/${selectedYear} vs 01/Dez/${Number(compareYear) - 1} a 30/Nov/${compareYear}`
                       : 'Valores consolidados e taxa de crescimento percentual.'}
                   </p>
                 </div>
@@ -1597,7 +1708,7 @@ export const Reports: React.FC = () => {
                               <div className="flex flex-col">
                                 <span>{row.name}</span>
                                 <span className="text-[10px] font-normal text-zinc-400">
-                                  Dez/{Number(compareYear)-1} vs Dez/{Number(selectedYear)-1}
+                                  Dez/{Number(compareYear) - 1} vs Dez/{Number(selectedYear) - 1}
                                 </span>
                               </div>
                             ) : (
@@ -1876,40 +1987,81 @@ export const Reports: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Seletor de Exercício */}
-                  <div className="flex items-center rounded-xl bg-zinc-100 p-1 self-start md:self-auto">
+                  {/* Ações e Seletor de Exercício */}
+                  <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
                     <button
                       type="button"
-                      onClick={() => setActiveDeductionYear(selectedYear)}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
-                        activeDeductionYear === selectedYear
-                          ? "bg-white text-zinc-900 shadow-2xs"
-                          : "text-zinc-600 hover:text-zinc-900"
-                      )}
+                      onClick={() => handleAutoImportDeductions(activeDeductionYear)}
+                      disabled={isSavingDeduction}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                      title={`Importar automaticamente transações da categoria Ofertas Destino Específico do exercício de ${activeDeductionYear}`}
                     >
-                      <span>Exercício {selectedYear}</span>
-                      <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
-                        {(deductions[selectedYear] || []).length}
-                      </span>
+                      {isSavingDeduction ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      <span>Puxar Automático ({activeDeductionYear})</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveDeductionYear(compareYear)}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
-                        activeDeductionYear === compareYear
-                          ? "bg-white text-zinc-900 shadow-2xs"
-                          : "text-zinc-600 hover:text-zinc-900"
-                      )}
-                    >
-                      <span>Exercício {compareYear}</span>
-                      <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
-                        {(deductions[compareYear] || []).length}
-                      </span>
-                    </button>
+
+                    <div className="flex items-center rounded-xl bg-zinc-100 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveDeductionYear(selectedYear)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                          activeDeductionYear === selectedYear
+                            ? "bg-white text-zinc-900 shadow-2xs"
+                            : "text-zinc-600 hover:text-zinc-900"
+                        )}
+                      >
+                        <span>Exercício {selectedYear}</span>
+                        <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
+                          {(deductions[selectedYear] || []).length}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveDeductionYear(compareYear)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer",
+                          activeDeductionYear === compareYear
+                            ? "bg-white text-zinc-900 shadow-2xs"
+                            : "text-zinc-600 hover:text-zinc-900"
+                        )}
+                      >
+                        <span>Exercício {compareYear}</span>
+                        <span className="rounded-full bg-zinc-200 px-1.5 py-0.2 text-[10px] text-zinc-700">
+                          {(deductions[compareYear] || []).length}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Banner de Detecção Automática de Ofertas Destino Específico */}
+                {detectedDestinationTransInfo && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 p-3.5 border border-amber-200 text-xs text-amber-900">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 text-amber-800">
+                        <Sparkles size={15} />
+                      </div>
+                      <div>
+                        <span>
+                          Encontramos <strong>{detectedDestinationTransInfo.count} lançamentos</strong> na categoria <strong>Ofertas Destino Específico</strong> no exercício de {activeDeductionYear}.
+                        </span>
+                        <span className="block text-[11px] text-amber-700 font-medium">
+                          Entradas: <strong>{formatCurrency(detectedDestinationTransInfo.income)}</strong> | Saídas: <strong>{formatCurrency(detectedDestinationTransInfo.expense)}</strong> | Diferença: <strong>{formatCurrency(detectedDestinationTransInfo.income - detectedDestinationTransInfo.expense)}</strong>
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAutoImportDeductions(activeDeductionYear)}
+                      disabled={isSavingDeduction}
+                      className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-bold transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
+                    >
+                      <Sparkles size={12} />
+                      <span>Sincronizar Repasses</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Formulário de Inserção de Dedução */}
                 <form onSubmit={handleAddDeduction} className="bg-zinc-50/70 p-4 rounded-xl border border-zinc-200/80">
@@ -2145,8 +2297,8 @@ export const Reports: React.FC = () => {
                         {isFiscalDec ? `Resumo Mês a Mês (Exercício ${selectedYear})` : `Resumo Mês a Mês (${selectedYear})`}
                       </h4>
                       <p className="text-xs text-zinc-500">
-                        {isFiscalDec 
-                          ? `Consolidado de 12 meses: de 01/Dez/${Number(selectedYear)-1} a 30/Nov/${selectedYear}.`
+                        {isFiscalDec
+                          ? `Consolidado de 12 meses: de 01/Dez/${Number(selectedYear) - 1} a 30/Nov/${selectedYear}.`
                           : 'Entradas, saídas e resultado consolidado de cada mês do ano.'}
                       </p>
                     </div>
@@ -2159,8 +2311,8 @@ export const Reports: React.FC = () => {
                     {monthlySummary.map(m => {
                       const hasData = m.count > 0;
                       return (
-                        <div 
-                          key={m.monthIndex} 
+                        <div
+                          key={m.monthIndex}
                           className={cn(
                             "rounded-xl border p-3.5 transition-all bg-white",
                             hasData ? "border-zinc-200 shadow-2xs hover:border-indigo-200" : "border-dashed border-zinc-200/70 bg-white/60 opacity-60"
@@ -2291,9 +2443,9 @@ export const Reports: React.FC = () => {
                                 <span className="font-bold text-zinc-900">{formatCurrency(cat.total)} ({percentage.toFixed(1)}%)</span>
                               </div>
                               <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
-                                <div 
-                                  className="h-full bg-rose-500 rounded-full" 
-                                  style={{ width: `${Math.min(percentage, 100)}%` }} 
+                                <div
+                                  className="h-full bg-rose-500 rounded-full"
+                                  style={{ width: `${Math.min(percentage, 100)}%` }}
                                 />
                               </div>
                             </div>
@@ -2310,10 +2462,10 @@ export const Reports: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-sm text-zinc-800 uppercase tracking-wider">
-                  {periodMode === 'year' 
-                    ? (isFiscalDec 
-                        ? `Lançamentos do Exercício Fiscal (${filteredTransactions.length})` 
-                        : `Todos os Lançamentos do Ano (${filteredTransactions.length})`)
+                  {periodMode === 'year'
+                    ? (isFiscalDec
+                      ? `Lançamentos do Exercício Fiscal (${filteredTransactions.length})`
+                      : `Todos os Lançamentos do Ano (${filteredTransactions.length})`)
                     : `Lançamentos do Mês (${filteredTransactions.length})`}
                 </h4>
               </div>
