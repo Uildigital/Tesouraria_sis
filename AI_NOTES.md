@@ -75,3 +75,10 @@ Este documento registra as implementações recentes para que as próximas sess�
 
 ### 3. Adaptação do Modal de Totais Históricos (src/components/HistoricalTotalsModal.tsx)
 - A tabela de lançamento de totais anteriores (ex: 2025) lista os meses na ordem fiscal: `Dezembro (ano anterior)`, `Janeiro`, `Fevereiro` ... até `Novembro`.
+
+### 4. Correção da Busca de Dezembro no Comparativo e Visão Anual (Reports.tsx & Modal)
+- **Causa Raiz Identificada:** No Exercício Fiscal da Igreja (01/Dez a 30/Nov), o Exercício de 2026 inicia com Dezembro/2025 (puxado automaticamente das transações reais do sistema: R$ 33.380,89 de entradas e R$ 39.009,66 de saídas). O Exercício de 2025 inicia com Dezembro/2024 (R$ 48.809,02 de entradas e R$ 46.745,40 de saídas). Como o valor de Dezembro/2024 havia sido salvo na chave 2024/12, a busca na chave 2025/12 ficava em R$ 0,00.
+- **Solução Implementada:**
+  - `getFiscalTotals` em `Reports.tsx` agora possui fallback inteligente para Dezembro: busca nas transações reais, depois no histórico do ano base, depois no histórico do ano anterior (ex: 2024/12 para o exercício 2025) e depois em transações diretas.
+  - Sincronização automática em `HistoricalTotalsModal`: carregar e salvar Dezembro sincroniza tanto em `selectedYear` quanto em `prevYear`.
+  - `monthlySummary` em `Reports.tsx`: na visão anual consolidada de um ano sem transações reais (ex: 2025), o sistema agora puxa automaticamente os totais históricos salvos, exibindo todos os 12 meses preenchidos.

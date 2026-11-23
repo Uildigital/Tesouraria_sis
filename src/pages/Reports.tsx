@@ -228,45 +228,67 @@ export const Reports: React.FC = () => {
       ));
   };
 
-  const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-  const expenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-  const balance = income - expenses;
-
   // Monthly breakdown for annual view (follows fiscal year)
   const monthlySummary = useMemo(() => {
     if (periodMode !== 'year') return [];
 
-    let monthsList: Array<{ prefix: string; name: string; shortName: string }> = [];
+    let monthsList: Array<{ prefix: string; name: string; shortName: string; histKey: string }> = [];
 
     if (isFiscalDec) {
       const prevYear = Number(selectedYear) - 1;
       monthsList = [
-        { prefix: `${prevYear}-12`, name: `Dezembro/${prevYear}`, shortName: 'Dez' },
-        { prefix: `${selectedYear}-01`, name: `Janeiro/${selectedYear}`, shortName: 'Jan' },
-        { prefix: `${selectedYear}-02`, name: 'Fevereiro', shortName: 'Fev' },
-        { prefix: `${selectedYear}-03`, name: 'Março', shortName: 'Mar' },
-        { prefix: `${selectedYear}-04`, name: 'Abril', shortName: 'Abr' },
-        { prefix: `${selectedYear}-05`, name: 'Maio', shortName: 'Mai' },
-        { prefix: `${selectedYear}-06`, name: 'Junho', shortName: 'Jun' },
-        { prefix: `${selectedYear}-07`, name: 'Julho', shortName: 'Jul' },
-        { prefix: `${selectedYear}-08`, name: 'Agosto', shortName: 'Ago' },
-        { prefix: `${selectedYear}-09`, name: 'Setembro', shortName: 'Set' },
-        { prefix: `${selectedYear}-10`, name: 'Outubro', shortName: 'Out' },
-        { prefix: `${selectedYear}-11`, name: 'Novembro', shortName: 'Nov' },
+        { prefix: `${prevYear}-12`, name: `Dezembro/${prevYear}`, shortName: 'Dez', histKey: '12' },
+        { prefix: `${selectedYear}-01`, name: `Janeiro/${selectedYear}`, shortName: 'Jan', histKey: '1' },
+        { prefix: `${selectedYear}-02`, name: 'Fevereiro', shortName: 'Fev', histKey: '2' },
+        { prefix: `${selectedYear}-03`, name: 'Março', shortName: 'Mar', histKey: '3' },
+        { prefix: `${selectedYear}-04`, name: 'Abril', shortName: 'Abr', histKey: '4' },
+        { prefix: `${selectedYear}-05`, name: 'Maio', shortName: 'Mai', histKey: '5' },
+        { prefix: `${selectedYear}-06`, name: 'Junho', shortName: 'Jun', histKey: '6' },
+        { prefix: `${selectedYear}-07`, name: 'Julho', shortName: 'Jul', histKey: '7' },
+        { prefix: `${selectedYear}-08`, name: 'Agosto', shortName: 'Ago', histKey: '8' },
+        { prefix: `${selectedYear}-09`, name: 'Setembro', shortName: 'Set', histKey: '9' },
+        { prefix: `${selectedYear}-10`, name: 'Outubro', shortName: 'Out', histKey: '10' },
+        { prefix: `${selectedYear}-11`, name: 'Novembro', shortName: 'Nov', histKey: '11' },
       ];
     } else {
       const calNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
       monthsList = calNames.map((name, i) => ({
         prefix: `${selectedYear}-${String(i + 1).padStart(2, '0')}`,
         name,
-        shortName: name.slice(0, 3)
+        shortName: name.slice(0, 3),
+        histKey: (i + 1).toString()
       }));
     }
 
     return monthsList.map((m, index) => {
       const monthTrans = filteredTransactions.filter(t => t.date && t.date.startsWith(m.prefix));
-      const mIncome = monthTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
-      const mExpenses = monthTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      let mIncome = monthTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      let mExpenses = monthTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+      let isHist = false;
+
+      // Se não houver transações reais no mês, buscar nos totais históricos salvos
+      if (monthTrans.length === 0) {
+        const histYear = historicalTotals[selectedYear] || {};
+        let hInc = parseAmount(histYear[m.histKey]?.income);
+        let hExp = parseAmount(histYear[m.histKey]?.expense);
+
+        // Fallback para Dezembro no exercício fiscal
+        if (m.histKey === '12' && hInc === 0 && hExp === 0 && isFiscalDec) {
+          const prevYearKey = (Number(selectedYear) - 1).toString();
+          const prevTotals = historicalTotals[prevYearKey]?.['12'];
+          if (prevTotals) {
+            hInc = parseAmount(prevTotals.income);
+            hExp = parseAmount(prevTotals.expense);
+          }
+        }
+
+        if (hInc > 0 || hExp > 0) {
+          mIncome = hInc;
+          mExpenses = hExp;
+          isHist = true;
+        }
+      }
+
       const mBalance = mIncome - mExpenses;
 
       return {
@@ -277,10 +299,23 @@ export const Reports: React.FC = () => {
         count: monthTrans.length,
         income: mIncome,
         expenses: mExpenses,
-        balance: mBalance
+        balance: mBalance,
+        isHistorical: isHist
       };
     });
-  }, [periodMode, selectedYear, filteredTransactions, isFiscalDec]);
+  }, [periodMode, selectedYear, filteredTransactions, isFiscalDec, historicalTotals]);
+
+  const rawIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+  const rawExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+
+  // Se for visão anual e não houver transações (ex: ano anterior baseado em histórico), somar do monthlySummary
+  const income = (periodMode === 'year' && rawIncome === 0 && monthlySummary.length > 0)
+    ? monthlySummary.reduce((acc, m) => acc + m.income, 0)
+    : rawIncome;
+  const expenses = (periodMode === 'year' && rawExpenses === 0 && monthlySummary.length > 0)
+    ? monthlySummary.reduce((acc, m) => acc + m.expenses, 0)
+    : rawExpenses;
+  const balance = income - expenses;
 
   // Accounts summary
   const accountSummary = useMemo(() => {
@@ -338,7 +373,7 @@ export const Reports: React.FC = () => {
 
     // Helper to get month totals considering fiscal year prefixes
     const getFiscalTotals = (yearStr: string, histKey: string, monthPrefix: string) => {
-      // 1. Procurar nas transações reais
+      // 1. Procurar nas transações reais pelo prefixo
       const monthTrans = allTransactions.filter(t => t.date && t.date.startsWith(monthPrefix));
       
       const filteredByAccount = monthTrans.filter(t => {
@@ -354,8 +389,38 @@ export const Reports: React.FC = () => {
       // 2. Se não houver transações reais, buscar nos Totais Históricos salvos
       const histYear = historicalTotals[yearStr] || {};
       const histMonth = histYear[histKey] || { income: 0, expense: 0 };
-      const histInc = parseAmount(histMonth.income);
-      const histExp = parseAmount(histMonth.expense);
+      let histInc = parseAmount(histMonth.income);
+      let histExp = parseAmount(histMonth.expense);
+
+      // Fallback para Dezembro (histKey === '12'): se estiver zerado no ano do exercício,
+      // verificar se foi salvo no ano anterior (ex: 2024['12'] para o exercício 2025)
+      if (histKey === '12' && histInc === 0 && histExp === 0 && isFiscalDec) {
+        const prevYearKey = (Number(yearStr) - 1).toString();
+        const prevYearTotals = historicalTotals[prevYearKey]?.['12'];
+        if (prevYearTotals) {
+          const pInc = parseAmount(prevYearTotals.income);
+          const pExp = parseAmount(prevYearTotals.expense);
+          if (pInc > 0 || pExp > 0) {
+            histInc = pInc;
+            histExp = pExp;
+          }
+        }
+      }
+
+      // Fallback de transações reais diretas para Dezembro:
+      // se ainda estiver zerado e houver transações reais em `${yearStr}-12`
+      if (histKey === '12' && histInc === 0 && histExp === 0) {
+        const directTrans = allTransactions.filter(t => t.date && t.date.startsWith(`${yearStr}-12`));
+        const filteredDirect = directTrans.filter(t => {
+          return accountFilter === 'all' || (t.account || 'Corrente') === accountFilter;
+        });
+        if (filteredDirect.length > 0) {
+          const inc = filteredDirect.filter(t => t.type === 'income').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+          const exp = filteredDirect.filter(t => t.type === 'expense').reduce((acc, t) => acc + parseAmount(t.amount), 0);
+          return { income: inc, expense: exp, fromHistorical: false, count: filteredDirect.length };
+        }
+      }
+
       return {
         income: histInc,
         expense: histExp,
@@ -368,7 +433,7 @@ export const Reports: React.FC = () => {
 
     if (isFiscalDec) {
       comparativeMonths = [
-        { name: 'Dezembro (ano anterior)', shortName: 'Dez', histKey: '12', getPrefix: (y) => `${Number(y) - 1}-12` },
+        { name: 'Dezembro (Início do Exercício)', shortName: 'Dez', histKey: '12', getPrefix: (y) => `${Number(y) - 1}-12` },
         { name: 'Janeiro', shortName: 'Jan', histKey: '1', getPrefix: (y) => `${y}-01` },
         { name: 'Fevereiro', shortName: 'Fev', histKey: '2', getPrefix: (y) => `${y}-02` },
         { name: 'Março', shortName: 'Mar', histKey: '3', getPrefix: (y) => `${y}-03` },
@@ -1142,7 +1207,16 @@ export const Reports: React.FC = () => {
                       {comparativeData.rows.map(row => (
                         <tr key={row.monthIdx} className="hover:bg-zinc-50/60 transition-colors">
                           <td className="px-4 py-3 font-bold text-zinc-800">
-                            {row.name}
+                            {row.monthIdx === 1 && isFiscalDec ? (
+                              <div className="flex flex-col">
+                                <span>{row.name}</span>
+                                <span className="text-[10px] font-normal text-zinc-400">
+                                  Dez/{Number(compareYear)-1} vs Dez/{Number(selectedYear)-1}
+                                </span>
+                              </div>
+                            ) : (
+                              row.name
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right text-zinc-500">
                             {formatCurrency(row.y2Income)}
@@ -1336,7 +1410,14 @@ export const Reports: React.FC = () => {
                           )}
                         >
                           <div className="flex items-center justify-between border-b border-zinc-100 pb-2 mb-2.5">
-                            <span className="font-bold text-sm text-zinc-800">{m.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-sm text-zinc-800">{m.name}</span>
+                              {m.isHistorical && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded" title="Total consolidado do exercício anterior">
+                                  Histórico
+                                </span>
+                              )}
+                            </div>
                             <button
                               type="button"
                               onClick={() => {

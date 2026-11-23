@@ -78,15 +78,27 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
   useEffect(() => {
     // When year changes, load that year's data from memory
     const yearTotals = allHistoricalTotals[selectedYear] || {};
+    const prevYearKey = (Number(selectedYear) - 1).toString();
     const updated: Record<string, MonthData> = {};
     fiscalMonths.forEach(m => {
+      let inc = yearTotals[m.key]?.income ?? '';
+      let exp = yearTotals[m.key]?.expense ?? '';
+
+      // Fallback para Dezembro: se estiver vazio no selectedYear, verificar no ano anterior
+      if (m.key === '12' && (!inc || inc === 0) && (!exp || exp === 0) && isFiscalDec) {
+        if (allHistoricalTotals[prevYearKey]?.['12']) {
+          inc = allHistoricalTotals[prevYearKey]['12'].income ?? '';
+          exp = allHistoricalTotals[prevYearKey]['12'].expense ?? '';
+        }
+      }
+
       updated[m.key] = {
-        income: yearTotals[m.key]?.income ?? '',
-        expense: yearTotals[m.key]?.expense ?? ''
+        income: inc,
+        expense: exp
       };
     });
     setMonthsData(updated);
-  }, [selectedYear, allHistoricalTotals, fiscalMonths]);
+  }, [selectedYear, allHistoricalTotals, fiscalMonths, isFiscalDec]);
 
   const loadHistoricalData = async () => {
     setLoading(true);
@@ -107,11 +119,23 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
       setAllHistoricalTotals(parsedTotals);
 
       const yearTotals = parsedTotals[selectedYear] || {};
+      const prevYearKey = (Number(selectedYear) - 1).toString();
       const updated: Record<string, MonthData> = {};
       fiscalMonths.forEach(m => {
+        let inc = yearTotals[m.key]?.income ?? '';
+        let exp = yearTotals[m.key]?.expense ?? '';
+
+        // Fallback para Dezembro: se estiver vazio no selectedYear, verificar no ano anterior
+        if (m.key === '12' && (!inc || inc === 0) && (!exp || exp === 0) && isFiscalDec) {
+          if (parsedTotals[prevYearKey]?.['12']) {
+            inc = parsedTotals[prevYearKey]['12'].income ?? '';
+            exp = parsedTotals[prevYearKey]['12'].expense ?? '';
+          }
+        }
+
         updated[m.key] = {
-          income: yearTotals[m.key]?.income ?? '',
-          expense: yearTotals[m.key]?.expense ?? ''
+          income: inc,
+          expense: exp
         };
       });
       setMonthsData(updated);
@@ -144,9 +168,16 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
         };
       });
 
-      const updatedTotals = {
+      const prevYearKey = (Number(selectedYear) - 1).toString();
+      const updatedTotals: Record<string, Record<string, MonthData>> = {
         ...allHistoricalTotals,
-        [selectedYear]: cleanedYearData
+        [selectedYear]: cleanedYearData as any,
+        ...(isFiscalDec ? {
+          [prevYearKey]: {
+            ...(allHistoricalTotals[prevYearKey] || {}),
+            '12': cleanedYearData['12'] as any
+          }
+        } : {})
       };
 
       await apiService.updateSettings({
