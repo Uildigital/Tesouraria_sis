@@ -36,3 +36,24 @@ Este documento registra as implementações recentes para que as próximas sess�
   - Gráfico visual das principais despesas do ano por categoria.
   - Tabela completa de lançamentos filtrados para o ano selecionado.
   - Exportação em PDF atualizada para gerar o Balancete Financeiro Anual consolidado.
+
+
+## Comparativo Anual (YoY) e Carga de Totais Históricos (2025)
+
+### 1. Novo Componente: HistoricalTotalsModal (src/components/HistoricalTotalsModal.tsx)
+- Modal acessível pelo botão "Lançar Totais Históricos" no modo Comparativo.
+- Permite selecionar qualquer ano anterior (ex: 2025) e preencher os totais consolidados de Entradas e Saídas dos 12 meses (Janeiro a Dezembro).
+- Salva no Supabase (`settings.historical_totals`) de forma persistente.
+
+### 2. Aba/Modo Comparativo no Módulo de Relatórios (src/pages/Reports.tsx)
+- Adicionado seletor de modo com 3 opções: `[ Mensal ] [ Ano Todo ] [ Comparativo ]`.
+- Seleção de Ano Base (ex: 2026) vs Ano Comparado (ex: 2025).
+- Lógica inteligente híbrida:
+  - Se o ano possui lançamentos detalhados no banco, utiliza as transações reais.
+  - Se o ano não possui lançamentos (ex: 2025), utiliza automaticamente os totais históricos preenchidos no modal.
+  - Para anos futuros (2027 em diante), a comparação com o ano anterior torna-se 100% automática a partir dos registros existentes.
+- Exibição de:
+  - KPI Cards com percentual de variação e crescimento (+% ou -%).
+  - Gráfico comparativo de barras lado a lado (Recharts).
+  - Tabela comparativa mês a mês com variações de entradas, saídas e saldos.
+  - Exportação em PDF dedicada para o relatório comparativo.
