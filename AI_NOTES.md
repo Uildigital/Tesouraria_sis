@@ -82,3 +82,16 @@ Este documento registra as implementações recentes para que as próximas sess�
   - `getFiscalTotals` em `Reports.tsx` agora possui fallback inteligente para Dezembro: busca nas transações reais, depois no histórico do ano base, depois no histórico do ano anterior (ex: 2024/12 para o exercício 2025) e depois em transações diretas.
   - Sincronização automática em `HistoricalTotalsModal`: carregar e salvar Dezembro sincroniza tanto em `selectedYear` quanto em `prevYear`.
   - `monthlySummary` em `Reports.tsx`: na visão anual consolidada de um ano sem transações reais (ex: 2025), o sistema agora puxa automaticamente os totais históricos salvos, exibindo todos os 12 meses preenchidos.
+
+## Correção dos Cálculos de Variação Percentual e Filtro de Saldo Anterior (Reports.tsx)
+
+### 1. Desconsideração de "Saldo Anterior" / "Saldo Inicial" dos Totais Operacionais
+- **Problema:** Em `2025-11-30`, existiam 2 lançamentos no banco de dados com a descrição `"Saldo Anterior (2025)"` (totalizando R$ 5.844,44), correspondentes ao saldo inicial de abertura das contas Poupança e Corrente. O `getFiscalTotals` identificava esses registros como movimentação real de Novembro/2025, ignorando o valor histórico lançado manualmente pelo usuário (R$ 24.368,34). Isso fazia o comparativo de Novembro exibir um crescimento incorreto de `+107.9%` (comparando R$ 12.147,76 contra R$ 5.844,44) em vez da queda real de `-50.1%`.
+- **Solução:** Foi adicionado o filtro `!isOpeningBalance(t)` em `getFiscalTotals` (verificando se a descrição inclui `'saldo anterior'` ou `'saldo inicial'`). Lançamentos de abertura de saldo agora são ignorados no somatório de receitas/despesas operacionais, permitindo que os totais históricos manuais tenham precedência e os cálculos reflitam apenas a movimentação real.
+
+### 2. Tratamento Correto de Divisão por Zero na Variação Percentual
+- **Problema:** Quando o ano anterior não possui valor lançado (ex: saídas de 2025 com R$ 0,00), a fórmula anterior retornava `+100.0%` em vermelho. Matematicamente, a divisão por zero é indefinida e induzia ao erro de achar que as despesas haviam dobrado.
+- **Solução:** Quando o valor do ano comparado for `0` (zero) e o ano base for maior que zero, a função agora retorna `null` e renderiza `-` (traço neutro) indicando ausência de base comparativa, em vez de `+100.0%`.
+- **Fórmula Padrão Utilizada:**
+  $$\text{Variação \%} = \frac{\text{Ano Base} - \text{Ano Anterior}}{\text{Ano Anterior}} \times 100$$
+- **Aplicação Completa:** A regra foi padronizada nos Cards de KPI, na Tabela Comparativa mês a mês, no Rodapé de Totais Gerais e na Exportação de PDF.

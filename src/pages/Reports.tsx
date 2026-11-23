@@ -373,8 +373,15 @@ export const Reports: React.FC = () => {
 
     // Helper to get month totals considering fiscal year prefixes
     const getFiscalTotals = (yearStr: string, histKey: string, monthPrefix: string) => {
-      // 1. Procurar nas transações reais pelo prefixo
-      const monthTrans = allTransactions.filter(t => t.date && t.date.startsWith(monthPrefix));
+      // 1. Procurar nas transações reais pelo prefixo (ignorando saldo anterior/abertura)
+      const isOpeningBalance = (t: Transaction) => {
+        const desc = (t.description || '').toLowerCase();
+        return desc.includes('saldo anterior') || desc.includes('saldo inicial');
+      };
+
+      const monthTrans = allTransactions
+        .filter(t => !isOpeningBalance(t))
+        .filter(t => t.date && t.date.startsWith(monthPrefix));
       
       const filteredByAccount = monthTrans.filter(t => {
         return accountFilter === 'all' || (t.account || 'Corrente') === accountFilter;
@@ -410,7 +417,9 @@ export const Reports: React.FC = () => {
       // Fallback de transações reais diretas para Dezembro:
       // se ainda estiver zerado e houver transações reais em `${yearStr}-12`
       if (histKey === '12' && histInc === 0 && histExp === 0) {
-        const directTrans = allTransactions.filter(t => t.date && t.date.startsWith(`${yearStr}-12`));
+        const directTrans = allTransactions
+          .filter(t => !isOpeningBalance(t))
+          .filter(t => t.date && t.date.startsWith(`${yearStr}-12`));
         const filteredDirect = directTrans.filter(t => {
           return accountFilter === 'all' || (t.account || 'Corrente') === accountFilter;
         });
@@ -467,10 +476,14 @@ export const Reports: React.FC = () => {
       const balY2 = dataY2.income - dataY2.expense;
 
       const incomeDiff = dataY1.income - dataY2.income;
-      const incomeGrowth = dataY2.income > 0 ? ((dataY1.income - dataY2.income) / dataY2.income) * 100 : (dataY1.income > 0 ? 100 : 0);
+      const incomeGrowth = dataY2.income > 0 
+        ? ((dataY1.income - dataY2.income) / dataY2.income) * 100 
+        : (dataY1.income === 0 ? 0 : null);
 
       const expenseDiff = dataY1.expense - dataY2.expense;
-      const expenseGrowth = dataY2.expense > 0 ? ((dataY1.expense - dataY2.expense) / dataY2.expense) * 100 : (dataY1.expense > 0 ? 100 : 0);
+      const expenseGrowth = dataY2.expense > 0 
+        ? ((dataY1.expense - dataY2.expense) / dataY2.expense) * 100 
+        : (dataY1.expense === 0 ? 0 : null);
 
       const balanceDiff = balY1 - balY2;
 
@@ -505,8 +518,12 @@ export const Reports: React.FC = () => {
     const totalY2Expense = rows.reduce((acc, r) => acc + r.y2Expense, 0);
     const totalY2Balance = totalY2Income - totalY2Expense;
 
-    const totalIncomeGrowth = totalY2Income > 0 ? ((totalY1Income - totalY2Income) / totalY2Income) * 100 : (totalY1Income > 0 ? 100 : 0);
-    const totalExpenseGrowth = totalY2Expense > 0 ? ((totalY1Expense - totalY2Expense) / totalY2Expense) * 100 : (totalY1Expense > 0 ? 100 : 0);
+    const totalIncomeGrowth = totalY2Income > 0 
+      ? ((totalY1Income - totalY2Income) / totalY2Income) * 100 
+      : (totalY1Income === 0 ? 0 : null);
+    const totalExpenseGrowth = totalY2Expense > 0 
+      ? ((totalY1Expense - totalY2Expense) / totalY2Expense) * 100 
+      : (totalY1Expense === 0 ? 0 : null);
     const totalBalanceDiff = totalY1Balance - totalY2Balance;
 
     // Chart dataset
@@ -564,10 +581,11 @@ export const Reports: React.FC = () => {
         doc.line(14, 38, 196, 38);
 
         // Summary Lines
+        const fmtGrowth = (val: number | null) => val === null ? '-' : `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
         doc.setFontSize(9);
         doc.setTextColor(50, 50, 50);
-        doc.text(`Total Entradas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Income)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Income)} (${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%)`, 14, 45);
-        doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} (${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%)`, 14, 51);
+        doc.text(`Total Entradas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Income)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Income)} (${fmtGrowth(comparativeData.totalIncomeGrowth)})`, 14, 45);
+        doc.text(`Total Saídas: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Expense)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Expense)} (${fmtGrowth(comparativeData.totalExpenseGrowth)})`, 14, 51);
         doc.setFont('helvetica', 'bold');
         doc.text(`Saldo Acumulado: ${selectedYear}: ${formatCurrency(comparativeData.totalY1Balance)} | ${compareYear}: ${formatCurrency(comparativeData.totalY2Balance)} (Diferença: ${formatCurrency(comparativeData.totalBalanceDiff)})`, 14, 57);
         doc.setFont('helvetica', 'normal');
@@ -576,10 +594,10 @@ export const Reports: React.FC = () => {
           r.name,
           formatCurrency(r.y2Income),
           formatCurrency(r.y1Income),
-          `${r.incomeGrowth >= 0 ? '+' : ''}${r.incomeGrowth.toFixed(1)}%`,
+          fmtGrowth(r.incomeGrowth),
           formatCurrency(r.y2Expense),
           formatCurrency(r.y1Expense),
-          `${r.expenseGrowth >= 0 ? '+' : ''}${r.expenseGrowth.toFixed(1)}%`,
+          fmtGrowth(r.expenseGrowth),
           formatCurrency(r.y2Balance),
           formatCurrency(r.y1Balance),
         ]);
@@ -589,10 +607,10 @@ export const Reports: React.FC = () => {
           'TOTAL DO EXERCÍCIO',
           formatCurrency(comparativeData.totalY2Income),
           formatCurrency(comparativeData.totalY1Income),
-          `${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%`,
+          fmtGrowth(comparativeData.totalIncomeGrowth),
           formatCurrency(comparativeData.totalY2Expense),
           formatCurrency(comparativeData.totalY1Expense),
-          `${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%`,
+          fmtGrowth(comparativeData.totalExpenseGrowth),
           formatCurrency(comparativeData.totalY2Balance),
           formatCurrency(comparativeData.totalY1Balance),
         ]);
@@ -1033,12 +1051,16 @@ export const Reports: React.FC = () => {
                   </div>
                   <span className={cn(
                     "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
-                    comparativeData.totalIncomeGrowth >= 0 
-                      ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-rose-100 text-rose-800"
+                    comparativeData.totalIncomeGrowth === null
+                      ? "bg-zinc-100 text-zinc-600"
+                      : comparativeData.totalIncomeGrowth >= 0 
+                        ? "bg-emerald-100 text-emerald-800" 
+                        : "bg-rose-100 text-rose-800"
                   )}>
-                    {comparativeData.totalIncomeGrowth >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}{comparativeData.totalIncomeGrowth.toFixed(1)}%
+                    {comparativeData.totalIncomeGrowth !== null && (
+                      comparativeData.totalIncomeGrowth >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />
+                    )}
+                    {comparativeData.totalIncomeGrowth === null ? '-' : `${comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}${comparativeData.totalIncomeGrowth.toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">
@@ -1064,12 +1086,16 @@ export const Reports: React.FC = () => {
                   </div>
                   <span className={cn(
                     "inline-flex items-center gap-0.5 rounded-lg px-2 py-0.5 text-xs font-bold",
-                    comparativeData.totalExpenseGrowth <= 0 
-                      ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-rose-100 text-rose-800"
+                    comparativeData.totalExpenseGrowth === null
+                      ? "bg-zinc-100 text-zinc-600"
+                      : comparativeData.totalExpenseGrowth <= 0 
+                        ? "bg-emerald-100 text-emerald-800" 
+                        : "bg-rose-100 text-rose-800"
                   )}>
-                    {comparativeData.totalExpenseGrowth >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}{comparativeData.totalExpenseGrowth.toFixed(1)}%
+                    {comparativeData.totalExpenseGrowth !== null && (
+                      comparativeData.totalExpenseGrowth <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />
+                    )}
+                    {comparativeData.totalExpenseGrowth === null ? '-' : `${comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}${comparativeData.totalExpenseGrowth.toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">
@@ -1225,12 +1251,16 @@ export const Reports: React.FC = () => {
                             {formatCurrency(row.y1Income)}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <span className={cn(
-                              "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold",
-                              row.incomeGrowth >= 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
-                            )}>
-                              {row.incomeGrowth >= 0 ? '+' : ''}{row.incomeGrowth.toFixed(1)}%
-                            </span>
+                            {row.incomeGrowth === null ? (
+                              <span className="text-zinc-400 font-medium" title="Sem valor no ano anterior para base percentual">-</span>
+                            ) : (
+                              <span className={cn(
+                                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold",
+                                row.incomeGrowth >= 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
+                              )}>
+                                {row.incomeGrowth >= 0 ? '+' : ''}{row.incomeGrowth.toFixed(1)}%
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right text-zinc-500">
                             {formatCurrency(row.y2Expense)}
@@ -1239,12 +1269,16 @@ export const Reports: React.FC = () => {
                             {formatCurrency(row.y1Expense)}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <span className={cn(
-                              "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold",
-                              row.expenseGrowth <= 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
-                            )}>
-                              {row.expenseGrowth >= 0 ? '+' : ''}{row.expenseGrowth.toFixed(1)}%
-                            </span>
+                            {row.expenseGrowth === null ? (
+                              <span className="text-zinc-400 font-medium" title="Sem saídas no ano anterior para base percentual">-</span>
+                            ) : (
+                              <span className={cn(
+                                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold",
+                                row.expenseGrowth <= 0 ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
+                              )}>
+                                {row.expenseGrowth >= 0 ? '+' : ''}{row.expenseGrowth.toFixed(1)}%
+                              </span>
+                            )}
                           </td>
                           <td className={cn(
                             "px-3 py-3 text-right font-medium",
@@ -1267,22 +1301,30 @@ export const Reports: React.FC = () => {
                         <td className="px-3 py-3.5 text-right text-zinc-600 font-bold">{formatCurrency(comparativeData.totalY2Income)}</td>
                         <td className="px-3 py-3.5 text-right text-emerald-800 font-bold text-sm">{formatCurrency(comparativeData.totalY1Income)}</td>
                         <td className="px-3 py-3.5 text-center">
-                          <span className={cn(
-                            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold",
-                            comparativeData.totalIncomeGrowth >= 0 ? "text-emerald-800 bg-emerald-100" : "text-rose-800 bg-rose-100"
-                          )}>
-                            {comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}{comparativeData.totalIncomeGrowth.toFixed(1)}%
-                          </span>
+                          {comparativeData.totalIncomeGrowth === null ? (
+                            <span className="text-zinc-400 font-bold">-</span>
+                          ) : (
+                            <span className={cn(
+                              "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold",
+                              comparativeData.totalIncomeGrowth >= 0 ? "text-emerald-800 bg-emerald-100" : "text-rose-800 bg-rose-100"
+                            )}>
+                              {comparativeData.totalIncomeGrowth >= 0 ? '+' : ''}{comparativeData.totalIncomeGrowth.toFixed(1)}%
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-3.5 text-right text-zinc-600 font-bold">{formatCurrency(comparativeData.totalY2Expense)}</td>
                         <td className="px-3 py-3.5 text-right text-rose-800 font-bold text-sm">{formatCurrency(comparativeData.totalY1Expense)}</td>
                         <td className="px-3 py-3.5 text-center">
-                          <span className={cn(
-                            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold",
-                            comparativeData.totalExpenseGrowth <= 0 ? "text-emerald-800 bg-emerald-100" : "text-rose-800 bg-rose-100"
-                          )}>
-                            {comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}{comparativeData.totalExpenseGrowth.toFixed(1)}%
-                          </span>
+                          {comparativeData.totalExpenseGrowth === null ? (
+                            <span className="text-zinc-400 font-bold">-</span>
+                          ) : (
+                            <span className={cn(
+                              "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold",
+                              comparativeData.totalExpenseGrowth <= 0 ? "text-emerald-800 bg-emerald-100" : "text-rose-800 bg-rose-100"
+                            )}>
+                              {comparativeData.totalExpenseGrowth >= 0 ? '+' : ''}{comparativeData.totalExpenseGrowth.toFixed(1)}%
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-3.5 text-right text-zinc-600 font-bold">{formatCurrency(comparativeData.totalY2Balance)}</td>
                         <td className={cn(
