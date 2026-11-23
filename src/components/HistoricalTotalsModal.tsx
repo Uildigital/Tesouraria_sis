@@ -71,9 +71,10 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      if (initialYear) setSelectedYear(initialYear);
       loadHistoricalData();
     }
-  }, [isOpen]);
+  }, [isOpen, initialYear]);
 
   useEffect(() => {
     // When year changes, load that year's data from memory
@@ -93,8 +94,8 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
       }
 
       updated[m.key] = {
-        income: inc,
-        expense: exp
+        income: (inc === 0 || inc === '0') ? '' : inc,
+        expense: (exp === 0 || exp === '0') ? '' : exp
       };
     });
     setMonthsData(updated);
@@ -134,8 +135,8 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
         }
 
         updated[m.key] = {
-          income: inc,
-          expense: exp
+          income: (inc === 0 || inc === '0') ? '' : inc,
+          expense: (exp === 0 || exp === '0') ? '' : exp
         };
       });
       setMonthsData(updated);
@@ -313,8 +314,8 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 font-semibold">R$</span>
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               placeholder="0,00"
                               value={mData.income}
                               onChange={(e) => handleInputChange(m.key, 'income', e.target.value)}
@@ -326,8 +327,8 @@ export const HistoricalTotalsModal: React.FC<HistoricalTotalsModalProps> = ({
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-rose-500 font-semibold">R$</span>
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               placeholder="0,00"
                               value={mData.expense}
                               onChange={(e) => handleInputChange(m.key, 'expense', e.target.value)}

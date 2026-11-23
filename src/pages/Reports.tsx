@@ -518,12 +518,19 @@ export const Reports: React.FC = () => {
     const totalY2Expense = rows.reduce((acc, r) => acc + r.y2Expense, 0);
     const totalY2Balance = totalY2Income - totalY2Expense;
 
-    const totalIncomeGrowth = totalY2Income > 0 
+    // Se o ano comparado estiver com dados incompletos (meses zerados enquanto o ano atual possui movimentação),
+    // a apuração percentual do total anual não deve comparar períodos assimétricos (ex: 12 meses contra 1 mês)
+    const hasIncompleteComparativeIncome = rows.some(r => r.y1Income > 0 && r.y2Income === 0);
+    const hasIncompleteComparativeExpense = rows.some(r => r.y1Expense > 0 && r.y2Expense === 0);
+
+    const totalIncomeGrowth = (!hasIncompleteComparativeIncome && totalY2Income > 0)
       ? ((totalY1Income - totalY2Income) / totalY2Income) * 100 
       : (totalY1Income === 0 ? 0 : null);
-    const totalExpenseGrowth = totalY2Expense > 0 
+
+    const totalExpenseGrowth = (!hasIncompleteComparativeExpense && totalY2Expense > 0)
       ? ((totalY1Expense - totalY2Expense) / totalY2Expense) * 100 
       : (totalY1Expense === 0 ? 0 : null);
+
     const totalBalanceDiff = totalY1Balance - totalY2Balance;
 
     // Chart dataset

@@ -95,3 +95,10 @@ Este documento registra as implementações recentes para que as próximas sess�
 - **Fórmula Padrão Utilizada:**
   $$\text{Variação \%} = \frac{\text{Ano Base} - \text{Ano Anterior}}{\text{Ano Anterior}} \times 100$$
 - **Aplicação Completa:** A regra foi padronizada nos Cards de KPI, na Tabela Comparativa mês a mês, no Rodapé de Totais Gerais e na Exportação de PDF.
+
+### 3. Proteção contra Base Assimétrica de Comparação no Total Anual (Reports.tsx)
+- **Problema:** Quando o exercício atual (2026) possui movimentação de saídas nos 12 meses (R$ 336.217,05), mas o exercício comparado (2025) possui meses zerados/incompletos (apenas Dezembro com R$ 46.745,40), a fórmula do total geral comparava 12 meses contra 1 mês, gerando uma variação absurda de `+619.3%` no Card de Saídas e no Rodapé.
+- **Solução:** Implementadas as verificações `hasIncompleteComparativeExpense` e `hasIncompleteComparativeIncome`. Se o ano atual possuir valores em meses onde o ano comparado ainda está zerado, a variação total do ano retorna `null` e exibe `-` (traço neutro) em vez de um percentual distorcido, aguardando o preenchimento de todos os meses pelo usuário.
+- **Melhorias no Modal de Totais Históricos (HistoricalTotalsModal.tsx):**
+  - Inputs alterados para `type="text" inputMode="decimal"`, facilitando a digitação de valores monetários com vírgula ou ponto sem bloqueio do navegador.
+  - Valores zerados não ficam mais travados com o número `0` dentro do campo, permitindo visualização limpa do placeholder `0,00` e digitação direta.
